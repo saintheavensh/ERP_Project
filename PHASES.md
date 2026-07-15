@@ -66,12 +66,12 @@
 - [x] 1C.12 Verify: `npm run dev` starts, `GET /v1/health` returns `{ data: { status: "ok" } }`
 
 ### 1D. Frontend Setup (flowserv-web/)
-- [ ] 1D.1 Create SvelteKit project in `flowserv-web/`
-- [ ] 1D.2 Install dependencies: tailwindcss, shadcn-svelte
-- [ ] 1D.3 Create `flowserv-web/src/lib/api/client.ts` (base API client pointing to localhost:3001)
-- [ ] 1D.4 Create basic layout with sidebar placeholder
-- [ ] 1D.5 Create health check page that calls `/v1/health` and displays result
-- [ ] 1D.6 Verify: `npm run dev` starts, health check page shows "API Connected"
+- [x] 1D.1 Create SvelteKit project in `flowserv-web/`
+- [x] 1D.2 Install dependencies: tailwindcss, shadcn-svelte
+- [x] 1D.3 Create `flowserv-web/src/lib/api/client.ts` (base API client pointing to localhost:3001)
+- [x] 1D.4 Create basic layout with sidebar placeholder
+- [x] 1D.5 Create health check page that calls `/v1/health` and displays result
+- [x] 1D.6 Verify: `npm run dev` starts, health check page shows "API Connected"
 
 ### 1E. Seed Data
 - [ ] 1E.1 Create `flowserv-api/src/db/seed.ts`
