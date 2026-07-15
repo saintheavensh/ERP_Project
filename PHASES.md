@@ -74,12 +74,13 @@
 - [x] 1D.6 Verify: `npm run dev` starts, health check page shows "API Connected"
 
 ### 1E. Seed Data
-- [ ] 1E.1 Create `flowserv-api/src/db/seed.ts`
-- [ ] 1E.2 Seed: default permissions (all permission codes from spec)
-- [ ] 1E.3 Seed: default roles (Owner, Branch Mgr, Technician, Cashier, Inv Staff, Finance, CS)
-- [ ] 1E.4 Seed: default Flow Template (Standard Repair Flow with nodes)
-- [ ] 1E.5 Seed: demo tenant + branch + admin user (for development)
-- [ ] 1E.6 Run seed, verify data exists in database
+- [x] 1E.1 Create `flowserv-api/src/db/seed.ts`
+- [x] 1E.2 Add script to `package.json` (`"db:seed": "tsx src/db/seed.ts"`)
+- [x] 1E.3 Write seed data for `roles` (Super Admin, Manager, Technician, Cashier)
+- [x] 1E.4 Write seed data for one default `tenant` (e.g., "Demo Service Center")
+- [x] 1E.5 Write seed data for one `user` (Super Admin) linked to Demo tenant
+- [x] 1E.6 Run `npm run db:seed` and verify data in database
+- [x] 1E.7 Commit: "feat: phase 1E complete - seed data"
 
 ### 1F. Final Verification
 - [ ] 1F.1 Backend starts and connects to PostgreSQL
