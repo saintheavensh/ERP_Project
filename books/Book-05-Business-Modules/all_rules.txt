@@ -1,0 +1,1795 @@
+[00-Preface.md] # Design Principles
+[README.md] ## Core Business Principles
+[B05-CORE-003 Business Lifecycle Framework.md] # Lifecycle Rules
+[B05-CORE-003 Business Lifecycle Framework.md] ## Rule 1
+Every lifecycle must define a starting state.
+---
+[B05-CORE-003 Business Lifecycle Framework.md] ## Rule 2
+Every lifecycle must define one or more terminal states.
+Examples:
+* Closed
+* Cancelled
+---
+[B05-CORE-003 Business Lifecycle Framework.md] ## Rule 3
+State transitions must be controlled.
+Users must not bypass required lifecycle stages.
+---
+[B05-CORE-003 Business Lifecycle Framework.md] ## Rule 4
+All transitions must be recorded in the audit trail.
+---
+[B05-CORE-003 Business Lifecycle Framework.md] ## Rule 5
+Business rules determine whether a transition is allowed.
+---
+[B05-CORE-004 Status Management Framework.md] # Status Governance Rules
+[B05-CORE-004 Status Management Framework.md] ## Rule 1
+Every business entity must define an initial status.
+---
+[B05-CORE-004 Status Management Framework.md] ## Rule 2
+Every business entity must define at least one terminal status.
+Examples:
+* Closed
+* Cancelled
+---
+[B05-CORE-004 Status Management Framework.md] ## Rule 3
+Status transitions must follow approved workflows.
+Direct status jumping should not be allowed unless explicitly authorized.
+---
+[B05-CORE-004 Status Management Framework.md] ## Rule 4
+Every status transition must be recorded.
+The following information should be captured:
+* Previous Status
+* New Status
+* Date and Time
+* User or Process
+* Reason (if applicable)
+---
+[B05-CORE-004 Status Management Framework.md] ## Rule 5
+Historical status records must be immutable.
+---
+[B05-CORE-005 Business Transactions.md] # Transaction Principles
+[B05-CORE-005 Business Transactions.md] # Validation Rules
+[B05-CORE-005 Business Transactions.md] ## Rule 1
+Every transaction must have a unique transaction number.
+---
+[B05-CORE-005 Business Transactions.md] ## Rule 2
+Every transaction must have a valid status.
+---
+[B05-CORE-005 Business Transactions.md] ## Rule 3
+Every transaction must have a creation timestamp.
+---
+[B05-CORE-005 Business Transactions.md] ## Rule 4
+Transactions must not bypass required approval processes.
+---
+[B05-CORE-005 Business Transactions.md] ## Rule 5
+Transactions should maintain referential integrity with related records.
+---
+[B05-CORE-006 Transaction Audit Trail.md] # Core Principles
+[B05-CORE-006 Transaction Audit Trail.md] ## Rule 1
+Audit records must not be physically deleted.
+---
+[B05-CORE-006 Transaction Audit Trail.md] ## Rule 2
+Audit records must remain accessible for historical reporting.
+---
+[B05-CORE-006 Transaction Audit Trail.md] ## Rule 3
+Archived audit records must remain searchable.
+---
+[B05-CORE-006 Transaction Audit Trail.md] ## Rule 4
+Retention policies should comply with business and legal requirements.
+---
+[B05-CORE-007 Business Workflow Framework.md] # Workflow Governance Rules
+[B05-CORE-007 Business Workflow Framework.md] ## Rule 1
+Every workflow must have a clearly defined trigger.
+---
+[B05-CORE-007 Business Workflow Framework.md] ## Rule 2
+Every workflow must define expected outcomes.
+---
+[B05-CORE-007 Business Workflow Framework.md] ## Rule 3
+Workflow activities must follow defined business rules.
+---
+[B05-CORE-007 Business Workflow Framework.md] ## Rule 4
+Workflow execution should generate audit records.
+---
+[B05-CORE-007 Business Workflow Framework.md] ## Rule 5
+Workflow transitions should generate status updates.
+---
+[B05-CORE-007 Business Workflow Framework.md] ## Rule 6
+Workflow exceptions must be explicitly defined.
+---
+[B05-CORE-008 Approval Framework.md] # Approval Rules
+[B05-CORE-008 Approval Framework.md] ## Rule 1
+Approval requirements must be explicitly defined.
+---
+[B05-CORE-008 Approval Framework.md] ## Rule 2
+Approvals should occur before execution of controlled activities.
+---
+[B05-CORE-008 Approval Framework.md] ## Rule 3
+Approval authority must be based on roles and permissions.
+---
+[B05-CORE-008 Approval Framework.md] ## Rule 4
+Approval decisions must be recorded.
+---
+[B05-CORE-008 Approval Framework.md] ## Rule 5
+Approval records must be auditable.
+---
+[B05-CORE-008 Approval Framework.md] ## Rule 6
+Rejected requests must include a reason.
+---
+[B05-CORE-008 Approval Framework.md] ## Rule 7
+Returned requests must include corrective instructions.
+---
+[B05-CORE-009 Business Rules Framework.md] # Business Rules Framework
+[B05-CORE-009 Business Rules Framework.md] # Business Rule Components
+Every business rule should contain the following elements.
+---
+[B05-CORE-009 Business Rules Framework.md] ## Rule Identifier
+Each rule should have a unique identifier.
+Example:
+```text id="br1"
+BR-INV-001
+BR-SVC-015
+BR-FIN-008
+```
+---
+[B05-CORE-009 Business Rules Framework.md] ## Rule Name
+A short descriptive name.
+Example:
+```text id="br2"
+FIFO Consumption Rule
+```
+---
+[B05-CORE-009 Business Rules Framework.md] ## Rule Description
+Describes the purpose and behavior of the rule.
+---
+[B05-CORE-009 Business Rules Framework.md] # Business Rule Categories
+[B05-CORE-009 Business Rules Framework.md] ## Operational Rules
+Rules governing daily business operations.
+Examples:
+* Service workflow requirements.
+* Device intake requirements.
+* Technician assignment rules.
+---
+[B05-CORE-009 Business Rules Framework.md] ## Inventory Rules
+Rules governing inventory management.
+Examples:
+* FIFO consumption.
+* Negative stock prevention.
+* Batch tracking requirements.
+---
+[B05-CORE-009 Business Rules Framework.md] ## Financial Rules
+Rules governing monetary transactions.
+Examples:
+* Payment validation.
+* Commission calculations.
+* Profit calculations.
+---
+[B05-CORE-009 Business Rules Framework.md] ## Warranty Rules
+Rules governing warranty eligibility and claims.
+Examples:
+* Warranty period validation.
+* Warranty claim approval requirements.
+---
+[B05-CORE-009 Business Rules Framework.md] ## Security Rules
+Rules governing system access and permissions.
+Examples:
+* Role-based access.
+* Approval authority limits.
+---
+[B05-CORE-009 Business Rules Framework.md] # Rule Enforcement Levels
+[B05-CORE-009 Business Rules Framework.md] # Example Business Rules
+[B05-CORE-009 Business Rules Framework.md] ## FIFO Inventory Rule
+```text id="br8"
+Rule ID:
+BR-INV-001
+When inventory is consumed,
+the system must consume stock from
+the oldest available batch first.
+```
+---
+[B05-CORE-009 Business Rules Framework.md] ## Service Approval Rule
+```text id="br9"
+Rule ID:
+BR-SVC-001
+Service repair work must not begin
+until customer approval is received.
+```
+---
+[B05-CORE-009 Business Rules Framework.md] ## Warranty Validation Rule
+```text id="br10"
+Rule ID:
+BR-WAR-001
+Warranty claims may only be accepted
+for active warranty records.
+```
+---
+[B05-CORE-009 Business Rules Framework.md] ## Technician Commission Rule
+```text id="br11"
+Rule ID:
+BR-TECH-001
+Technician commissions are calculated
+only after service completion and payment confirmation.
+```
+---
+[B05-CORE-009 Business Rules Framework.md] # Rule Hierarchy
+Business rules may inherit from higher-level policies.
+```text id="br12"
+Business Policy
+        ↓
+Business Rule
+        ↓
+Validation
+        ↓
+Workflow Action
+```
+Example:
+```text id="br13"
+Inventory Accuracy Policy
+        ↓
+FIFO Rule
+        ↓
+Stock Validation
+```
+---
+[B05-CORE-009 Business Rules Framework.md] # Rule Lifecycle
+Business rules follow a controlled lifecycle.
+```text id="br14"
+Draft
+    ↓
+Review
+    ↓
+Approved
+    ↓
+Active
+    ↓
+Retired
+```
+Rules should not be implemented without approval.
+---
+[B05-CORE-009 Business Rules Framework.md] # Rule Change Management
+Rule modifications should be controlled.
+Every change should record:
+* Previous Rule Version
+* New Rule Version
+* Change Reason
+* Approval Information
+* Effective Date
+---
+[B05-CORE-010 Validation Framework.md] # Validation Principles
+[B05-CORE-010 Validation Framework.md] # Validation Rule Management
+Validation rules should be:
+* Documented
+* Versioned
+* Auditable
+* Maintainable
+* Traceable to business rules
+Validation logic should not exist without a corresponding business rule.
+---
+[B05-CORE-011 Business Events.md] # Event Processing Rules
+[B05-CORE-011 Business Events.md] ## Rule 1
+Events should represent completed business actions.
+---
+[B05-CORE-011 Business Events.md] ## Rule 2
+Events should be immutable.
+---
+[B05-CORE-011 Business Events.md] ## Rule 3
+Events should not be modified after creation.
+---
+[B05-CORE-011 Business Events.md] ## Rule 4
+Events should contain sufficient information for consumers.
+---
+[B05-CORE-011 Business Events.md] ## Rule 5
+Event processing failures should not corrupt source transactions.
+---
+[B05-CORE-012 Notification Triggers.md] # Notification Rules
+[B05-CORE-012 Notification Triggers.md] ## Rule 1
+Notifications should be generated only for meaningful business events.
+---
+[B05-CORE-012 Notification Triggers.md] ## Rule 2
+Duplicate notifications should be avoided.
+---
+[B05-CORE-012 Notification Triggers.md] ## Rule 3
+Notification content should be clear and actionable.
+---
+[B05-CORE-012 Notification Triggers.md] ## Rule 4
+Recipients should be determined by roles and business context.
+---
+[B05-CORE-012 Notification Triggers.md] ## Rule 5
+Notification failures should be logged.
+---
+[B05-CORE-013 Business Entity Relationships.md] # Core Entity Principles
+[B05-CORE-013 Business Entity Relationships.md] # Relationship Governance Rules
+[B05-CORE-013 Business Entity Relationships.md] ## Rule 1
+Every entity must have a unique identifier.
+---
+[B05-CORE-013 Business Entity Relationships.md] ## Rule 2
+Relationships must preserve referential integrity.
+---
+[B05-CORE-013 Business Entity Relationships.md] ## Rule 3
+Historical relationships must remain traceable.
+---
+[B05-CORE-013 Business Entity Relationships.md] ## Rule 4
+Relationship deletion should not destroy historical records.
+---
+[B05-CORE-013 Business Entity Relationships.md] ## Rule 5
+Entity ownership should remain clearly defined.
+---
+[B05-CORE-014 Operational Accountability.md] # Accountability Principles
+[B05-CORE-015 Data Ownership.md] # Data Ownership Principles
+[INDEX.md] ## Business Rules
+[README.md] # Shared Business Principles
+[B05-CUST-001 Customer Concepts.md] # Governance Rules
+[B05-CUST-001 Customer Concepts.md] ## Rule 1
+Every customer must have a unique identifier.
+---
+[B05-CUST-001 Customer Concepts.md] ## Rule 2
+Customer records should not be physically deleted.
+---
+[B05-CUST-001 Customer Concepts.md] ## Rule 3
+Customer ownership relationships must remain traceable.
+---
+[B05-CUST-001 Customer Concepts.md] ## Rule 4
+Historical service records must be preserved.
+---
+[B05-CUST-001 Customer Concepts.md] ## Rule 5
+Duplicate customers should be minimized.
+---
+[B05-CUST-002 Customer Lifecycle.md] # Lifecycle Governance Rules
+[B05-CUST-002 Customer Lifecycle.md] ## Rule 1
+Every customer must have a unique identifier.
+---
+[B05-CUST-002 Customer Lifecycle.md] ## Rule 2
+Customer records should remain permanently traceable.
+---
+[B05-CUST-002 Customer Lifecycle.md] ## Rule 3
+Customer lifecycle transitions should be auditable.
+---
+[B05-CUST-002 Customer Lifecycle.md] ## Rule 4
+Inactive customers should not be deleted.
+---
+[B05-CUST-002 Customer Lifecycle.md] ## Rule 5
+Duplicate customer records should be minimized.
+---
+[B05-CUST-003 Customer Registration.md] # Registration Principles
+[B05-CUST-003 Customer Registration.md] ## Principle 1
+Customer registration should be fast.
+---
+[B05-CUST-003 Customer Registration.md] ## Principle 2
+Only essential information should be required.
+---
+[B05-CUST-003 Customer Registration.md] ## Principle 3
+Missing optional information should not block operations.
+---
+[B05-CUST-003 Customer Registration.md] ## Principle 4
+Customer registration should not delay service intake.
+---
+[B05-CUST-003 Customer Registration.md] ## Principle 5
+Duplicate customer records should be minimized.
+---
+[B05-CUST-003 Customer Registration.md] # Registration Governance Rules
+[B05-CUST-003 Customer Registration.md] ## Rule 1
+Customer Name is required.
+---
+[B05-CUST-003 Customer Registration.md] ## Rule 2
+Phone Number is optional.
+---
+[B05-CUST-003 Customer Registration.md] ## Rule 3
+Email Address is optional.
+---
+[B05-CUST-003 Customer Registration.md] ## Rule 4
+Customer records should not be physically deleted.
+---
+[B05-CUST-003 Customer Registration.md] ## Rule 5
+Customer IDs must be unique.
+---
+[B05-CUST-003 Customer Registration.md] ## Rule 6
+Duplicate customer records should be minimized.
+---
+[B05-CUST-004 Customer Profile.md] # Profile Editing Rules
+[B05-CUST-004 Customer Profile.md] # Governance Rules
+[B05-CUST-004 Customer Profile.md] ## Rule 1
+Every customer must have a unique profile.
+---
+[B05-CUST-004 Customer Profile.md] ## Rule 2
+Customer profiles should remain permanently traceable.
+---
+[B05-CUST-004 Customer Profile.md] ## Rule 3
+Historical information should not be lost.
+---
+[B05-CUST-004 Customer Profile.md] ## Rule 4
+Profile updates should be auditable.
+---
+[B05-CUST-004 Customer Profile.md] ## Rule 5
+Customer profiles should serve as the primary customer reference across all modules.
+---
+[B05-CUST-005 Customer Contact Management.md] # Contact Management Principles
+[B05-CUST-005 Customer Contact Management.md] ## Principle 1
+Customer contact information is optional.
+---
+[B05-CUST-005 Customer Contact Management.md] ## Principle 2
+Missing contact information must not block service operations.
+---
+[B05-CUST-005 Customer Contact Management.md] ## Principle 3
+Contact information may be added later.
+---
+[B05-CUST-005 Customer Contact Management.md] ## Principle 4
+The latest valid contact information should be maintained.
+---
+[B05-CUST-005 Customer Contact Management.md] # Governance Rules
+[B05-CUST-005 Customer Contact Management.md] ## Rule 1
+Contact information is optional.
+[B05-CUST-005 Customer Contact Management.md] ## Rule 2
+Customer records may exist without phone numbers.
+[B05-CUST-005 Customer Contact Management.md] ## Rule 3
+Customer records may exist without email addresses.
+[B05-CUST-005 Customer Contact Management.md] ## Rule 4
+Contact information may be updated at any time.
+[B05-CUST-005 Customer Contact Management.md] ## Rule 5
+Contact updates should be auditable.
+---
+[B05-CUST-006 Customer Service History.md] # Governance Rules
+[B05-CUST-006 Customer Service History.md] ## Rule 1
+Service history must never be physically deleted.
+---
+[B05-CUST-006 Customer Service History.md] ## Rule 2
+Historical repairs must remain traceable.
+---
+[B05-CUST-006 Customer Service History.md] ## Rule 3
+Spare part history must be preserved.
+---
+[B05-CUST-006 Customer Service History.md] ## Rule 4
+Technician involvement must be recorded.
+---
+[B05-CUST-006 Customer Service History.md] ## Rule 5
+Warranty-related repairs must remain linked to original service records.
+---
+[B05-CUST-007 Customer Warranty History.md] # Governance Rules
+[B05-CUST-007 Customer Warranty History.md] ## Rule 1
+Every warranty must originate from a service record.
+---
+[B05-CUST-007 Customer Warranty History.md] ## Rule 2
+Warranty history must never be deleted.
+---
+[B05-CUST-007 Customer Warranty History.md] ## Rule 3
+Warranty claims must remain traceable.
+---
+[B05-CUST-007 Customer Warranty History.md] ## Rule 4
+Warranty records must reference original repairs.
+---
+[B05-CUST-007 Customer Warranty History.md] ## Rule 5
+Installed spare parts should remain traceable through warranty history.
+---
+[B05-CUST-008 Customer Communication .md] # Communication Principles
+[B05-CUST-008 Customer Communication .md] ## Principle 1
+Customer communication is optional.
+---
+[B05-CUST-008 Customer Communication .md] ## Principle 2
+Service operations must continue even when no contact information exists.
+---
+[B05-CUST-008 Customer Communication .md] ## Principle 3
+Communication history should be traceable.
+---
+[B05-CUST-008 Customer Communication .md] ## Principle 4
+Communication records should support customer service and operational review.
+---
+[B05-CUST-008 Customer Communication .md] # Governance Rules
+[B05-CUST-008 Customer Communication .md] ## Rule 1
+Communication history should remain traceable.
+---
+[B05-CUST-008 Customer Communication .md] ## Rule 2
+Communication records should not be deleted.
+---
+[B05-CUST-008 Customer Communication .md] ## Rule 3
+Service operations must not depend on customer communication.
+---
+[B05-CUST-008 Customer Communication .md] ## Rule 4
+Customers remain responsible for following up on repair progress.
+---
+[B05-CUST-008 Customer Communication .md] ## Rule 5
+Communication channels may evolve without affecting core business operations.
+---
+[B05-CUST-009 Duplicate Customer Management .md] # Duplicate Prevention Principles
+[B05-CUST-009 Duplicate Customer Management .md] ## Principle 1
+The system should warn users about possible duplicates.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Principle 2
+The system should not block customer registration automatically.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Principle 3
+Employees should make the final decision.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Principle 4
+Historical records must be preserved.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Principle 5
+Duplicate management should not slow customer intake.
+---
+[B05-CUST-009 Duplicate Customer Management .md] # Merge Rules
+Example:
+```text id="dcm23"
+Customer A
+    ↓
+Service History
+```
+```text id="dcm24"
+Customer B
+    ↓
+Warranty History
+```
+After merge:
+```text id="dcm25"
+Single Customer
+        ↓
+Combined History
+```
+No historical records should be lost.
+---
+[B05-CUST-009 Duplicate Customer Management .md] # Governance Rules
+[B05-CUST-009 Duplicate Customer Management .md] ## Rule 1
+Duplicate warnings should not block operations.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Rule 2
+Employees should decide whether to create a new customer.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Rule 3
+Customer merges should require authorization.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Rule 4
+Historical records must never be lost.
+---
+[B05-CUST-009 Duplicate Customer Management .md] ## Rule 5
+Customer searches should occur before registration whenever possible.
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Business Rules
+[B05-CUST-010 Customer Business Rules.md] # Customer Identity Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 1
+Customer Name is required.
+Example:
+```text id="cbr1"
+Budi
+```
+```text id="cbr2"
+Pak Andi
+```
+```text id="cbr3"
+Jaya Cell
+```
+Customer records cannot be created without a name.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 2
+Phone Number is optional.
+Customers may be registered without:
+```text id="cbr4"
+Phone Number
+```
+or
+```text id="cbr5"
+Email Address
+```
+Operations must continue normally.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 3
+Phone Number becomes the primary customer identifier when available.
+Example:
+```text id="cbr6"
+08123456789
+```
+The system should treat the phone number as the preferred customer lookup key.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 4
+Phone Numbers should be unique whenever possible.
+Example:
+```text id="cbr7"
+08123456789
+```
+already belongs to:
+```text id="cbr8"
+CUST-000125
+```
+The system should warn users before creating duplicates.
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Search Rules
+Customer search priority:
+```text id="cbr9"
+Priority 1
+Phone Number
+```
+```text id="cbr10"
+Priority 2
+Customer Name
+```
+```text id="cbr11"
+Priority 3
+Device IMEI
+```
+This order reflects actual service shop operations.
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Registration Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 5
+Customer registration should be fast.
+Only essential information should be required.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 6
+Missing contact information must not block service intake.
+Example:
+```text id="cbr12"
+Customer Name
+```
+alone is sufficient for registration.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 7
+Customer registration should attempt duplicate detection before creating new records.
+---
+[B05-CUST-010 Customer Business Rules.md] # Contact Information Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 8
+Customer contact information may be added later.
+Example:
+```text id="cbr13"
+Customer Registered
+Without Phone Number
+```
+Later:
+```text id="cbr14"
+Customer Contacts Shop Through WhatsApp
+```
+The phone number may be added to the customer profile.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 9
+Contact information updates should be auditable.
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Ownership Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 10
+A customer may own multiple devices.
+Example:
+```text id="cbr15"
+Customer
+    ├── iPhone 13
+    ├── Samsung A54
+    └── Oppo A78
+```
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 11
+A device may accumulate multiple service records throughout its lifetime.
+---
+[B05-CUST-010 Customer Business Rules.md] # Service Relationship Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 12
+Customer service history must remain permanently traceable.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 13
+Customer service records must not be physically deleted.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 14
+Warranty records must remain linked to original service records.
+---
+[B05-CUST-010 Customer Business Rules.md] # Communication Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 15
+Customers are responsible for following up on repair progress.
+Normal business operations do not require proactive notifications.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 16
+Communication history should be recorded when available.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 17
+The absence of communication channels must not prevent service operations.
+---
+[B05-CUST-010 Customer Business Rules.md] # Duplicate Customer Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 18
+Duplicate warnings should not block customer registration.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 19
+Employees determine whether a new customer should be created.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 20
+Customer merge operations require authorization.
+Authorized roles:
+```text id="cbr16"
+Manager
+```
+```text id="cbr17"
+Owner
+```
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Data Retention Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 21
+Customer records should not be physically deleted.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 22
+Historical service records should remain permanently available.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 23
+Warranty records should remain permanently available.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 24
+Audit records should remain permanently available.
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Verification Rules
+Customer verification may be performed using:
+```text id="cbr18"
+Phone Number
+```
+```text id="cbr19"
+Customer Name
+```
+```text id="cbr20"
+Device IMEI
+```
+depending on available information.
+---
+[B05-CUST-010 Customer Business Rules.md] # Customer Profile Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 25
+Every customer must have a unique Customer ID.
+Example:
+```text id="cbr21"
+CUST-000001
+```
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 26
+Customer profiles act as the master reference for customer relationships throughout the ERP.
+---
+[B05-CUST-010 Customer Business Rules.md] # Governance Rules
+[B05-CUST-010 Customer Business Rules.md] ## Rule 27
+Customer information should support operational efficiency.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 28
+Business processes should remain functional even when customer data is incomplete.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 29
+Historical integrity takes priority over data cleanup.
+---
+[B05-CUST-010 Customer Business Rules.md] ## Rule 30
+Customer-related activities should remain fully traceable.
+---
+[B05-CUST-011 Customer Reporting .md] # Reporting Principles
+[B05-CUST-011 Customer Reporting .md] ## Principle 1
+Reports should be generated from transactional data.
+---
+[B05-CUST-011 Customer Reporting .md] ## Principle 2
+Reports must not modify operational records.
+---
+[B05-CUST-011 Customer Reporting .md] ## Principle 3
+Historical reports should remain reproducible.
+---
+[B05-CUST-011 Customer Reporting .md] ## Principle 4
+Reports should support filtering and searching.
+---
+[B05-CUST-011 Customer Reporting .md] # Security Rules
+Customer reports should respect user permissions.
+Examples:
+```text
+Cashier
+```
+may view operational reports.
+---
+```text
+Manager
+```
+may view performance reports.
+---
+```text
+Owner
+```
+may view all customer reports.
+---
+[B05-CUST-011 Customer Reporting .md] # Governance Rules
+[B05-CUST-011 Customer Reporting .md] ## Rule 1
+Reports must be based on historical records.
+---
+[B05-CUST-011 Customer Reporting .md] ## Rule 2
+Reports must not modify data.
+---
+[B05-CUST-011 Customer Reporting .md] ## Rule 3
+Reports should support operational decision-making.
+---
+[B05-CUST-011 Customer Reporting .md] ## Rule 4
+Customer reporting should remain traceable.
+---
+[B05-CUST-011 Customer Reporting .md] ## Rule 5
+Sensitive customer information should respect access permissions.
+---
+[B05-DEV-001 Device Concepts .md] # Governance Rules
+[B05-DEV-001 Device Concepts .md] ## Rule 1
+Every service should be linked to a device.
+---
+[B05-DEV-001 Device Concepts .md] ## Rule 2
+Every warranty should be linked to a device.
+---
+[B05-DEV-001 Device Concepts .md] ## Rule 3
+Device history should never be deleted.
+---
+[B05-DEV-001 Device Concepts .md] ## Rule 4
+Device traceability should be preserved.
+---
+[B05-DEV-001 Device Concepts .md] ## Rule 5
+Device records should remain independent from customer changes.
+---
+[B05-DEV-002 Device Lifecycle.md] # Governance Rules
+[B05-DEV-002 Device Lifecycle.md] ## Rule 1
+One device should maintain one permanent device record whenever identification is possible.
+---
+[B05-DEV-002 Device Lifecycle.md] ## Rule 2
+Service orders should attach to devices.
+---
+[B05-DEV-002 Device Lifecycle.md] ## Rule 3
+Warranty records should attach to devices.
+---
+[B05-DEV-002 Device Lifecycle.md] ## Rule 4
+Device history must remain permanent.
+---
+[B05-DEV-002 Device Lifecycle.md] ## Rule 5
+Device ownership changes must not destroy history.
+---
+[B05-DEV-003 Device Registration.md] # Registration Principle
+Core principle:
+```text id="dr2"
+Every Device Entering The Shop
+Should Be Registered
+```
+regardless of repair outcome.
+---
+[B05-DEV-003 Device Registration.md] # Governance Rules
+[B05-DEV-003 Device Registration.md] ## Rule 1
+Every incoming device should be registered.
+---
+[B05-DEV-003 Device Registration.md] ## Rule 2
+Device registration occurs before repair approval.
+---
+[B05-DEV-003 Device Registration.md] ## Rule 3
+Rejected repairs should remain visible.
+---
+[B05-DEV-003 Device Registration.md] ## Rule 4
+Device history should remain permanent.
+---
+[B05-DEV-003 Device Registration.md] ## Rule 5
+Device records should not be physically deleted.
+---
+[B05-DEV-004 Device Identification .md] # Identification Principles
+[B05-DEV-004 Device Identification .md] ## Principle 1
+One physical device should correspond to one device record whenever identification is possible.
+---
+[B05-DEV-004 Device Identification .md] ## Principle 2
+Device history should remain attached to the device.
+---
+[B05-DEV-004 Device Identification .md] ## Principle 3
+Identification should not block operations.
+---
+[B05-DEV-004 Device Identification .md] ## Principle 4
+The system should support incomplete device information.
+---
+[B05-DEV-004 Device Identification .md] # Governance Rules
+[B05-DEV-004 Device Identification .md] ## Rule 1
+IMEI should be used whenever available.
+---
+[B05-DEV-004 Device Identification .md] ## Rule 2
+Duplicate device records should be avoided.
+---
+[B05-DEV-004 Device Identification .md] ## Rule 3
+Identification should not interrupt service intake.
+---
+[B05-DEV-004 Device Identification .md] ## Rule 4
+Manual verification should be allowed.
+---
+[B05-DEV-004 Device Identification .md] ## Rule 5
+Device history must remain traceable.
+---
+[B05-DEV-005 Device Ownership.md] # Ownership Principles
+[B05-DEV-005 Device Ownership.md] ## Principle 1
+A device may have multiple owners throughout its lifetime.
+---
+[B05-DEV-005 Device Ownership.md] ## Principle 2
+A device should maintain a single device history.
+---
+[B05-DEV-005 Device Ownership.md] ## Principle 3
+Ownership changes must not destroy historical records.
+---
+[B05-DEV-005 Device Ownership.md] ## Principle 4
+The person delivering a device may not be the owner.
+---
+[B05-DEV-005 Device Ownership.md] # Governance Rules
+[B05-DEV-005 Device Ownership.md] ## Rule 1
+Ownership changes must not affect device history.
+---
+[B05-DEV-005 Device Ownership.md] ## Rule 2
+Current ownership should remain visible.
+---
+[B05-DEV-005 Device Ownership.md] ## Rule 3
+Historical ownership should remain visible.
+---
+[B05-DEV-005 Device Ownership.md] ## Rule 4
+Ownership verification should remain practical and flexible.
+---
+[B05-DEV-005 Device Ownership.md] ## Rule 5
+Representatives should be allowed to deliver devices.
+---
+[B05-DEV-006 Device Service History.md] # Core Principle
+```text id="dsh1"
+One Device
+      ↓
+Many Service Events
+```
+A device may accumulate service records over many years.
+---
+[B05-DEV-006 Device Service History.md] # Governance Rules
+[B05-DEV-006 Device Service History.md] ## Rule 1
+Every service event should become part of device history.
+---
+[B05-DEV-006 Device Service History.md] ## Rule 2
+Canceled repairs should remain visible.
+---
+[B05-DEV-006 Device Service History.md] ## Rule 3
+Diagnosis history should remain visible.
+---
+[B05-DEV-006 Device Service History.md] ## Rule 4
+Service history should never be deleted.
+---
+[B05-DEV-006 Device Service History.md] ## Rule 5
+Device history should remain searchable.
+---
+[B05-DEV-007 Device Warranty History.md] # Core Principle
+```text id="dwh1"
+One Device
+      ↓
+Many Warranty Events
+```
+A device may experience multiple warranty claims during its lifetime.
+---
+[B05-DEV-007 Device Warranty History.md] # Governance Rules
+[B05-DEV-007 Device Warranty History.md] ## Rule 1
+All warranty activities should become part of device history.
+---
+[B05-DEV-007 Device Warranty History.md] ## Rule 2
+Warranty claims should remain visible after closure.
+---
+[B05-DEV-007 Device Warranty History.md] ## Rule 3
+Warranty rejections should remain visible.
+---
+[B05-DEV-007 Device Warranty History.md] ## Rule 4
+Warranty history should never be deleted.
+---
+[B05-DEV-007 Device Warranty History.md] ## Rule 5
+Warranty records should remain linked to original services.
+---
+[B05-DEV-008 Device Status Management.md] # Device Status Principles
+[B05-DEV-008 Device Status Management.md] ## Principle 1
+Device Status represents the current physical condition of the device within business operations.
+---
+[B05-DEV-008 Device Status Management.md] ## Principle 2
+Device Status should not replace Service Status.
+---
+[B05-DEV-008 Device Status Management.md] ## Principle 3
+A device should only have one active Device Status at a time.
+---
+[B05-DEV-008 Device Status Management.md] ## Principle 4
+Status changes should be auditable.
+---
+[B05-DEV-008 Device Status Management.md] # Governance Rules
+[B05-DEV-008 Device Status Management.md] ## Rule 1
+Device Status and Service Status must remain separate.
+---
+[B05-DEV-008 Device Status Management.md] ## Rule 2
+Only one active Device Status may exist at a time.
+---
+[B05-DEV-008 Device Status Management.md] ## Rule 3
+All status changes should be logged.
+---
+[B05-DEV-008 Device Status Management.md] ## Rule 4
+Device custody should remain traceable.
+---
+[B05-DEV-008 Device Status Management.md] ## Rule 5
+Device history should never be deleted.
+---
+[B05-DEV-009 Device Business Rules.md] # Device Business Rules
+[B05-DEV-009 Device Business Rules.md] # Device Registration Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 1
+Every device entering the shop should be registered.
+Examples:
+* Diagnosis Only
+* Repair Request
+* Warranty Claim
+* Inspection
+Registration should occur regardless of repair outcome.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 2
+A device record should be created before repair approval.
+Registration occurs during:
+```text id="dbr1"
+Service Intake
+```
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 3
+Device records should remain available even when repairs are canceled.
+---
+[B05-DEV-009 Device Business Rules.md] # Device Identification Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 4
+The system should attempt identification before creating a new device.
+Search order:
+```text id="dbr2"
+IMEI
+```
+↓
+```text id="dbr3"
+Serial Number
+```
+↓
+```text id="dbr4"
+Customer Device History
+```
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 5
+Duplicate device records should be avoided whenever possible.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 6
+Identification failures should not block operations.
+---
+[B05-DEV-009 Device Business Rules.md] # IMEI Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 7
+IMEI should be recorded whenever available.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 8
+Dual SIM devices should support:
+```text id="dbr5"
+IMEI 1
+```
+and
+```text id="dbr6"
+IMEI 2
+```
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 9
+Either IMEI should be searchable.
+---
+[B05-DEV-009 Device Business Rules.md] # Ownership Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 10
+A device may have multiple owners throughout its lifetime.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 11
+Ownership changes must not affect device history.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 12
+The current owner should remain visible.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 13
+Ownership history should remain available.
+---
+[B05-DEV-009 Device Business Rules.md] # Service History Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 14
+Every service event should become part of device history.
+Examples:
+* Diagnosis
+* Repair
+* Inspection
+* Warranty Repair
+* Cancellation
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 15
+Canceled services should remain visible.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 16
+Diagnosis history should remain visible.
+---
+[B05-DEV-009 Device Business Rules.md] # Warranty Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 17
+Warranty events should remain attached to devices.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 18
+Warranty claims should remain permanently available.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 19
+Warranty rejections should remain permanently available.
+---
+[B05-DEV-009 Device Business Rules.md] # Status Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 20
+Device Status must remain separate from Service Status.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 21
+A device should only have one active Device Status.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 22
+Status changes should be auditable.
+---
+[B05-DEV-009 Device Business Rules.md] # Device Lifecycle Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 23
+A device should maintain a permanent identity.
+Preferred principle:
+```text id="dbr7"
+1 IMEI
+=
+1 Device
+```
+whenever identification is possible.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 24
+A device may participate in multiple services over time.
+Example:
+```text id="dbr8"
+2026
+Battery Repair
+```
+```text id="dbr9"
+2027
+LCD Repair
+```
+```text id="dbr10"
+2028
+Charging Repair
+```
+All events remain attached to the same device.
+---
+[B05-DEV-009 Device Business Rules.md] # Device History Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 25
+Device history should never be physically deleted.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 26
+Historical service events should remain visible.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 27
+Historical warranty events should remain visible.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 28
+Historical ownership information should remain visible.
+---
+[B05-DEV-009 Device Business Rules.md] # Search Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 29
+Users should be able to search devices using:
+* IMEI
+* IMEI 2
+* Serial Number
+* Customer Name
+* Phone Number
+* Brand
+* Model
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 30
+Search should support partial matches whenever practical.
+---
+[B05-DEV-009 Device Business Rules.md] # Intake Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 31
+Devices that do not proceed to repair should still remain recorded.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 32
+The reason for cancellation should be recorded whenever available.
+Examples:
+```text id="dbr11"
+Price Too Expensive
+```
+```text id="dbr12"
+No Spare Part
+```
+```text id="dbr13"
+Customer Declined
+```
+```text id="dbr14"
+No Response
+```
+---
+[B05-DEV-009 Device Business Rules.md] # Reporting Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 33
+The system should support reporting of:
+* Total Devices
+* New Devices
+* Returning Devices
+* Canceled Repairs
+* Warranty Claims
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 34
+Device reporting should support business intelligence analysis.
+---
+[B05-DEV-009 Device Business Rules.md] # Audit Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 35
+The following actions should be auditable:
+* Device Creation
+* Device Updates
+* Ownership Changes
+* Status Changes
+* Device Merges
+---
+[B05-DEV-009 Device Business Rules.md] # Security Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 36
+Only authorized users may modify device records.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 37
+Critical ownership changes should be logged.
+---
+[B05-DEV-009 Device Business Rules.md] # Governance Rules
+[B05-DEV-009 Device Business Rules.md] ## Rule 38
+Device history takes priority over data cleanup.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 39
+Device traceability should be preserved.
+---
+[B05-DEV-009 Device Business Rules.md] ## Rule 40
+Operational flexibility should not compromise historical integrity.
+---
+[B05-DEV-010 Device Reporting.md] # Reporting Principles
+[B05-DEV-010 Device Reporting.md] ## Principle 1
+Reports should be generated from historical transactional data.
+---
+[B05-DEV-010 Device Reporting.md] ## Principle 2
+Reports must not modify operational records.
+---
+[B05-DEV-010 Device Reporting.md] ## Principle 3
+Historical reports should remain reproducible.
+---
+[B05-DEV-010 Device Reporting.md] ## Principle 4
+Reports should support filtering and searching.
+---
+[B05-DEV-010 Device Reporting.md] # Security Rules
+Device reports should respect user permissions.
+Examples:
+```text id="drp15"
+Cashier
+```
+may view operational reports.
+---
+```text id="drp16"
+Manager
+```
+may view performance reports.
+---
+```text id="drp17"
+Owner
+```
+may view all reports.
+---
+[B05-DEV-010 Device Reporting.md] # Governance Rules
+[B05-DEV-010 Device Reporting.md] ## Rule 1
+Reports must be based on historical records.
+---
+[B05-DEV-010 Device Reporting.md] ## Rule 2
+Reports must not modify operational data.
+---
+[B05-DEV-010 Device Reporting.md] ## Rule 3
+Reports should support business decisions.
+---
+[B05-DEV-010 Device Reporting.md] ## Rule 4
+Device reporting should remain traceable.
+---
+[B05-DEV-010 Device Reporting.md] ## Rule 5
+Reports should respect access permissions.
+---
+[B05-SVC-001 Service Intake Concepts.md] # Core Principle
+```text id="sic1"
+Every Service
+Starts With Intake
+```
+However:
+```text id="sic2"
+Not Every Intake
+Becomes A Service
+```
+---
+[B05-SVC-001 Service Intake Concepts.md] # Important Rule
+Quick Service and Regular Service are not different service modules.
+Both use:
+* Diagnosis
+* Approval
+* Repair
+* Quality Control
+* Completion
+The difference is only:
+```text id="sic28"
+Customer Presence
+```
+during the repair process.
+---
+[B05-SVC-001 Service Intake Concepts.md] # Governance Rules
+[B05-SVC-001 Service Intake Concepts.md] ## Rule 1
+Every incoming repair request begins with Service Intake.
+---
+[B05-SVC-001 Service Intake Concepts.md] ## Rule 2
+Every intake should be recorded.
+---
+[B05-SVC-001 Service Intake Concepts.md] ## Rule 3
+Rejected repairs should remain visible.
+---
+[B05-SVC-001 Service Intake Concepts.md] ## Rule 4
+Device registration should occur before approval.
+---
+[B05-SVC-001 Service Intake Concepts.md] ## Rule 5
+Quick Service and Regular Service use the same service framework.
+---
+[B05-SVC-002 Service Lifecycle.md] # Core Principle
+```text id="sl4"
+Intake
+≠
+Service
+```
+and
+```text id="sl5"
+Approved Repair
+=
+Service
+```
+---
+[B05-SVC-002 Service Lifecycle.md] # Governance Rules
+[B05-SVC-002 Service Lifecycle.md] ## Rule 1
+A service begins only after approval.
+---
+[B05-SVC-002 Service Lifecycle.md] ## Rule 2
+Rejected repairs do not create service orders.
+---
+[B05-SVC-002 Service Lifecycle.md] ## Rule 3
+Every service must originate from an intake.
+---
+[B05-SVC-002 Service Lifecycle.md] ## Rule 4
+Every service must pass through QC before completion.
+---
+[B05-SVC-002 Service Lifecycle.md] ## Rule 5
+Warranty begins after successful delivery.
+---
+[B05-SVC-003 Service Orders.md] # Core Principle
+```text id="so4"
+Intake
+≠
+Service Order
+```
+and
+```text id="so5"
+Approved Intake
+=
+Service Order
+```
+---
+[B05-SVC-003 Service Orders.md] # Governance Rules
+[B05-SVC-003 Service Orders.md] ## Rule 1
+Service Orders are created only after approval.
+---
+[B05-SVC-003 Service Orders.md] ## Rule 2
+Each Service Order must originate from an Intake.
+---
+[B05-SVC-003 Service Orders.md] ## Rule 3
+Estimate revisions must be tracked.
+---
+[B05-SVC-003 Service Orders.md] ## Rule 4
+Estimate revisions require approval before continuation.
+---
+[B05-SVC-003 Service Orders.md] ## Rule 5
+Service Orders may be canceled after creation.
+---
+[B05-SVC-003 Service Orders.md] ## Rule 6
+Service Orders must never be physically deleted.
+---
+[B05-SVC-004 Service Diagnosis .md] # Core Principle
+```text id="sd1"
+Diagnosis
+Is Not
+Always Final
+```
+Initial findings may change after further inspection.
+---
+[B05-SVC-004 Service Diagnosis .md] # Governance Rules
+[B05-SVC-004 Service Diagnosis .md] ## Rule 1
+Diagnosis may occur multiple times during a service.
+---
+[B05-SVC-004 Service Diagnosis .md] ## Rule 2
+Initial Diagnosis and Advanced Diagnosis should remain distinguishable.
+---
+[B05-SVC-004 Service Diagnosis .md] ## Rule 3
+Diagnosis revisions should remain visible.
+---
+[B05-SVC-004 Service Diagnosis .md] ## Rule 4
+Diagnosis changes affecting cost require estimate revision.
+---
+[B05-SVC-004 Service Diagnosis .md] ## Rule 5
+Historical diagnosis records must never be deleted.
+---
+[B05-SVC-005 Service Estimation.md] # Core Principle
+```text id="se1"
+Estimate First
+Repair Later
+```
+No repair should proceed without an estimate.
+---
+[B05-SVC-005 Service Estimation.md] # Multi-Repair Principle
+By default:
+```text id="se16"
+Each Repair Category
+Contributes Independently
+```
+to the estimate.
+---
+[B05-SVC-005 Service Estimation.md] # Governance Rules
+[B05-SVC-005 Service Estimation.md] ## Rule 1
+Every Service Order should have an estimate.
+---
+[B05-SVC-005 Service Estimation.md] ## Rule 2
+Estimate revisions must remain visible.
+---
+[B05-SVC-005 Service Estimation.md] ## Rule 3
+Estimate revisions require approval before continuation.
+---
+[B05-SVC-005 Service Estimation.md] ## Rule 4
+Selling below minimum rules should be restricted.
+---
+[B05-SVC-005 Service Estimation.md] ## Rule 5
+Time estimates should support planning and performance tracking.
+---
+[B05-SVC-006 Service Approval.md] # Core Principle
+```text id="sa1"
+No Approval
+No Repair
+```
+Repair activities requiring customer consent must not proceed without approval.
+---
+[B05-SVC-006 Service Approval.md] # Service Continuation Rules
+The service may continue only when:
+```text id="sa31"
+Latest Estimate
+=
+Approved
+```
+---
+[B05-SVC-006 Service Approval.md] # Service Stop Rules
+The service should stop when:
+```text id="sa32"
+Latest Estimate
+=
+Rejected
+```
+until further action is taken.
+---
+[B05-SVC-006 Service Approval.md] # Governance Rules
+[B05-SVC-006 Service Approval.md] ## Rule 1
+Repair work requiring approval must not proceed without approval.
+---
+[B05-SVC-006 Service Approval.md] ## Rule 2
+Estimate revisions require a new approval.
+---
+[B05-SVC-006 Service Approval.md] ## Rule 3
+Approval history must never be deleted.
+---
+[B05-SVC-006 Service Approval.md] ## Rule 4
+The latest approved estimate governs repair execution.
+---
+[B05-SVC-006 Service Approval.md] ## Rule 5
+No response may result in automatic cancellation according to business policy.
+---
+[B05-SVC-007 Service Execution.md] # Core Principle
+```text id="sex3"
+Approved Service
+↓
+Repair Execution
+```
+No repair execution should begin without an approved Service Order.
+---
+[B05-SVC-007 Service Execution.md] # Spare Part Usage Principle
+The platform should support:
+```text id="sex11"
+Deferred Spare Part Recording
+```
+---
+[B05-SVC-007 Service Execution.md] # Core Rule
+Technicians are allowed to:
+```text id="sex12"
+Start Repair First
+```
+and
+```text id="sex13"
+Record Spare Parts Later
+```
+during the repair process.
+---
+[B05-SVC-007 Service Execution.md] # Blocking Rule
+Example:
+```text id="sex20"
+LCD Replaced
+```
+but
+```text id="sex21"
+LCD Usage Missing
+```
+Result:
+```text id="sex22"
+Completion Blocked
+```
+until corrected.
+---
+[B05-SVC-007 Service Execution.md] # Governance Rules
+[B05-SVC-007 Service Execution.md] ## Rule 1
+Repair execution requires an approved Service Order.
+---
+[B05-SVC-007 Service Execution.md] ## Rule 2
+Spare parts may be recorded after repair begins.
+---
+[B05-SVC-007 Service Execution.md] ## Rule 3
+All consumed spare parts must be recorded before completion.
+---
+[B05-SVC-007 Service Execution.md] ## Rule 4
+Additional damage findings require estimate revision.
+---
+[B05-SVC-007 Service Execution.md] ## Rule 5
+Repair execution pauses when approval is required.
+---
+[B05-SVC-007 Service Execution.md] ## Rule 6
+Waiting Spare Part and Waiting Approval statuses should not negatively impact technician performance metrics.
+---
+[B05-SVC-008 Service Quality Control.md] # Core Principle
+```text id="qc1"
+Repair Complete
+≠
+Service Complete
+```
+Every completed repair should pass Quality Control before final completion.
+---
+[B05-SVC-008 Service Quality Control.md] # Governance Rules
+[B05-SVC-008 Service Quality Control.md] ## Rule 1
+Every completed repair should pass QC before service completion.
+---
+[B05-SVC-008 Service Quality Control.md] ## Rule 2
+QC mode must be configurable.
+---
+[B05-SVC-008 Service Quality Control.md] ## Rule 3
+Failed QC returns the service to repair status.
+---
+[B05-SVC-008 Service Quality Control.md] ## Rule 4
+All QC attempts must remain visible.
+---
+[B05-SVC-008 Service Quality Control.md] ## Rule 5
+QC history must never be deleted.
+---
+[B05-SVC-009 Service Completion .md] # Core Principle
+```text
+Ready For Pickup
+≠
+Completed
+```
+A service is not considered completed until the device has been officially released to the customer.
+---
+[B05-SVC-009 Service Completion .md] # Identity Rule
+The system should support:
+```text
+Known Nickname Customers
+```
+because some customers may register using:
+* Nicknames
+* Common Names
+* Informal Names
+rather than legal names.
+---
+[B05-SVC-009 Service Completion .md] # Minimum Release Rule
+A device may be released if:
+```text
+Customer Can Unlock Device
+```
+even if:
+* Service Receipt Missing
+* Formal Identification Not Available
+provided business policy allows it.
+---
+[B05-SVC-009 Service Completion .md] # Governance Rules
+[B05-SVC-009 Service Completion .md] ## Rule 1
+Ready For Pickup does not equal Completed.
+---
+[B05-SVC-009 Service Completion .md] ## Rule 2
+A device must be verified before release.
+---
+[B05-SVC-009 Service Completion .md] ## Rule 3
+Unlocking the device may serve as a valid verification method.
+---
+[B05-SVC-009 Service Completion .md] ## Rule 4
+Lost receipts may require additional verification.
+---
+[B05-SVC-009 Service Completion .md] ## Rule 5
+Warranty begins when the service is completed and the device is released.
+---
+[B05-SVC-009 Service Completion .md] ## Rule 6
+Completion records must never be deleted.
+---
+[B05-SVC-010 Service Cancellation.md] # Core Principle
+```text id="sc1"
+Canceled
+≠
+Deleted
+```
+Canceled records must remain available for reporting and auditing.
+---
+[B05-SVC-010 Service Cancellation.md] # Governance Rules
+[B05-SVC-010 Service Cancellation.md] ## Rule 1
+Canceled records must never be deleted.
+---
+[B05-SVC-010 Service Cancellation.md] ## Rule 2
+Every cancellation must contain a category and reason.
+---
+[B05-SVC-010 Service Cancellation.md] ## Rule 3
+Automatic cancellations must remain visible.
+---
+[B05-SVC-010 Service Cancellation.md] ## Rule 4
+Installed spare parts require resolution before final cancellation.
+---
+[B05-SVC-010 Service Cancellation.md] ## Rule 5
+Cancellation reporting is mandatory for business analysis.
+---
+[B05-SVC-011 Service Business Rules.md] # Service Business Rules
+[B05-SVC-011 Service Business Rules.md] # Core Principle
+```text
+Business Rules
+Override Workflow Convenience
+```
+Operational consistency and data integrity take priority over speed when conflicts occur.
+---
+[B05-SVC-011 Service Business Rules.md] # Customer Rules
+[B05-SVC-011 Service Business Rules.md] # Phone Number Rule
+If a phone number exists:
+```text
+Phone Number
+=
+Primary Customer Identifier
+```
+---
+[B05-SVC-011 Service Business Rules.md] # Phone Number Acquisition Rule
+If a customer originally has no phone number and later contacts the business using:
+* WhatsApp
+* Telephone
+* Messaging Services
+the business may update:
+```text
+Customer Phone Number
+```
+into the customer profile.
+---
+[B05-SVC-011 Service Business Rules.md] # Customer Name Rule
+Customer names may be:
+* Legal Names
+* Nicknames
+* Common Names
+Formal legal names are not mandatory.
+---
+[B05-SVC-011 Service Business Rules.md] # Device Intake Rules
+[B05-SVC-011 Service Business Rules.md] # Intake Number Rule
+Example:
+```text
+INT-20260709-0001
+```
+must be generated before approval.
+---
+[B05-SVC-011 Service Business Rules.md] # Service Order Rule
+A Service Order may only be created after:
+```text
+Diagnosis
++
+Estimate
++
+Approval
+```
+---
+[B05-SVC-011 Service Business Rules.md] # Service Number Rule
+Example:
+```text
+SVC-20260709-0001
+```
+must be generated after approval.
+---
+[B05-SVC-011 Service Business Rules.md] # Diagnosis Rules
+[B05-SVC-011 Service Business Rules.md] # Additional Damage Rule
+If additional damage is discovered:
+```text
+Estimate Revision
+Required
+```
+---
+[B05-SVC-011 Service Business Rules.md] # Estimation Rules
+[B05-SVC-011 Service Business Rules.md] # Pricing Rules
+[B05-SVC-011 Service Business Rules.md] # Below Minimum Rule
+The platform should block:
+```text
+Selling Price
+<
+Minimum Service Price
+```
+unless authorized.
+---
+[B05-SVC-011 Service Business Rules.md] # Approval Rules
+[B05-SVC-011 Service Business Rules.md] # Approval Rule
+```text
+No Approval
+No Repair
+```
+---
+[B05-SVC-011 Service Business Rules.md] # Execution Rules
+[B05-SVC-011 Service Business Rules.md] # Additional Damage Rule
+Repair must pause when:
+```text
+Estimate Revision
+Pending Approval
+```
+---
+[B05-SVC-011 Service Business Rules.md] # Scheduling Rules
+[B05-SVC-011 Service Business Rules.md] # Technician Performance Rules
+Technician performance should measure:
+* Completion Rate
+* On-Time Rate
+* QC Pass Rate
+---
+[B05-SVC-011 Service Business Rules.md] # Quality Control Rules
+[B05-SVC-011 Service Business Rules.md] # Completion Rules
+[B05-SVC-011 Service Business Rules.md] # Unlock Rule
+If a customer successfully unlocks the device:
+```text
+Unlock Verification
+```
+may be considered sufficient according to business policy.
+---
+[B05-SVC-011 Service Business Rules.md] # Warranty Rule
+Warranty begins after:
+```text
+Completed
+```
+status is reached.
+---
+[B05-SVC-011 Service Business Rules.md] # Cancellation Rules
+[B05-SVC-011 Service Business Rules.md] # Reporting Rules
+The platform should support reporting for:
+* Service Volume
+* Service Revenue
+* Technician Performance
+* Cancellation Analysis
+* Service Categories
+* Spare Part Usage
+---
+[B05-SVC-011 Service Business Rules.md] # Audit Rules
+The following records must never be deleted:
+* Intake Records
+* Service Orders
+* Estimates
+* Approvals
+* QC Records
+* Completion Records
+* Cancellation Records
+---
+[B05-SVC-011 Service Business Rules.md] # Historical Integrity Rule
+The platform should prioritize:
+```text
+Historical Preservation
+```
+over physical deletion.
+Soft deletion and status changes are preferred.
+---
+[B05-SVC-011 Service Business Rules.md] # Governance Rules
+[B05-SVC-011 Service Business Rules.md] ## Rule 1
+Every repair begins with an Intake.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 2
+Every Service Order requires approval.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 3
+Estimate revisions require approval.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 4
+Phone numbers are optional.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 5
+If available, phone numbers become the primary customer identifier.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 6
+Spare parts may be recorded after repair starts but before completion.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 7
+QC mode must be configurable.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 8
+Canceled records must never be deleted.
+---
+[B05-SVC-011 Service Business Rules.md] ## Rule 9
+Historical records must remain auditable.
+---
+[B05-SVC-012 Service Reporting.md] # Core Principle
+```text id="sr1"
+Data
+Must Become
+Information
+```
+The reporting system should not only display records but also provide meaningful insights.
+---
+[B05-SVC-012 Service Reporting.md] # Governance Rules
+[B05-SVC-012 Service Reporting.md] ## Rule 1
+Reports must use historical records.
+---
+[B05-SVC-012 Service Reporting.md] ## Rule 2
+Canceled records remain reportable.
+---
+[B05-SVC-012 Service Reporting.md] ## Rule 3
+Technician KPIs must exclude approved delay categories.
+---
+[B05-SVC-012 Service Reporting.md] ## Rule 4
+Financial reports must reflect actual completed transactions.
+---
+[B05-SVC-012 Service Reporting.md] ## Rule 5
+All reporting calculations must be auditable.
+---

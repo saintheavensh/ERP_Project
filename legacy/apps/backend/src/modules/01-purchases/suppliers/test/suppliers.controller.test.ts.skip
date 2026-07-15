@@ -1,0 +1,96 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { SuppliersController } from "../controllers/suppliers.controller";
+import { SuppliersService } from "../services/suppliers.service";
+import { createMockContext, createMockUser } from "../../../../test/factories";
+
+describe("SuppliersController", () => {
+    let controller: SuppliersController;
+
+    // Spies
+    let getAllSpy: any;
+    let createSpy: any;
+    let updateSpy: any;
+    let deleteSpy: any;
+    let linkCategorySpy: any;
+    let unlinkCategorySpy: any;
+    let getLinkedCategoriesSpy: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        getAllSpy = vi.spyOn(SuppliersService.prototype, "getAll").mockResolvedValue([]);
+        createSpy = vi.spyOn(SuppliersService.prototype, "create").mockResolvedValue({} as any);
+        updateSpy = vi.spyOn(SuppliersService.prototype, "update").mockResolvedValue({} as any);
+        deleteSpy = vi.spyOn(SuppliersService.prototype, "delete").mockResolvedValue({ id: "s-1" } as any);
+        linkCategorySpy = vi.spyOn(SuppliersService.prototype, "linkCategory").mockResolvedValue({} as any);
+        unlinkCategorySpy = vi.spyOn(SuppliersService.prototype, "unlinkCategory").mockResolvedValue({} as any);
+        getLinkedCategoriesSpy = vi.spyOn(SuppliersService.prototype, "getLinkedCategories").mockResolvedValue([]);
+
+        controller = new SuppliersController();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const mockAuth = (ctx: any) => {
+        vi.spyOn(ctx, "get").mockReturnValue(createMockUser());
+    };
+
+    describe("General", () => {
+        it("getAll should return 200", async () => {
+            const ctx = createMockContext();
+            mockAuth(ctx);
+            expect((await controller.getAll(ctx)).status).toBe(200);
+        });
+        it("getLinkedCategories should return 200", async () => {
+            const ctx = createMockContext();
+            mockAuth(ctx);
+            vi.spyOn(ctx.req, "param").mockReturnValue("s-1");
+            expect((await controller.getLinkedCategories(ctx)).status).toBe(200);
+        });
+    });
+
+    describe("CRUD", () => {
+        it("create 201", async () => {
+            const ctx = createMockContext();
+            mockAuth(ctx);
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ name: "Sup" });
+            expect((await controller.create(ctx)).status).toBe(201);
+        });
+        it("update 200", async () => {
+            const ctx = createMockContext();
+            mockAuth(ctx);
+            vi.spyOn(ctx.req, "param").mockReturnValue("s-1");
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ name: "Sup" });
+            expect((await controller.update(ctx)).status).toBe(200);
+        });
+        it("delete 200", async () => {
+            const ctx = createMockContext();
+            mockAuth(ctx);
+            vi.spyOn(ctx.req, "param").mockReturnValue("s-1");
+            expect((await controller.delete(ctx)).status).toBe(200);
+        });
+    });
+
+    describe("Linking", () => {
+        it("linkCategory 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("s-1");
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ categoryId: "c1" });
+            expect((await controller.linkCategory(ctx)).status).toBe(200);
+        });
+        it("unlinkCategory 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue({ id: "s-1", categoryId: "c1" });
+            expect((await controller.unlinkCategory(ctx)).status).toBe(200);
+        });
+        it("any error should return 500", async () => {
+            const ctx = createMockContext();
+            mockAuth(ctx);
+            getAllSpy.mockRejectedValue(new Error("Err"));
+            expect((await controller.getAll(ctx)).status).toBe(500);
+        });
+    });
+});

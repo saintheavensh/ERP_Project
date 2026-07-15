@@ -1,0 +1,112 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { PurchasesController } from "../controllers/purchases.controller";
+import { purchasesService } from "../purchases-container";
+import { createMockContext, createMockUser } from "../../../../test/factories";
+
+describe("PurchasesController", () => {
+    let controller: PurchasesController;
+
+    // Spies
+    let getAllSpy: any;
+    let getByIdSpy: any;
+    let createSpy: any;
+    let deleteSpy: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        getAllSpy = vi.spyOn(purchasesService, "getAll").mockResolvedValue([]);
+        getByIdSpy = vi.spyOn(purchasesService, "getById").mockResolvedValue(null);
+        createSpy = vi.spyOn(purchasesService, "createOrder").mockResolvedValue("p-1");
+        deleteSpy = vi.spyOn(purchasesService, "deletePurchase").mockResolvedValue({} as any);
+
+        controller = new PurchasesController();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    describe("getAll", () => {
+        it("should return 200 and list", async () => {
+            const ctx = createMockContext();
+            const mockData = [{ toSnapshot: () => ({ id: "p-1" }) }];
+            getAllSpy.mockResolvedValue(mockData);
+            const res = await controller.getAll(ctx);
+            expect(res.status).toBe(200);
+            const json = await res.json() as any;
+            expect(json.data).toEqual([{ id: "p-1" }]);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            getAllSpy.mockRejectedValue(new Error("Err"));
+            const res = await controller.getAll(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+
+    describe("getById", () => {
+        it("should return 200 and data if found", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("p-1");
+            getByIdSpy.mockResolvedValue({ toSnapshot: () => ({ id: "p-1" }) });
+            const res = await controller.getById(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 404 if not found", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("p-1");
+            getByIdSpy.mockResolvedValue(null);
+            const res = await controller.getById(ctx);
+            expect(res.status).toBe(404);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("p-1");
+            getByIdSpy.mockRejectedValue(new Error("Err"));
+            const res = await controller.getById(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+
+    describe("createOrder", () => {
+        it("should return 201 on success", async () => {
+            const ctx = createMockContext();
+            const input = { supplierId: "s-1", items: [] };
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue(input);
+            createSpy.mockResolvedValue("p-1");
+            const res = await controller.createOrder(ctx);
+            expect(res.status).toBe(201);
+            expect(createSpy).toHaveBeenCalled();
+        });
+
+        it("should return 400 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({});
+            createSpy.mockRejectedValue(new Error("Err"));
+            const res = await controller.createOrder(ctx);
+            expect(res.status).toBe(400);
+        });
+    });
+
+    describe("deletePurchase", () => {
+        it("should return 200 on success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("p-1");
+            const res = await controller.deletePurchase(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("p-1");
+            deleteSpy.mockRejectedValue(new Error("Err"));
+            const res = await controller.deletePurchase(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+});

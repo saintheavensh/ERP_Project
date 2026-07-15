@@ -1,0 +1,12 @@
+2026-01-21T06:21:30.413186Z  WARN turborepo_filewatch: failed to wait for initial filesystem cookie: filewatching failed to start: failed to write cookie to C:\Users\Good\Documents\web\cek\coba\.turbo\cookies\.turbo-cookie: failed to create file `C:\Users\Good\Documents\web\cek\coba\.turbo\cookies\.turbo-cookie`
+2026-01-21T06:21:31.219662Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T06:21:31.775228Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T08:13:29.962334Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T08:28:09.190038Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T08:30:55.657716Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T08:31:14.696709Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T08:31:42.089793Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T08:32:02.561177Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T09:32:28.942945Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T12:21:37.512917Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running
+2026-01-21T12:51:39.090039Z  WARN daemon_server: turborepo_lib::commands::daemon: daemon already running

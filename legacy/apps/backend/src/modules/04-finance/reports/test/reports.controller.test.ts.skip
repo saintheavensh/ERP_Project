@@ -1,0 +1,113 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { ReportsController } from "../controllers/reports.controller";
+import { ReportsService } from "../services/reports.service";
+import { createMockContext } from "../../../../test/factories";
+
+describe("ReportsController", () => {
+    // Spies
+    let getSalesSummarySpy: any;
+    let getTransactionsSpy: any;
+    let getServiceStatsSpy: any;
+    let getServiceTransactionsSpy: any;
+    let getPurchasesSummarySpy: any;
+    let getPurchaseTransactionsSpy: any;
+    let getTechnicianStatsSpy: any;
+    let getPartsUsageReportSpy: any;
+    let getActivityLogsSpy: any;
+    let getProfitAndLossSpy: any;
+    let getStockValueReportSpy: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        getSalesSummarySpy = vi.spyOn(ReportsService.prototype, "getSalesSummary").mockResolvedValue({} as any);
+        getTransactionsSpy = vi.spyOn(ReportsService.prototype, "getTransactions").mockResolvedValue([]);
+        getServiceStatsSpy = vi.spyOn(ReportsService.prototype, "getServiceStats").mockResolvedValue({} as any);
+        getServiceTransactionsSpy = vi.spyOn(ReportsService.prototype, "getServiceTransactions").mockResolvedValue([]);
+        getPurchasesSummarySpy = vi.spyOn(ReportsService.prototype, "getPurchasesSummary").mockResolvedValue({} as any);
+        getPurchaseTransactionsSpy = vi.spyOn(ReportsService.prototype, "getPurchaseTransactions").mockResolvedValue([]);
+        getTechnicianStatsSpy = vi.spyOn(ReportsService.prototype, "getTechnicianStats").mockResolvedValue([]);
+        getPartsUsageReportSpy = vi.spyOn(ReportsService.prototype, "getPartsUsageReport").mockResolvedValue([]);
+        getActivityLogsSpy = vi.spyOn(ReportsService.prototype, "getActivityLogs").mockResolvedValue([]);
+        getProfitAndLossSpy = vi.spyOn(ReportsService.prototype, "getProfitAndLoss").mockResolvedValue({} as any);
+        getStockValueReportSpy = vi.spyOn(ReportsService.prototype, "getStockValueReport").mockResolvedValue({} as any);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const testReportEndpoint = async (methodName: keyof typeof ReportsController, spy: any, mockData: any) => {
+        const ctx = createMockContext();
+        vi.spyOn(ctx.req, "query").mockReturnValue({});
+        spy.mockResolvedValue(mockData);
+        // @ts-ignore
+        const res = await ReportsController[methodName](ctx);
+        expect(res.status).toBe(200);
+    };
+
+    const testErrorEndpoint = async (methodName: keyof typeof ReportsController, spy: any) => {
+        const ctx = createMockContext();
+        vi.spyOn(ctx.req, "query").mockReturnValue({});
+        spy.mockRejectedValue(new Error("Err"));
+        // @ts-ignore
+        const res = await ReportsController[methodName](ctx);
+        expect(res.status).toBe(500);
+    };
+
+    describe("getSummary", () => {
+        it("should return 200", async () => await testReportEndpoint("getSummary", getSalesSummarySpy, {}));
+        it("should return 500 on error", async () => await testErrorEndpoint("getSummary", getSalesSummarySpy));
+    });
+
+    describe("getTransactions", () => {
+        it("should return 200", async () => await testReportEndpoint("getTransactions", getTransactionsSpy, []));
+        it("should return 500 on error", async () => await testErrorEndpoint("getTransactions", getTransactionsSpy));
+    });
+
+    describe("getServiceStats", () => {
+        it("should return 200", async () => await testReportEndpoint("getServiceStats", getServiceStatsSpy, {}));
+        it("should return 500 on error", async () => await testErrorEndpoint("getServiceStats", getServiceStatsSpy));
+    });
+
+    describe("getServiceTransactions", () => {
+        it("should return 200", async () => await testReportEndpoint("getServiceTransactions", getServiceTransactionsSpy, []));
+        it("should return 500 on error", async () => await testErrorEndpoint("getServiceTransactions", getServiceTransactionsSpy));
+    });
+
+    describe("getPurchasesSummary", () => {
+        it("should return 200", async () => await testReportEndpoint("getPurchasesSummary", getPurchasesSummarySpy, {}));
+        it("should return 500 on error", async () => await testErrorEndpoint("getPurchasesSummary", getPurchasesSummarySpy));
+    });
+
+    describe("getPurchaseTransactions", () => {
+        it("should return 200", async () => await testReportEndpoint("getPurchaseTransactions", getPurchaseTransactionsSpy, []));
+        it("should return 500 on error", async () => await testErrorEndpoint("getPurchaseTransactions", getPurchaseTransactionsSpy));
+    });
+
+    describe("getTechnicianStats", () => {
+        it("should return 200", async () => await testReportEndpoint("getTechnicianStats", getTechnicianStatsSpy, []));
+        it("should return 500 on error", async () => await testErrorEndpoint("getTechnicianStats", getTechnicianStatsSpy));
+    });
+
+    describe("getPartsUsageReport", () => {
+        it("should return 200", async () => await testReportEndpoint("getPartsUsageReport", getPartsUsageReportSpy, []));
+        it("should return 500 on error", async () => await testErrorEndpoint("getPartsUsageReport", getPartsUsageReportSpy));
+    });
+
+    describe("getActivityLogs", () => {
+        it("should return 200", async () => await testReportEndpoint("getActivityLogs", getActivityLogsSpy, []));
+        it("should return 500 on error", async () => await testErrorEndpoint("getActivityLogs", getActivityLogsSpy));
+    });
+
+    describe("getProfitAndLoss", () => {
+        it("should return 200", async () => await testReportEndpoint("getProfitAndLoss", getProfitAndLossSpy, {}));
+        it("should return 500 on error", async () => await testErrorEndpoint("getProfitAndLoss", getProfitAndLossSpy));
+    });
+
+    describe("getStockValueReport", () => {
+        it("should return 200", async () => await testReportEndpoint("getStockValueReport", getStockValueReportSpy, {}));
+        it("should return 500 on error", async () => await testErrorEndpoint("getStockValueReport", getStockValueReportSpy));
+    });
+});

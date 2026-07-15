@@ -1,0 +1,2 @@
+// Placeholder for domain services
+// Logic that doesn't fit in a single entity (e.g. cross-order calculations) goes here.

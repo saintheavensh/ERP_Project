@@ -1,0 +1,75 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { DefectiveItemsController } from "../controllers/defective-items.controller";
+import { DefectiveItemsService } from "../services/defective-items.service";
+import { createMockContext } from "../../../../test/factories";
+
+describe("DefectiveItemsController", () => {
+    // Spies - DefectiveItemsService used via instance at top level of controller file
+    let getPendingItemsSpy: any;
+    let addItemSpy: any;
+    let createReturnFromItemsSpy: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        getPendingItemsSpy = vi.spyOn(DefectiveItemsService.prototype, "getPendingItems").mockResolvedValue([]);
+        addItemSpy = vi.spyOn(DefectiveItemsService.prototype, "addItem").mockResolvedValue({ id: "DEF-1" } as any);
+        createReturnFromItemsSpy = vi.spyOn(DefectiveItemsService.prototype, "createReturnFromItems").mockResolvedValue({ id: "RET-1" } as any);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    describe("getPendingItems", () => {
+        it("should return 200 and list", async () => {
+            const ctx = createMockContext();
+            const mockData = [{ id: "def-1" }];
+            getPendingItemsSpy.mockResolvedValue(mockData);
+            const res = await DefectiveItemsController.getPendingItems(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            getPendingItemsSpy.mockRejectedValue(new Error("Err"));
+            const res = await DefectiveItemsController.getPendingItems(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+
+    describe("addItem", () => {
+        it("should return 200 on success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ productId: "p1", qty: 1 });
+            const res = await DefectiveItemsController.addItem(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({});
+            addItemSpy.mockRejectedValue(new Error("Err"));
+            const res = await DefectiveItemsController.addItem(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+
+    describe("createReturn", () => {
+        it("should return 200 on success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ userId: "u1", itemIds: ["d1"] });
+            const res = await DefectiveItemsController.createReturn(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({});
+            createReturnFromItemsSpy.mockRejectedValue(new Error("Err"));
+            const res = await DefectiveItemsController.createReturn(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+});

@@ -1,0 +1,46 @@
+# dependencies (bun install)
+node_modules
+
+# output
+dist/
+build/
+.svelte-kit/
+apps/frontend/build/
+apps/frontend/.svelte-kit/
+
+# Database migrations
+drizzle/*.sql
+apps/backend/drizzle/*.sql
+
+# logs
+*.log
+*.txt
+debug.log
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+#.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+.env.production
+
+# caches
+.eslintcache
+.cache/
+node_modules/.cache/
+apps/*/node_modules/.cache/
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# Temporary
+*.bin
+debug-*.ts

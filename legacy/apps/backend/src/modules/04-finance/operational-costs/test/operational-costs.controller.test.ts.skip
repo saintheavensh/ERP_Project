@@ -1,0 +1,74 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { OperationalCostsController } from "../controllers/operational-costs.controller";
+import { OperationalCostsService } from "../services/operational-costs.service";
+import { createMockContext, createMockUser } from "../../../../test/factories";
+
+describe("OperationalCostsController", () => {
+    // Spies - OperationalCostsService used via instance at top level of controller file
+    let getAllSpy: any;
+    let createSpy: any;
+    let deleteSpy: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+
+        getAllSpy = vi.spyOn(OperationalCostsService.prototype, "getAll").mockResolvedValue([]);
+        createSpy = vi.spyOn(OperationalCostsService.prototype, "create").mockResolvedValue({ id: 1 } as any);
+        deleteSpy = vi.spyOn(OperationalCostsService.prototype, "delete").mockResolvedValue({ id: 1 } as any);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    describe("getAll", () => {
+        it("should return 200 and list", async () => {
+            const ctx = createMockContext();
+            const res = await OperationalCostsController.getAll(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            getAllSpy.mockRejectedValue(new Error("Err"));
+            const res = await OperationalCostsController.getAll(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+
+    describe("create", () => {
+        it("should return 200 on success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx, "get").mockReturnValue(createMockUser({ id: "user-1" }));
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ amount: 100 });
+            const res = await OperationalCostsController.create(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({});
+            createSpy.mockRejectedValue(new Error("Err"));
+            const res = await OperationalCostsController.create(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+
+    describe("delete", () => {
+        it("should return 200 on success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            const res = await OperationalCostsController.delete(ctx);
+            expect(res.status).toBe(200);
+        });
+
+        it("should return 500 on error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            deleteSpy.mockRejectedValue(new Error("Err"));
+            const res = await OperationalCostsController.delete(ctx);
+            expect(res.status).toBe(500);
+        });
+    });
+});

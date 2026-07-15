@@ -1,0 +1,1 @@
+ALTER TABLE `services` ADD `estimated_completion_date` integer;

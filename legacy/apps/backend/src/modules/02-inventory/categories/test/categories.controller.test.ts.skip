@@ -1,0 +1,83 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { CategoriesController } from "../presentation/categories.controller";
+import { CategoriesService } from "../services/categories.service";
+import { createMockContext } from "../../../../test/factories";
+
+describe("CategoriesController", () => {
+    let controller: CategoriesController;
+
+    // Spies
+    let getAllSpy: any;
+    let createSpy: any;
+    let updateSpy: any;
+    let deleteSpy: any;
+    let addVariantTemplateSpy: any;
+    let removeVariantTemplateSpy: any;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        getAllSpy = vi.spyOn(CategoriesService.prototype, "getAll").mockResolvedValue([]);
+        createSpy = vi.spyOn(CategoriesService.prototype, "create").mockResolvedValue({} as any);
+        updateSpy = vi.spyOn(CategoriesService.prototype, "update").mockResolvedValue({} as any);
+        deleteSpy = vi.spyOn(CategoriesService.prototype, "delete").mockResolvedValue({} as any);
+        addVariantTemplateSpy = vi.spyOn(CategoriesService.prototype, "addVariantTemplate").mockResolvedValue({} as any);
+        removeVariantTemplateSpy = vi.spyOn(CategoriesService.prototype, "removeVariantTemplate").mockResolvedValue({} as any);
+        controller = new CategoriesController();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const testError = async (methodName: keyof CategoriesController, spy: any, status = 500) => {
+        const ctx = createMockContext();
+        vi.spyOn(ctx.req, "param").mockReturnValue("1");
+        vi.spyOn(ctx.req as any, "valid").mockReturnValue({});
+        spy.mockRejectedValue(new Error("Err"));
+        const res = await (controller[methodName] as any)(ctx);
+        expect(res.status).toBe(status);
+    };
+
+    describe("General", () => {
+        it("getAll 200", async () => expect((await controller.getAll(createMockContext())).status).toBe(200));
+        it("getAll 500", async () => await testError("getAll", getAllSpy));
+    });
+
+    describe("CRUD", () => {
+        it("create 201", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ name: "C" });
+            expect((await controller.create(ctx)).status).toBe(201);
+        });
+        it("update 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ name: "C" });
+            expect((await controller.update(ctx)).status).toBe(200);
+        });
+        it("update 500 on error", async () => await testError("update", updateSpy));
+        it("delete 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            expect((await controller.delete(ctx)).status).toBe(200);
+        });
+        it("delete 400 on error", async () => await testError("delete", deleteSpy, 400));
+    });
+
+    describe("Templates", () => {
+        it("add 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ name: "T" });
+            expect((await controller.addVariantTemplate(ctx)).status).toBe(200);
+        });
+        it("add 500 on error", async () => await testError("addVariantTemplate", addVariantTemplateSpy));
+        it("remove 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            expect((await controller.removeVariantTemplate(ctx)).status).toBe(200);
+        });
+        it("remove 500 on error", async () => await testError("removeVariantTemplate", removeVariantTemplateSpy));
+    });
+});

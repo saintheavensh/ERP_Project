@@ -1,0 +1,113 @@
+// @ts-nocheck
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+import { DevicesController } from "../presentation/devices.controller";
+import { DevicesService } from "../services/devices.service";
+import { ScraperService } from "../services/scraper.service";
+import { createMockContext } from "../../../../test/factories";
+
+describe("DevicesController", () => {
+    let controller: DevicesController;
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.spyOn(DevicesService.prototype, "getAll").mockResolvedValue({ data: [], total: 0 } as any);
+        vi.spyOn(DevicesService.prototype, "getById").mockResolvedValue(null);
+        vi.spyOn(DevicesService.prototype, "create").mockResolvedValue({ id: "d1" } as any);
+        vi.spyOn(DevicesService.prototype, "update").mockResolvedValue({ id: "d1" } as any);
+        vi.spyOn(DevicesService.prototype, "delete").mockResolvedValue({ id: "d1" } as any);
+        vi.spyOn(DevicesService.prototype, "bulkDelete").mockResolvedValue({ count: 0 } as any);
+        vi.spyOn(ScraperService, "scrapeGsmArena").mockResolvedValue({ brand: "B", model: "M" } as any);
+        vi.spyOn(ScraperService, "getDeviceLinks").mockResolvedValue([]);
+        controller = new DevicesController();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    describe("Scraping", () => {
+        it("scrape success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ url: "u" });
+            expect((await controller.scrape(ctx)).status).toBe(200);
+        });
+        it("scrape error", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ url: "u" });
+            vi.spyOn(ScraperService, "scrapeGsmArena").mockRejectedValue(new Error("Err"));
+            expect((await controller.scrape(ctx)).status).toBe(500);
+        });
+        it("scrapeList success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ url: "u" });
+            expect((await controller.scrapeList(ctx)).status).toBe(200);
+        });
+    });
+
+    describe("Import", () => {
+        it("importUrl success", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ url: "u" });
+            expect((await controller.importUrl(ctx)).status).toBe(200);
+        });
+        it("importUrl error should return 200 with success:false", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ url: "u" });
+            vi.spyOn(ScraperService, "scrapeGsmArena").mockRejectedValue(new Error("Err"));
+            expect((await controller.importUrl(ctx)).status).toBe(200);
+        });
+    });
+
+    describe("CRUD", () => {
+        it("getAll should return 200", async () => {
+            expect((await controller.getAll(createMockContext())).status).toBe(200);
+        });
+        it("getById 200 if found", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(DevicesService.prototype, "getById").mockResolvedValue({ id: "1" } as any);
+            expect((await controller.getById(ctx)).status).toBe(200);
+        });
+        it("getById 404 if not found", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            expect((await controller.getById(ctx)).status).toBe(404);
+        });
+        it("create 201", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ brand: "B", model: "M" });
+            expect((await controller.create(ctx)).status).toBe(201);
+        });
+        it("update 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ model: "M" });
+            vi.spyOn(DevicesService.prototype, "update").mockResolvedValue({ id: "1" } as any);
+            expect((await controller.update(ctx)).status).toBe(200);
+        });
+        it("update 404", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(ctx.req as any, "valid").mockReturnValue({ model: "M" });
+            vi.spyOn(DevicesService.prototype, "update").mockResolvedValue(null as any);
+            expect((await controller.update(ctx)).status).toBe(404);
+        });
+        it("bulkDelete 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "json").mockResolvedValue({ ids: ["1"] });
+            expect((await controller.bulkDelete(ctx)).status).toBe(200);
+        });
+        it("delete 200", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(DevicesService.prototype, "delete").mockResolvedValue({ id: "1" } as any);
+            expect((await controller.delete(ctx)).status).toBe(200);
+        });
+        it("delete 404", async () => {
+            const ctx = createMockContext();
+            vi.spyOn(ctx.req, "param").mockReturnValue("1");
+            vi.spyOn(DevicesService.prototype, "delete").mockResolvedValue(null as any);
+            expect((await controller.delete(ctx)).status).toBe(404);
+        });
+    });
+});
