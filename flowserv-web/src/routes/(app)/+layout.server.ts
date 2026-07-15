@@ -7,6 +7,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
   }
 
   return {
-    user: locals.user
+    user: locals.user,
+    token: locals.token
   };
 };

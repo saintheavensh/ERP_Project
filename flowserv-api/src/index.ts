@@ -26,6 +26,14 @@ app.route('/v1/auth', authRouter);
 import { flowRouter } from './routes/flow';
 app.route('/v1/flows', flowRouter);
 
+// Customer Routes
+import { customersRouter } from './routes/customers';
+app.route('/v1/customers', customersRouter);
+
+// Tickets Routes
+import { ticketsRouter } from './routes/tickets';
+app.route('/v1/tickets', ticketsRouter);
+
 // Health Check Endpoint
 app.get('/v1/health', async (c) => {
   let dbStatus = 'disconnected';

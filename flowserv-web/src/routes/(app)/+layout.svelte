@@ -7,6 +7,7 @@
     let items = [{ label: 'Dashboard', path: '/' }];
     
     if (user?.roleId === 'Super Admin' || user?.roleId === 'no-role') {
+      items.push({ label: 'Customers', path: '/customers' });
       items.push({ label: 'Flow Templates', path: '/flows' });
       items.push({ label: 'Tickets', path: '/tickets' });
       items.push({ label: 'Inventory', path: '/inventory' });

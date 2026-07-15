@@ -114,7 +114,7 @@
 - [x] 2C.1 FE: Flow template list UI
 - [x] 2C.2 FE: Flow detail view (visualize nodes and transitions)
 - [x] 2C.3 Merge `phase-2/auth-flow-engine` → `main`
-- [ ] 2C.4 Git commit: `feat: phase 2 complete — auth + flow engine`
+- [x] 2C.4 Git commit: `feat: phase 2 complete — auth + flow engine`
 
 ---
 
