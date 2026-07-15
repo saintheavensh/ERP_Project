@@ -1,0 +1,14 @@
+{
+  "name": "flowserv-erp",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "flowserv-api",
+    "flowserv-web"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=flowserv-api",
+    "dev:web": "npm run dev --workspace=flowserv-web",
+    "dev": "npm run dev:api & npm run dev:web"
+  }
+}

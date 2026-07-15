@@ -41,29 +41,29 @@
 > **Network:** Local-first. Access via LAN/WiFi (192.168.x.x). VPS deployment is a future phase.
 
 ### 1A. Root Cleanup
-- [ ] 1A.1 Delete unused files: `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md`
-- [ ] 1A.2 Delete unused folders: `glossary/`, `templates/`, `scripts/`, `assets/`, `implementation plan/`
-- [ ] 1A.3 Delete old package files: `package.json`, `pnpm-lock.yaml`, `node_modules/`
-- [ ] 1A.4 Update `.gitignore` (node_modules, .env, dist, .drizzle, etc.)
+- [x] 1A.1 Delete unused files: `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md`
+- [x] 1A.2 Delete unused folders: `glossary/`, `templates/`, `scripts/`, `assets/`, `implementation plan/`
+- [x] 1A.3 Delete old package files: `package.json`, `pnpm-lock.yaml`, `node_modules/`
+- [x] 1A.4 Update `.gitignore` (node_modules, .env, dist, .drizzle, etc.)
 
 ### 1B. Git Initialization
-- [ ] 1B.1 Initialize git repo (or reinitialize if `.git` exists)
-- [ ] 1B.2 Create initial commit with current state: `docs: phase 0 complete — specification consolidated`
-- [ ] 1B.3 Create branch `phase-1/project-setup`
+- [x] 1B.1 Initialize git repo (or reinitialize if `.git` exists)
+- [x] 1B.2 Create initial commit with current state: `docs: phase 0 complete — specification consolidated`
+- [x] 1B.3 Create branch `phase-1/project-setup`
 
 ### 1C. Backend Setup (flowserv-api/)
-- [ ] 1C.1 Create `flowserv-api/` with `package.json`
-- [ ] 1C.2 Install dependencies: hono, @hono/node-server, drizzle-orm, pg, zod, drizzle-zod, dotenv, @hono/zod-validator
-- [ ] 1C.3 Install dev dependencies: typescript, tsx, vitest, drizzle-kit, @types/pg
-- [ ] 1C.4 Move `db/schema.ts` → `flowserv-api/src/db/schema.ts`
-- [ ] 1C.5 Move `drizzle.config.ts` → `flowserv-api/drizzle.config.ts`
-- [ ] 1C.6 Create `flowserv-api/src/db/connection.ts` (database connection)
-- [ ] 1C.7 Create `flowserv-api/src/lib/response.ts` (standardized API response helper)
-- [ ] 1C.8 Create `flowserv-api/src/middleware/error-handler.ts`
-- [ ] 1C.9 Create `flowserv-api/src/index.ts` (entry point + health check `/v1/health`)
-- [ ] 1C.10 Create `.env` with DATABASE_URL
-- [ ] 1C.11 Run `npx drizzle-kit push` — verify tables exist in PostgreSQL
-- [ ] 1C.12 Verify: `npm run dev` starts, `GET /v1/health` returns `{ data: { status: "ok" } }`
+- [x] 1C.1 Create `flowserv-api/` with `package.json`
+- [x] 1C.2 Install dependencies: hono, @hono/node-server, drizzle-orm, pg, zod, drizzle-zod, dotenv, @hono/zod-validator
+- [x] 1C.3 Install dev dependencies: typescript, tsx, vitest, drizzle-kit, @types/pg
+- [x] 1C.4 Move `db/schema.ts` → `flowserv-api/src/db/schema.ts`
+- [x] 1C.5 Move `drizzle.config.ts` → `flowserv-api/drizzle.config.ts`
+- [x] 1C.6 Create `flowserv-api/src/db/connection.ts` (database connection)
+- [x] 1C.7 Create `flowserv-api/src/lib/response.ts` (standardized API response helper)
+- [x] 1C.8 Create `flowserv-api/src/middleware/error-handler.ts`
+- [x] 1C.9 Create `flowserv-api/src/index.ts` (entry point + health check `/v1/health`)
+- [x] 1C.10 Create `.env` with DATABASE_URL
+- [x] 1C.11 Run `npx drizzle-kit push` — verify tables exist in PostgreSQL
+- [x] 1C.12 Verify: `npm run dev` starts, `GET /v1/health` returns `{ data: { status: "ok" } }`
 
 ### 1D. Frontend Setup (flowserv-web/)
 - [ ] 1D.1 Create SvelteKit project in `flowserv-web/`
