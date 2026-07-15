@@ -8,12 +8,12 @@
 
   onMount(async () => {
     try {
-      const res = await apiFetch<{ status: string, database: string }>('/health');
+      const res = await apiFetch<{ data: { status: string, database: string } }>('/health');
       status = res.data?.status || 'Unknown';
       database = res.data?.database || 'Unknown';
-    } catch (e: any) {
+    } catch (e: unknown) {
       status = 'Error';
-      error = e.message;
+      error = e instanceof Error ? e.message : 'Unknown error';
     }
   });
 </script>

@@ -83,10 +83,10 @@
 - [x] 1E.7 Commit: "feat: phase 1E complete - seed data"
 
 ### 1F. Final Verification
-- [ ] 1F.1 Backend starts and connects to PostgreSQL
-- [ ] 1F.2 Frontend starts and can call backend API
-- [ ] 1F.3 Database has all tables + seed data
-- [ ] 1F.4 Git commit: `feat: phase 1 complete — project setup with monorepo`
+- [x] 1F.1 Backend starts and connects to PostgreSQL
+- [x] 1F.2 Frontend starts and health check passes
+- [x] 1F.3 Verify all files follow strict typing rules (`no implicit any`)
+- [x] 1F.4 Commit: "feat: phase 1 completed - system verification"
 - [ ] 1F.5 Merge `phase-1/project-setup` → `main`
 
 ---
