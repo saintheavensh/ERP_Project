@@ -97,23 +97,23 @@
 > **Branch:** `phase-2/auth-flow-engine`
 
 ### 2A. Authentication (BE + FE)
-- [ ] 2A.1 BE: Auth routes — register, login (returns JWT with tenant_id + user_id)
-- [ ] 2A.2 BE: Auth middleware (verify JWT, extract tenant_id)
-- [ ] 2A.3 FE: Login page (form → call API → store token)
-- [ ] 2A.4 FE: Protected layout (redirect to login if no token)
-- [ ] 2A.5 Verify: login works, protected pages redirect
+- [x] 2A.1 BE: Auth routes — register, login (returns JWT with tenant_id + user_id)
+- [x] 2A.2 BE: Auth middleware (verify JWT, extract tenant_id)
+- [x] 2A.3 FE: Login page (form → call API → store token)
+- [x] 2A.4 FE: Protected layout (redirect to login if no token)
+- [x] 2A.5 Verify: login works, protected pages redirect
 
 ### 2B. Flow Engine Core (BE)
-- [ ] 2B.1 Flow Template CRUD (read/write FlowTemplate + FlowNode from DB)
-- [ ] 2B.2 Transition validation engine (validate state changes per FlowTransition rules)
-- [ ] 2B.3 Stage history recording (TicketStageHistory — append-only)
-- [ ] 2B.4 Event emission on state change (internal event bus)
-- [ ] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
+- [x] 2B.1 Flow Template CRUD (read/write FlowTemplate + FlowNode from DB)
+- [x] 2B.2 Transition validation engine (validate state changes per FlowTransition rules)
+- [x] 2B.3 Stage history recording (TicketStageHistory — append-only)
+- [x] 2B.4 Event emission on state change (internal event bus)
+- [x] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
 
 ### 2C. Flow Engine Visualization (FE)
-- [ ] 2C.1 FE: Flow Template list page (see all templates)
-- [ ] 2C.2 FE: Flow Template detail page (see nodes + transitions as diagram)
-- [ ] 2C.3 Verify: can see flow templates and their nodes in UI
+- [x] 2C.1 FE: Flow template list UI
+- [x] 2C.2 FE: Flow detail view (visualize nodes and transitions)
+- [x] 2C.3 Merge `phase-2/auth-flow-engine` → `main`
 - [ ] 2C.4 Git commit: `feat: phase 2 complete — auth + flow engine`
 
 ---

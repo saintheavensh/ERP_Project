@@ -7,6 +7,7 @@ import { successResponse } from './lib/response';
 import dotenv from 'dotenv';
 import { db } from './db/connection';
 import { sql } from 'drizzle-orm';
+import { authRouter } from './routes/auth';
 
 dotenv.config();
 
@@ -17,6 +18,13 @@ app.use('*', logger());
 app.use('*', cors());
 app.use('*', requestIdMiddleware);
 app.use('*', errorHandler);
+
+// Auth Routes
+app.route('/v1/auth', authRouter);
+
+// Flow Routes
+import { flowRouter } from './routes/flow';
+app.route('/v1/flows', flowRouter);
 
 // Health Check Endpoint
 app.get('/v1/health', async (c) => {
