@@ -4,13 +4,22 @@
 
   // Dynamic menu based on role using $derived for reactivity
   let menuItems = $derived.by(() => {
-    let items = [{ label: 'Dashboard', path: '/' }];
+    let items: any[] = [{ label: 'Dashboard', path: '/' }];
     
     if (user?.roleId === 'Super Admin' || user?.roleId === 'no-role') {
       items.push({ label: 'Customers', path: '/customers' });
       items.push({ label: 'Flow Templates', path: '/flows' });
       items.push({ label: 'Tickets', path: '/tickets' });
-      items.push({ label: 'Inventory', path: '/inventory' });
+      items.push({ 
+        label: 'Inventory & Stock', 
+        path: '/inventory',
+        subItems: [
+          { label: 'Master Catalog', path: '/inventory' },
+          { label: 'Purchase Orders', path: '/inventory/purchasing' },
+          { label: 'Receive PO', path: '/inventory/receive' },
+          { label: 'Initial Stock Upload', path: '/inventory/opname' }
+        ]
+      });
     } else if (user?.roleId === 'Technician') {
       items.push({ label: 'My Jobs', path: '/tickets' });
     }
@@ -31,11 +40,27 @@
       <div class="text-xs text-slate-500 mt-1 capitalize border border-slate-700 bg-slate-800 inline-block px-2 py-0.5 rounded">{user?.roleId}</div>
     </div>
 
-    <nav class="flex-1 p-4 space-y-2">
+    <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
       {#each menuItems as item}
-        <a href={item.path} class="block px-4 py-2 bg-slate-800 rounded-md hover:bg-slate-700 transition-colors">
-          {item.label}
-        </a>
+        {#if item.subItems}
+          <details class="group" open>
+            <summary class="flex justify-between items-center px-4 py-2 bg-slate-800 rounded-md hover:bg-slate-700 cursor-pointer transition-colors list-none">
+              <span>{item.label}</span>
+              <svg class="w-4 h-4 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </summary>
+            <div class="mt-1 pl-4 space-y-1">
+              {#each item.subItems as sub}
+                <a href={sub.path} class="block px-4 py-2 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-md transition-colors">
+                  {sub.label}
+                </a>
+              {/each}
+            </div>
+          </details>
+        {:else}
+          <a href={item.path} class="block px-4 py-2 bg-slate-800 rounded-md hover:bg-slate-700 transition-colors">
+            {item.label}
+          </a>
+        {/if}
       {/each}
     </nav>
     

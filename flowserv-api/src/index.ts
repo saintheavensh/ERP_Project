@@ -26,13 +26,33 @@ app.route('/v1/auth', authRouter);
 import { flowRouter } from './routes/flow';
 app.route('/v1/flows', flowRouter);
 
+import { branchesRouter } from './routes/branches';
+app.route('/v1/branches', branchesRouter);
+
 // Customer Routes
 import { customersRouter } from './routes/customers';
 app.route('/v1/customers', customersRouter);
 
-// Tickets Routes
 import { ticketsRouter } from './routes/tickets';
 app.route('/v1/tickets', ticketsRouter);
+
+import { inventoryRouter } from './routes/inventory';
+app.route('/v1/inventory', inventoryRouter);
+
+import { categoriesRouter } from './routes/categories';
+app.route('/v1/categories', categoriesRouter);
+
+import { suppliersRouter } from './routes/suppliers';
+app.route('/v1/suppliers', suppliersRouter);
+
+import { brandsRouter } from './routes/brands';
+app.route('/v1/brands', brandsRouter);
+
+import { purchasingRouter } from './routes/purchasing';
+app.route('/v1/purchasing', purchasingRouter);
+
+import { opnameRouter } from './routes/opname';
+app.route('/v1/opname', opnameRouter);
 
 // Health Check Endpoint
 app.get('/v1/health', async (c) => {

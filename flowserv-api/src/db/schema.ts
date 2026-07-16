@@ -14,6 +14,7 @@ import {
   jsonb,
   unique,
   index,
+  uniqueIndex,
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
@@ -193,20 +194,46 @@ export const warrantyRecords = pgTable('warranty_records', {
 // INVENTORY
 // ==========================================================
 
+export const inventoryCategories = pgTable('inventory_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  tenantIdx: index('inventory_categories_tenant_idx').on(table.tenantId),
+}));
+
 export const inventoryItems = pgTable('inventory_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   sku: text('sku').notNull(),
+  universalCode: varchar('universal_code', { length: 50 }), // Part Number / Factory Code (e.g. BLP673)
   name: text('name').notNull(),
-  category: text('category'),
+  categoryId: uuid('category_id').references(() => inventoryCategories.id),
   partBrandId: uuid('part_brand_id').references(() => partBrands.id), // merk sparepart (bukan merk HP) — lihat PRODUCT CATALOG di bawah
   unitCostAvg: decimal('unit_cost_avg', { precision: 14, scale: 2 }).notNull().default('0'), // nilai referensi/cache untuk tampilan cepat — COGS aktual dihitung dari stock_batches (FIFO)
+  sellingPrice: decimal('selling_price', { precision: 14, scale: 2 }).notNull().default('0'), // Harga jual dasar produk (jika tidak ada merk spesifik)
   reorderPoint: integer('reorder_point').notNull().default(0),
+  isStockInitialized: boolean('is_stock_initialized').notNull().default(false),
+  unresolvedCompatibility: jsonb('unresolved_compatibility').default('[]'), // array of strings for unparsed models
   unitOfMeasure: varchar('unit_of_measure', { length: 20 }).notNull().default('pcs'),
 }, (table) => ({
   tenantSkuUnique: unique('inventory_items_tenant_sku_unique').on(table.tenantId, table.sku),
   tenantIdx: index('inventory_items_tenant_idx').on(table.tenantId),
 }));
+
+export const itemBrandPricing = pgTable('item_brand_pricing', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
+  partBrandId: uuid('part_brand_id').notNull().references(() => partBrands.id),
+  sellingPrice: decimal('selling_price', { precision: 14, scale: 2 }).notNull().default('0'),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  itemBrandUnique: unique('item_brand_pricing_unique').on(table.inventoryItemId, table.partBrandId),
+}));
+
 
 export const stockLevels = pgTable('stock_levels', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -245,6 +272,7 @@ export const stockBatches = pgTable('stock_batches', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
+  partBrandId: uuid('part_brand_id').references(() => partBrands.id),
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   purchaseOrderLineId: uuid('purchase_order_line_id').references(() => purchaseOrderLines.id),
   unitCost: decimal('unit_cost', { precision: 14, scale: 2 }).notNull(), // harga beli asli batch ini, bukan rata-rata
@@ -259,8 +287,11 @@ export const suppliers = pgTable('suppliers', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   name: text('name').notNull(),
-  contactInfo: text('contact_info'),
+  email: text('email'),
+  contactInfo: text('contact_info'), // phone or other contact
+  photoUrl: text('photo_url'),
   type: varchar('type', { length: 20 }).notNull().default('wholesale'), // 'wholesale' | 'retailer' — tag, bukan pengunci
+  paymentTermDays: integer('payment_term_days').notNull().default(0), // 0 = Cash/COD, > 0 = Tempo (e.g., 7, 14, 30 days)
   returnPolicyDays: integer('return_policy_days'), // batas hari retur ke supplier ini
   warrantyPolicyDays: integer('warranty_policy_days'), // garansi dari supplier ini untuk part yang dibeli
   returnWarrantyNotes: text('return_warranty_notes'), // catatan bebas kalau kebijakannya tidak sesederhana angka hari
@@ -268,12 +299,31 @@ export const suppliers = pgTable('suppliers', {
   tenantIdx: index('suppliers_tenant_idx').on(table.tenantId),
 }));
 
+export const supplierBrands = pgTable('supplier_brands', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
+  partBrandId: uuid('part_brand_id').notNull().references(() => partBrands.id),
+}, (table) => ({
+  tenantIdx: index('supplier_brands_tenant_idx').on(table.tenantId),
+  uniqueSupplierBrand: uniqueIndex('supplier_brands_unique_idx').on(table.supplierId, table.partBrandId)
+}));
+
 export const purchaseOrders = pgTable('purchase_orders', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
-  status: varchar('status', { length: 20 }).notNull().default('draft'),
+  poNumber: varchar('po_number', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // 'draft' | 'ordered' | 'received' | 'completed'
+  expectedDeliveryDate: timestamp('expected_delivery_date'),
+  invoiceNumber: varchar('invoice_number', { length: 100 }),
+  invoiceDate: timestamp('invoice_date'),
+  invoiceDueDate: timestamp('invoice_due_date'),
+  estimatedTotal: decimal('estimated_total', { precision: 14, scale: 2 }).notNull().default('0'),
+  actualTotal: decimal('actual_total', { precision: 14, scale: 2 }),
+  createdBy: uuid('created_by'), // -> users.id (for tracking who made the PO)
+  approvedBy: uuid('approved_by'), // -> users.id (for tracking who approved)
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   tenantBranchIdx: index('purchase_orders_tenant_branch_idx').on(table.tenantId, table.branchId),
@@ -284,7 +334,9 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
   purchaseOrderId: uuid('purchase_order_id').notNull().references(() => purchaseOrders.id),
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   quantity: integer('quantity').notNull(),
-  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(),
+  receivedQuantity: integer('received_quantity').notNull().default(0),
+  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(), // estimated
+  actualUnitPrice: decimal('actual_unit_price', { precision: 14, scale: 2 }), // final from invoice
 });
 
 // ==========================================================
@@ -541,6 +593,7 @@ export const serviceTicketsRelations = relations(serviceTickets, ({ one, many })
 export const inventoryItemsRelations = relations(inventoryItems, ({ one, many }) => ({
   tenant: one(tenants, { fields: [inventoryItems.tenantId], references: [tenants.id] }),
   partBrand: one(partBrands, { fields: [inventoryItems.partBrandId], references: [partBrands.id] }),
+  category: one(inventoryCategories, { fields: [inventoryItems.categoryId], references: [inventoryCategories.id] }),
   stockLevels: many(stockLevels),
   stockMovements: many(stockMovements),
   stockBatches: many(stockBatches),
@@ -556,6 +609,7 @@ export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
 
 export const stockBatchesRelations = relations(stockBatches, ({ one, many }) => ({
   inventoryItem: one(inventoryItems, { fields: [stockBatches.inventoryItemId], references: [inventoryItems.id] }),
+  partBrand: one(partBrands, { fields: [stockBatches.partBrandId], references: [partBrands.id] }),
   supplier: one(suppliers, { fields: [stockBatches.supplierId], references: [suppliers.id] }),
   purchaseOrderLine: one(purchaseOrderLines, { fields: [stockBatches.purchaseOrderLineId], references: [purchaseOrderLines.id] }),
   movements: many(stockMovements),
@@ -583,6 +637,7 @@ export const productCompatibilityRelations = relations(productCompatibility, ({ 
 
 export const partBrandsRelations = relations(partBrands, ({ many }) => ({
   inventoryItems: many(inventoryItems),
+  supplierBrands: many(supplierBrands),
 }));
 
 export const productSuppliersRelations = relations(productSuppliers, ({ one }) => ({
@@ -590,8 +645,36 @@ export const productSuppliersRelations = relations(productSuppliers, ({ one }) =
   supplier: one(suppliers, { fields: [productSuppliers.supplierId], references: [suppliers.id] }),
 }));
 
+export const stockLevelsRelations = relations(stockLevels, ({ one }) => ({
+  inventoryItem: one(inventoryItems, { fields: [stockLevels.inventoryItemId], references: [inventoryItems.id] }),
+  branch: one(branches, { fields: [stockLevels.branchId], references: [branches.id] }),
+}));
+
+export const inventoryCategoriesRelations = relations(inventoryCategories, ({ many }) => ({
+  inventoryItems: many(inventoryItems),
+}));
+
+export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [purchaseOrders.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [purchaseOrders.branchId], references: [branches.id] }),
+  supplier: one(suppliers, { fields: [purchaseOrders.supplierId], references: [suppliers.id] }),
+  purchaseOrderLines: many(purchaseOrderLines),
+}));
+
+export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one, many }) => ({
+  purchaseOrder: one(purchaseOrders, { fields: [purchaseOrderLines.purchaseOrderId], references: [purchaseOrders.id] }),
+  inventoryItem: one(inventoryItems, { fields: [purchaseOrderLines.inventoryItemId], references: [inventoryItems.id] }),
+  stockBatches: many(stockBatches),
+}));
+
 export const suppliersRelations = relations(suppliers, ({ many }) => ({
   productSuppliers: many(productSuppliers),
   purchaseOrders: many(purchaseOrders),
   stockBatches: many(stockBatches),
+  supplierBrands: many(supplierBrands),
+}));
+
+export const supplierBrandsRelations = relations(supplierBrands, ({ one }) => ({
+  supplier: one(suppliers, { fields: [supplierBrands.supplierId], references: [suppliers.id] }),
+  partBrand: one(partBrands, { fields: [supplierBrands.partBrandId], references: [partBrands.id] }),
 }));

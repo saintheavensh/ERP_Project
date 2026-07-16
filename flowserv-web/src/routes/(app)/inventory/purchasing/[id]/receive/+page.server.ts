@@ -1,0 +1,41 @@
+import { error, redirect } from '@sveltejs/kit';
+
+export const load = async ({ params, locals }) => {
+  const token = locals.token;
+  if (!token) throw redirect(302, '/login');
+  
+  const { id } = params;
+
+  let order = null;
+  let partBrands = [];
+  
+  try {
+    const [orderRes, brandsRes] = await Promise.all([
+      fetch(`http://localhost:3001/v1/purchasing/orders/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }),
+      fetch(`http://localhost:3001/v1/brands`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    ]);
+    
+    if (orderRes.ok) {
+      const result = await orderRes.json();
+      order = result.data;
+      if (order.status !== 'ordered') {
+        throw error(400, 'Order is not in ordered status');
+      }
+    } else if (orderRes.status === 404) {
+      throw error(404, 'Order not found');
+    }
+    
+    if (brandsRes.ok) {
+      partBrands = (await brandsRes.json()).data || [];
+    }
+  } catch (err: any) {
+    console.error('Failed to load order for receiving', err);
+    if (err.status) throw err;
+  }
+
+  return { token, order, partBrands };
+};
