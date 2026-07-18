@@ -15,12 +15,20 @@
         path: '/inventory',
         subItems: [
           { label: 'Master Catalog', path: '/inventory' },
+          { label: 'Suppliers', path: '/inventory/suppliers' },
           { label: 'Purchase Orders', path: '/inventory/purchasing' },
           { label: 'Receive PO', path: '/inventory/receive' },
           { label: 'Initial Stock Upload', path: '/inventory/opname' }
         ]
       });
       items.push({ label: 'Point of Sales', path: '/pos' });
+      items.push({ 
+        label: 'Finance', 
+        path: '/finance',
+        subItems: [
+          { label: 'Accounts Payable', path: '/finance/payables' }
+        ]
+      });
       items.push({ label: 'Settings', path: '/settings' });
     } else if (user?.roleId === 'Technician') {
       items.push({ label: 'My Jobs', path: '/tickets' });

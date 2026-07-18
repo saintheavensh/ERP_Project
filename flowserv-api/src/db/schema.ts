@@ -200,6 +200,8 @@ export const inventoryCategories = pgTable('inventory_categories', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   name: text('name').notNull(),
   description: text('description'),
+  marginStrategy: varchar('margin_strategy', { length: 20 }), // 'markup' or 'gross_margin'
+  targetMargin: decimal('target_margin', { precision: 5, scale: 2 }), // e.g. 30.00 for 30%
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('inventory_categories_tenant_idx').on(table.tenantId),
@@ -216,6 +218,8 @@ export const inventoryItems = pgTable('inventory_items', {
   unitCostAvg: decimal('unit_cost_avg', { precision: 14, scale: 2 }).notNull().default('0'), // nilai referensi/cache untuk tampilan cepat — COGS aktual dihitung dari stock_batches (FIFO)
   sellingPrice: decimal('selling_price', { precision: 14, scale: 2 }).notNull().default('0'), // Harga jual dasar produk (jika tidak ada merk spesifik)
   reorderPoint: integer('reorder_point').notNull().default(0),
+  marginStrategy: varchar('margin_strategy', { length: 20 }), // overrides category setting
+  targetMargin: decimal('target_margin', { precision: 5, scale: 2 }), // overrides category setting
   isStockInitialized: boolean('is_stock_initialized').notNull().default(false),
   unresolvedCompatibility: jsonb('unresolved_compatibility').default('[]'), // array of strings for unparsed models
   unitOfMeasure: varchar('unit_of_measure', { length: 20 }).notNull().default('pcs'),
@@ -308,6 +312,38 @@ export const supplierBrands = pgTable('supplier_brands', {
 }, (table) => ({
   tenantIdx: index('supplier_brands_tenant_idx').on(table.tenantId),
   uniqueSupplierBrand: uniqueIndex('supplier_brands_unique_idx').on(table.supplierId, table.partBrandId)
+}));
+
+export const supplierInvoices = pgTable('supplier_invoices', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  branchId: uuid('branch_id').notNull().references(() => branches.id),
+  supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
+  purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id),
+  invoiceNumber: varchar('invoice_number', { length: 100 }), // Dari nota supplier
+  status: varchar('status', { length: 20 }).notNull().default('unpaid'), // 'unpaid' | 'partial' | 'paid'
+  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).notNull(),
+  amountPaid: decimal('amount_paid', { precision: 14, scale: 2 }).notNull().default('0'),
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull(), // 'tunai' | 'transfer' | 'tempo'
+  invoiceDate: timestamp('invoice_date').notNull().defaultNow(),
+  dueDate: timestamp('due_date'), // Tanggal jatuh tempo jika tempo
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  tenantBranchIdx: index('supplier_invoices_tenant_branch_idx').on(table.tenantId, table.branchId),
+  supplierIdx: index('supplier_invoices_supplier_idx').on(table.supplierId),
+}));
+
+export const supplierPayments = pgTable('supplier_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  supplierInvoiceId: uuid('supplier_invoice_id').notNull().references(() => supplierInvoices.id),
+  amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull(),
+  referenceNumber: varchar('reference_number', { length: 100 }), // misal no referensi transfer
+  paymentDate: timestamp('payment_date').notNull().defaultNow(),
+  createdBy: uuid('created_by').references(() => users.id),
+}, (table) => ({
+  invoiceIdx: index('supplier_payments_invoice_idx').on(table.supplierInvoiceId),
 }));
 
 export const purchaseOrders = pgTable('purchase_orders', {

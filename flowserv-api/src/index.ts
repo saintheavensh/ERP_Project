@@ -60,6 +60,9 @@ app.route('/v1/pos', posRouter);
 import { settingsRouter } from './routes/settings';
 app.route('/v1/settings', settingsRouter);
 
+import { financeRouter } from './routes/finance';
+app.route('/v1/finance', financeRouter);
+
 // Health Check Endpoint
 app.get('/v1/health', async (c) => {
   let dbStatus = 'disconnected';

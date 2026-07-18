@@ -118,9 +118,6 @@
       <a href="/inventory/categories" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium transition-colors">
         Manage Categories
       </a>
-      <a href="/inventory/suppliers" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium transition-colors">
-        Manage Suppliers
-      </a>
       <button class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm" onclick={() => showAddModal = true}>
         + Add Item
       </button>
