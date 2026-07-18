@@ -153,32 +153,50 @@
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
     <div class="p-6 border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-6">
       <div>
-        <p class="text-sm text-slate-500">Status</p>
-        <p class="font-medium text-slate-900 uppercase mt-1">{order?.status}</p>
+        <p class="text-sm text-slate-500">Tanggal Pemesanan</p>
+        <p class="font-medium text-slate-900 mt-1">{new Date(order?.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
       </div>
       <div>
-        <p class="text-sm text-slate-500">Created At</p>
-        <p class="font-medium text-slate-900 mt-1">{new Date(order?.createdAt).toLocaleDateString()}</p>
+        <p class="text-sm text-slate-500">Estimasi Kedatangan</p>
+        <p class="font-medium text-slate-900 mt-1">{order?.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Belum diset'}</p>
       </div>
-      <div>
-        <p class="text-sm text-slate-500">Expected Delivery</p>
-        <p class="font-medium text-slate-900 mt-1">{order?.expectedDeliveryDate ? new Date(order.expectedDeliveryDate).toLocaleDateString() : '-'}</p>
-      </div>
-      <div>
-        <p class="text-sm text-slate-500">Invoice Number</p>
-        <p class="font-medium text-slate-900 mt-1">{order?.invoiceNumber || '-'}</p>
-      </div>
+      {#if order?.status === 'completed'}
+        {@const invoiceDetail = order?.supplierInvoices?.[0]}
+        <div>
+          <p class="text-sm text-slate-500">Nomor Nota Supplier</p>
+          <p class="font-medium text-slate-900 mt-1">{order?.invoiceNumber || '-'}</p>
+        </div>
+        <div>
+          <p class="text-sm text-slate-500">Info Pembayaran</p>
+          <p class="font-medium text-slate-900 mt-1">
+            {#if invoiceDetail?.paymentMethod === 'tempo' && invoiceDetail?.dueDate}
+              <span class="text-orange-600">Jatuh Tempo: {new Date(invoiceDetail.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            {:else}
+              <span class="text-green-600">Tunai (Cash)</span>
+            {/if}
+          </p>
+        </div>
+      {:else if order?.status === 'received'}
+        <div class="col-span-2">
+          <p class="text-sm text-slate-500">Status Barang</p>
+          <p class="font-medium text-blue-600 mt-1">Menunggu penetapan Harga & Nota dari Supplier</p>
+        </div>
+      {/if}
     </div>
 
     <table class="w-full text-left border-collapse">
       <thead>
         <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
-          <th class="p-4">Item Name</th>
-          <th class="p-4 text-center">Qty Ordered</th>
-          <th class="p-4 text-center">Qty Received</th>
-          <th class="p-4 text-right">Est. Unit Price</th>
-          <th class="p-4 text-right">Act. Unit Price</th>
-          <th class="p-4 text-right">Total</th>
+          <th class="p-4">Nama Barang (SKU)</th>
+          <th class="p-4 text-center">Qty Pesan</th>
+          {#if order?.status === 'received' || order?.status === 'completed'}
+            <th class="p-4 text-center">Qty Terima</th>
+          {/if}
+          <th class="p-4 text-right">Harga (Est)</th>
+          {#if order?.status === 'completed'}
+            <th class="p-4 text-right">Harga (Final)</th>
+          {/if}
+          <th class="p-4 text-right">Subtotal</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-slate-100">
@@ -190,20 +208,28 @@
               <span class="text-xs text-slate-500">SKU: {line.inventoryItem?.sku}</span>
             </td>
             <td class="p-4 text-center font-medium">{line.quantity}</td>
-            <td class="p-4 text-center font-medium {line.receivedQuantity > 0 ? 'text-green-600' : 'text-slate-500'}">{line.receivedQuantity}</td>
+            {#if order?.status === 'received' || order?.status === 'completed'}
+              <td class="p-4 text-center font-medium {line.receivedQuantity > 0 && line.receivedQuantity < line.quantity ? 'text-orange-600' : line.receivedQuantity > 0 ? 'text-green-600' : 'text-slate-500'}">
+                {line.receivedQuantity}
+              </td>
+            {/if}
             <td class="p-4 text-right text-slate-500">Rp {parseFloat(line.unitPrice).toLocaleString('id-ID')}</td>
-            <td class="p-4 text-right font-medium">
-              {#if line.actualUnitPrice}
-                Rp {parseFloat(line.actualUnitPrice).toLocaleString('id-ID')}
-              {:else}
-                -
-              {/if}
-            </td>
+            {#if order?.status === 'completed'}
+              <td class="p-4 text-right font-medium text-slate-900">
+                {#if line.actualUnitPrice}
+                  Rp {parseFloat(line.actualUnitPrice).toLocaleString('id-ID')}
+                {:else}
+                  -
+                {/if}
+              </td>
+            {/if}
             <td class="p-4 text-right font-medium text-slate-900">
               {#if order.status === 'completed' && line.actualUnitPrice}
                 Rp {(parseFloat(line.actualUnitPrice) * line.receivedQuantity).toLocaleString('id-ID')}
+              {:else if order.status === 'received' || order.status === 'completed'}
+                Rp {(parseFloat(line.unitPrice) * line.receivedQuantity).toLocaleString('id-ID')} <span class="text-xs text-slate-400 block">Est (berdasarkan terima)</span>
               {:else}
-                Rp {(parseFloat(line.unitPrice) * line.quantity).toLocaleString('id-ID')} (Est)
+                Rp {(parseFloat(line.unitPrice) * line.quantity).toLocaleString('id-ID')} <span class="text-xs text-slate-400 block">Est (berdasarkan pesan)</span>
               {/if}
             </td>
           </tr>
@@ -211,13 +237,13 @@
       </tbody>
       <tfoot class="bg-slate-50 border-t border-slate-200 font-medium">
         <tr>
-          <td colspan="5" class="p-4 text-right text-slate-700">Estimated Total:</td>
-          <td class="p-4 text-right text-slate-900">Rp {parseFloat(order?.estimatedTotal || 0).toLocaleString('id-ID')}</td>
+          <td colspan={order?.status === 'completed' ? 5 : order?.status === 'received' ? 4 : 3} class="p-4 text-right text-slate-700">Estimasi Total Awal:</td>
+          <td class="p-4 text-right text-slate-500">Rp {parseFloat(order?.estimatedTotal || 0).toLocaleString('id-ID')}</td>
         </tr>
         {#if order?.status === 'completed'}
           <tr>
-            <td colspan="5" class="p-4 text-right text-slate-700">Actual Total (Invoice):</td>
-            <td class="p-4 text-right text-slate-900 font-bold text-lg">Rp {parseFloat(order?.actualTotal || 0).toLocaleString('id-ID')}</td>
+            <td colspan="5" class="p-4 text-right text-slate-700 font-bold">Total Pembelian Aktual:</td>
+            <td class="p-4 text-right text-slate-900 font-black text-lg bg-green-50">Rp {parseFloat(order?.actualTotal || 0).toLocaleString('id-ID')}</td>
           </tr>
         {/if}
       </tfoot>
