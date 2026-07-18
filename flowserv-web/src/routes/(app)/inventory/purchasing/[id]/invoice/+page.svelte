@@ -9,6 +9,16 @@
   let invoiceDueDate = $state(untrack(() => order.invoiceDueDate ? new Date(order.invoiceDueDate).toISOString().split('T')[0] : ''));
   let paymentMethod = $state('cash');
   
+  function updateDueDate() {
+    if (paymentMethod === 'tempo' && order?.supplier?.paymentTermDays) {
+      const d = new Date(invoiceDate);
+      d.setDate(d.getDate() + order.supplier.paymentTermDays);
+      invoiceDueDate = d.toISOString().split('T')[0];
+    } else if (paymentMethod !== 'tempo') {
+      invoiceDueDate = '';
+    }
+  }
+  
   let batches = $state(untrack(() => {
     const allBatches: any[] = [];
     data.order.purchaseOrderLines.forEach((l: any) => {
@@ -158,7 +168,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="invDate">Invoice Date *</label>
-          <input id="invDate" type="date" bind:value={invoiceDate} required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <input id="invDate" type="date" bind:value={invoiceDate} onchange={updateDueDate} required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="invDue">Due Date (Tempo)</label>
@@ -167,7 +177,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="payMeth">Metode Pembayaran</label>
-          <select id="payMeth" bind:value={paymentMethod} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <select id="payMeth" bind:value={paymentMethod} onchange={updateDueDate} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
             <option value="cash">Cash / Tunai</option>
             <option value="transfer">Transfer Bank</option>
             <option value="tempo">Tempo (Kredit)</option>
