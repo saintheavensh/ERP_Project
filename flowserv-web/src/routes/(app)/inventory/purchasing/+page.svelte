@@ -41,8 +41,9 @@
           <th class="p-4">PO Number</th>
           <th class="p-4">Date</th>
           <th class="p-4">Supplier</th>
-          <th class="p-4">Status</th>
-          <th class="p-4 text-right">Estimated Total</th>
+          <th class="p-4">Tahapan (Status)</th>
+          <th class="p-4 text-right">Total Nominal</th>
+          <th class="p-4 text-center">Jatuh Tempo</th>
           <th class="p-4 text-right">Actions</th>
         </tr>
       </thead>
@@ -61,9 +62,26 @@
                 </span>
               </div>
             </td>
-            <td class="p-4 text-right text-slate-600">Rp {parseFloat(order.estimatedTotal).toLocaleString('id-ID')}</td>
             <td class="p-4 text-right">
-              <a href={`/inventory/purchasing/${order.id}`} class="text-blue-600 hover:text-blue-800 text-sm font-medium">View</a>
+              {#if order.status === 'completed' && order.actualTotal}
+                <div class="font-bold text-slate-900">Rp {parseFloat(order.actualTotal).toLocaleString('id-ID')}</div>
+                <div class="text-xs text-green-600">Actual (Final)</div>
+              {:else}
+                <div class="text-slate-600">Rp {parseFloat(order.estimatedTotal).toLocaleString('id-ID')}</div>
+                <div class="text-xs text-slate-400">Estimated</div>
+              {/if}
+            </td>
+            <td class="p-4 text-center">
+              {#if order.supplierInvoices?.[0]?.dueDate}
+                <div class="text-sm font-medium text-slate-800">
+                  {new Date(order.supplierInvoices[0].dueDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </div>
+              {:else}
+                <span class="text-slate-400 text-sm">-</span>
+              {/if}
+            </td>
+            <td class="p-4 text-right">
+              <a href={`/inventory/purchasing/${order.id}`} class="text-blue-600 hover:text-blue-800 text-sm font-medium border px-3 py-1 rounded">Lihat PO</a>
             </td>
           </tr>
         {:else}
