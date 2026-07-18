@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/connection';
-import { purchaseOrders, purchaseOrderLines, stockBatches, stockMovements, stockLevels, inventoryItems, itemBrandPricing } from '../db/schema';
+import { purchaseOrders, purchaseOrderLines, stockBatches, stockMovements, stockLevels, inventoryItems, itemBrandPricing, supplierInvoices, suppliers } from '../db/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
@@ -284,6 +284,7 @@ const invoiceSchema = z.object({
   invoiceNumber: z.string().min(1),
   invoiceDate: z.string(),
   invoiceDueDate: z.string().optional(),
+  paymentMethod: z.enum(['cash', 'transfer', 'tempo']).default('cash'),
   batches: z.array(z.object({
     batchId: z.string().uuid(),
     actualUnitCost: z.number().min(0),
@@ -380,6 +381,46 @@ purchasingRouter.post('/orders/:id/invoice', zValidator('json', invoiceSchema), 
         })
         .where(eq(purchaseOrders.id, orderId))
         .returning();
+        
+      // Create Accounts Payable (Supplier Invoice) record if payment is tempo
+      if (data.paymentMethod === 'tempo') {
+        const [supplier] = await tx.select().from(suppliers).where(eq(suppliers.id, order.supplierId));
+        
+        let dueDate = data.invoiceDueDate ? new Date(data.invoiceDueDate) : null;
+        if (!dueDate && supplier && supplier.paymentTermDays) {
+          dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + supplier.paymentTermDays);
+        }
+
+        await tx.insert(supplierInvoices).values({
+          tenantId,
+          branchId: order.branchId,
+          supplierId: order.supplierId,
+          purchaseOrderId: order.id,
+          invoiceNumber: data.invoiceNumber,
+          invoiceDate: new Date(data.invoiceDate),
+          dueDate: dueDate,
+          totalAmount: actualTotal.toString(),
+          amountPaid: '0',
+          status: 'pending',
+          paymentMethod: data.paymentMethod
+        });
+      } else {
+        // If cash/transfer, create invoice but mark as paid
+        await tx.insert(supplierInvoices).values({
+          tenantId,
+          branchId: order.branchId,
+          supplierId: order.supplierId,
+          purchaseOrderId: order.id,
+          invoiceNumber: data.invoiceNumber,
+          invoiceDate: new Date(data.invoiceDate),
+          dueDate: data.invoiceDueDate ? new Date(data.invoiceDueDate) : null,
+          totalAmount: actualTotal.toString(),
+          amountPaid: actualTotal.toString(),
+          status: 'paid',
+          paymentMethod: data.paymentMethod
+        });
+      }
         
       return updatedOrder;
     });

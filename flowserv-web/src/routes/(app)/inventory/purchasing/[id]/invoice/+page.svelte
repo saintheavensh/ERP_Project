@@ -7,6 +7,7 @@
   // Format dates for input type="date"
   let invoiceDate = $state(untrack(() => order.invoiceDate ? new Date(order.invoiceDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]));
   let invoiceDueDate = $state(untrack(() => order.invoiceDueDate ? new Date(order.invoiceDueDate).toISOString().split('T')[0] : ''));
+  let paymentMethod = $state('cash');
   
   let batches = $state(untrack(() => {
     const allBatches: any[] = [];
@@ -21,7 +22,9 @@
               brandName: b.partBrand ? b.partBrand.name : 'Tanpa Merk',
               receivedQuantity: b.quantityReceived,
               actualUnitCost: b.unitCost ? parseFloat(b.unitCost) : 0,
-              sellingPrice: l.inventoryItem.sellingPrice ? parseFloat(l.inventoryItem.sellingPrice) : 0
+              sellingPrice: l.inventoryItem.sellingPrice ? parseFloat(l.inventoryItem.sellingPrice) : 0,
+              marginStrategy: l.inventoryItem.marginStrategy || (l.inventoryItem.category ? l.inventoryItem.category.marginStrategy : 'markup'),
+              targetMargin: l.inventoryItem.targetMargin ? parseFloat(l.inventoryItem.targetMargin) : (l.inventoryItem.category && l.inventoryItem.category.targetMargin ? parseFloat(l.inventoryItem.category.targetMargin) : 0)
             });
           }
         });
@@ -36,6 +39,26 @@
   
   let loading = $state(false);
   let errorMsg = $state('');
+  
+  function getRecommendedPrice(actualCost: number, strategy: string, margin: number) {
+    if (!actualCost || !margin) return 0;
+    if (strategy === 'gross_margin') {
+      if (margin >= 100) return actualCost; // Prevent division by zero or negative
+      return Math.ceil(actualCost / (1 - (margin / 100)));
+    }
+    // markup
+    return Math.ceil(actualCost * (1 + (margin / 100)));
+  }
+  
+  function getMarginWarning(batch: any) {
+    const recPrice = getRecommendedPrice(batch.actualUnitCost, batch.marginStrategy, batch.targetMargin);
+    if (recPrice === 0) return null;
+    
+    if (batch.sellingPrice < recPrice) {
+      return `Target jual Rp ${recPrice.toLocaleString('id-ID')} (${batch.targetMargin}% ${batch.marginStrategy === 'gross_margin' ? 'GM' : 'Markup'})`;
+    }
+    return null;
+  }
   
   async function submitInvoice() {
     if (!invoiceNumber) {
@@ -72,6 +95,7 @@
         invoiceNumber,
         invoiceDate,
         invoiceDueDate: invoiceDueDate || undefined,
+        paymentMethod,
         batches: batches.map((b: any) => ({ 
           batchId: b.batchId, 
           actualUnitCost: b.actualUnitCost,
@@ -127,7 +151,7 @@
         </div>
       {/if}
       
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="invNum">Supplier Invoice / Nota No. *</label>
           <input id="invNum" type="text" bind:value={invoiceNumber} required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none uppercase">
@@ -138,8 +162,16 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="invDue">Due Date (Tempo)</label>
-          <input id="invDue" type="date" bind:value={invoiceDueDate} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-          <p class="text-xs text-slate-500 mt-1">Leave empty if cash/COD.</p>
+          <input id="invDue" type="date" bind:value={invoiceDueDate} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" disabled={paymentMethod !== 'tempo'}>
+          <p class="text-xs text-slate-500 mt-1">Hanya aktif jika Tempo dipilih.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="payMeth">Metode Pembayaran</label>
+          <select id="payMeth" bind:value={paymentMethod} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="cash">Cash / Tunai</option>
+            <option value="transfer">Transfer Bank</option>
+            <option value="tempo">Tempo (Kredit)</option>
+          </select>
         </div>
       </div>
       
@@ -170,7 +202,7 @@
                 <td class="p-4 text-center font-medium text-slate-900">
                   {batch.receivedQuantity}
                 </td>
-                <td class="p-4">
+                <td class="p-4 align-top">
                   <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                       <span class="text-slate-500 sm:text-sm">Rp</span>
@@ -178,13 +210,18 @@
                     <input type="number" min="0" bind:value={batch.actualUnitCost} required class="w-full pl-8 pr-2 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-right font-medium">
                   </div>
                 </td>
-                <td class="p-4">
+                <td class="p-4 align-top">
                   <div class="relative">
                     <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
                       <span class="text-slate-500 sm:text-sm">Rp</span>
                     </div>
                     <input type="number" min="0" bind:value={batch.sellingPrice} required class="w-full pl-8 pr-2 py-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-right font-medium">
                   </div>
+                  {#if getMarginWarning(batch)}
+                    <div class="mt-1 text-[10px] text-red-600 font-medium text-right leading-tight">
+                      {getMarginWarning(batch)}
+                    </div>
+                  {/if}
                 </td>
                 <td class="p-4 text-right font-medium text-slate-900">
                   Rp {(batch.receivedQuantity * batch.actualUnitCost).toLocaleString('id-ID')}
