@@ -16,9 +16,17 @@
         subItems: [
           { label: 'Master Catalog', path: '/inventory' },
           { label: 'Suppliers', path: '/inventory/suppliers' },
-          { label: 'Purchase Orders', path: '/inventory/purchasing' },
-          { label: 'Receive PO', path: '/inventory/receive' },
           { label: 'Initial Stock Upload', path: '/inventory/opname' }
+        ]
+      });
+      items.push({ 
+        label: 'Purchasing (Pembelian)', 
+        path: '/inventory/purchasing',
+        subItems: [
+          { label: 'All Purchases', path: '/inventory/purchasing' },
+          { label: 'Purchase Orders', path: '/inventory/purchasing/orders' },
+          { label: 'Goods Receipt', path: '/inventory/purchasing/receipts' },
+          { label: 'Purchase Invoices', path: '/inventory/purchasing/invoices' }
         ]
       });
       items.push({ label: 'Point of Sales', path: '/pos' });
