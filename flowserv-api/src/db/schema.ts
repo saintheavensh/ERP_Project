@@ -793,3 +793,17 @@ export const posInvoiceLinesRelations = relations(posInvoiceLines, ({ one }) => 
 export const paymentMethodsRelations = relations(paymentMethods, ({ one }) => ({
   tenant: one(tenants, { fields: [paymentMethods.tenantId], references: [tenants.id] }),
 }));
+
+export const supplierInvoicesRelations = relations(supplierInvoices, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [supplierInvoices.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [supplierInvoices.branchId], references: [branches.id] }),
+  supplier: one(suppliers, { fields: [supplierInvoices.supplierId], references: [suppliers.id] }),
+  purchaseOrder: one(purchaseOrders, { fields: [supplierInvoices.purchaseOrderId], references: [purchaseOrders.id] }),
+  payments: many(supplierPayments),
+}));
+
+export const supplierPaymentsRelations = relations(supplierPayments, ({ one }) => ({
+  tenant: one(tenants, { fields: [supplierPayments.tenantId], references: [tenants.id] }),
+  supplierInvoice: one(supplierInvoices, { fields: [supplierPayments.supplierInvoiceId], references: [supplierInvoices.id] }),
+  createdBy: one(users, { fields: [supplierPayments.createdBy], references: [users.id] }),
+}));
