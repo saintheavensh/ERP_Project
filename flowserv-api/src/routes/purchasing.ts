@@ -25,7 +25,8 @@ purchasingRouter.get('/orders', async (c) => {
       where: and(...filters),
       orderBy: [desc(purchaseOrders.createdAt)],
       with: {
-        supplier: true
+        supplier: true,
+        supplierInvoices: true
       }
     });
     return successResponse(c, orders);
@@ -44,6 +45,7 @@ purchasingRouter.get('/orders/:id', async (c) => {
       where: and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.tenantId, tenantId)),
       with: {
         supplier: true,
+        supplierInvoices: true,
         purchaseOrderLines: {
           with: {
             inventoryItem: {

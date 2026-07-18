@@ -757,6 +757,7 @@ export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many })
   branch: one(branches, { fields: [purchaseOrders.branchId], references: [branches.id] }),
   supplier: one(suppliers, { fields: [purchaseOrders.supplierId], references: [suppliers.id] }),
   purchaseOrderLines: many(purchaseOrderLines),
+  supplierInvoices: many(supplierInvoices),
 }));
 
 export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one, many }) => ({
