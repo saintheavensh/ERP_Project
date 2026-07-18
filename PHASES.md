@@ -6,7 +6,7 @@
 
 ---
 
-## Current Phase: `PHASE 1` ← UPDATE THIS WHEN MOVING TO NEXT PHASE
+## Current Phase: `PHASE 4 (Purchasing, Supplier Debts, & Margins)` ← IN PROGRESS
 
 ---
 
@@ -138,12 +138,12 @@
 - [ ] 3B.6 FE: Ticket detail page (timeline, current stage, actions)
 
 ### 3C. Inventory + FIFO (BE + FE)
-- [ ] 3C.1 BE: Inventory item CRUD
-- [ ] 3C.2 BE: Batch creation (goods receipt → FIFO batch)
-- [ ] 3C.3 BE: Parts reservation (soft-lock)
-- [ ] 3C.4 BE: Parts consumption (hard deduction, FIFO order)
-- [ ] 3C.5 FE: Inventory list page (stock levels, alerts)
-- [ ] 3C.6 FE: Stock receipt form (add batch)
+- [x] 3C.1 BE: Inventory item CRUD
+- [x] 3C.2 BE: Batch creation (goods receipt → FIFO batch)
+- [x] 3C.3 BE: Parts reservation (soft-lock)
+- [x] 3C.4 BE: Parts consumption (hard deduction, FIFO order)
+- [x] 3C.5 FE: Inventory list page (stock levels, alerts)
+- [x] 3C.6 FE: Stock receipt form (add batch)
 
 ### 3D. POS + Finance (BE + FE)
 - [ ] 3D.1 BE: POS transaction + invoice generation
@@ -160,20 +160,28 @@
 
 ---
 
-## PHASE 4 — RBAC Enforcement + Audit Log (BE + FE)
-> **Goal:** Add permission checks, tenant isolation, and audit trail.
-> **Read first:** specification/03-rbac-roles.md, specification/07-non-functional.md
-> **Branch:** `phase-4/rbac-audit`
+## PHASE 4 — Purchasing, Supplier Debts, & Margins
+> **Goal:** Build Supplier Management, Purchasing (Costing), AP (Hutang), and Dynamic Margin Pricing (Markup vs Gross Margin).
+> **Branch:** `phase-4/purchasing`
 
-- [ ] 4.1 BE: RBAC middleware — `requirePermission(code)` per route
-- [ ] 4.2 BE: Tenant scoping middleware — auto-filter by tenant_id
-- [ ] 4.3 BE: Audit log middleware — record all mutations
-- [ ] 4.4 FE: Role-based sidebar (show/hide menu items per role)
-- [ ] 4.5 FE: Audit log viewer page
-- [ ] 4.6 Seed: assign permissions to default roles
-- [ ] 4.7 Verify: 403 on unauthorized access, audit_logs populated
-- [ ] 4.8 **Unit tests** — permission checks, tenant isolation
-- [ ] 4.9 Git commit: `feat: phase 4 complete — RBAC + audit`
+### 4A. Supplier & Hutang (Accounts Payable)
+- [ ] 4A.1 BE: Create Supplier CRUD routes & schema
+- [ ] 4A.2 FE: Supplier Management page
+- [ ] 4A.3 BE: AP (Accounts Payable) routes for tracking supplier debts
+- [ ] 4A.4 FE: Manajemen Hutang Supplier page (with aging/tempo limits)
+
+### 4B. Purchasing (PO & Costing)
+- [ ] 4B.1 BE: Purchase Order routes (receiving goods, updating stock_batches)
+- [ ] 4B.2 FE: Input Invoice/Costing page (with Payment Method: Tunai, Transfer, Tempo)
+- [ ] 4B.3 BE: Auto-calculate `dueDate` based on Supplier's `paymentTermDays`
+- [ ] 4B.4 FE: Auto-fill due date when selecting 'Tempo'
+
+### 4C. Dynamic Margin Pricing
+- [ ] 4C.1 BE: Add Margin Config (Type: Markup/GrossMargin, Target: X%) to settings/tenant
+- [ ] 4C.2 BE: Update product pricing when new stock arrives (based on new modal/cost & margin config)
+- [ ] 4C.3 FE: Show warning if new price changes drastically or modal > margin limit
+- [ ] 4C.4 FE: Inventory page enhancements (show margin column, filter/sort by margin)
+- [ ] 4C.5 Git commit: `feat: phase 4 complete — purchasing & margins`
 
 ---
 

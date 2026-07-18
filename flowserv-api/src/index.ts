@@ -54,6 +54,12 @@ app.route('/v1/purchasing', purchasingRouter);
 import { opnameRouter } from './routes/opname';
 app.route('/v1/opname', opnameRouter);
 
+import { posRouter } from './routes/pos';
+app.route('/v1/pos', posRouter);
+
+import { settingsRouter } from './routes/settings';
+app.route('/v1/settings', settingsRouter);
+
 // Health Check Endpoint
 app.get('/v1/health', async (c) => {
   let dbStatus = 'disconnected';

@@ -1,0 +1,47 @@
+import { redirect } from '@sveltejs/kit';
+
+export const load = async ({ locals }) => {
+  const token = locals.token;
+  if (!token) throw redirect(302, '/login');
+
+  let branches = [];
+  let inventory = [];
+  let customers = [];
+  let paymentMethods = [];
+
+  try {
+    const brRes = await fetch('http://localhost:3001/v1/branches', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (brRes.ok) branches = (await brRes.json()).data || [];
+
+    const pmRes = await fetch('http://localhost:3001/v1/settings/payment-methods', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (pmRes.ok) paymentMethods = (await pmRes.json()).data || [];
+
+    const invRes = await fetch('http://localhost:3001/v1/inventory', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (invRes.ok) inventory = (await invRes.json()).data || [];
+
+    const custRes = await fetch('http://localhost:3001/v1/customers', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (custRes.ok) customers = (await custRes.json()).data || [];
+    
+  } catch (error) {
+    console.error('Failed to load POS data:', error);
+  }
+
+  // Filter out items that have sellingPrice = 0 (or null)
+  // We only show items that are priced and ready for sale.
+  const products = inventory.filter((i: any) => {
+    // For now we just check if base sellingPrice > 0 OR if any brandPricing > 0
+    const basePrice = parseFloat(i.sellingPrice) || 0;
+    const hasBrandPrices = i.brandPricing && i.brandPricing.some((bp: any) => parseFloat(bp.sellingPrice) > 0);
+    return basePrice > 0 || hasBrandPrices;
+  });
+
+  return { branches, products, customers, paymentMethods, token };
+};

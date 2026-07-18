@@ -16,6 +16,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  numeric,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -62,7 +63,7 @@ export const roles = pgTable('roles', {
   name: text('name').notNull(),
   isCustom: boolean('is_custom').notNull().default(false),
 }, (table) => ({
-  tenantNameUnique: unique('roles_tenant_name_unique').on(table.tenantId, table.name),
+  // tenantNameUnique: unique('roles_tenant_name_unique').on(table.tenantId, table.name),
   tenantIdx: index('roles_tenant_idx').on(table.tenantId),
 }));
 
@@ -219,7 +220,7 @@ export const inventoryItems = pgTable('inventory_items', {
   unresolvedCompatibility: jsonb('unresolved_compatibility').default('[]'), // array of strings for unparsed models
   unitOfMeasure: varchar('unit_of_measure', { length: 20 }).notNull().default('pcs'),
 }, (table) => ({
-  tenantSkuUnique: unique('inventory_items_tenant_sku_unique').on(table.tenantId, table.sku),
+  // tenantSkuUnique: unique('inventory_items_tenant_sku_unique').on(table.tenantId, table.sku),
   tenantIdx: index('inventory_items_tenant_idx').on(table.tenantId),
 }));
 
@@ -242,7 +243,7 @@ export const stockLevels = pgTable('stock_levels', {
   quantityAvailable: integer('quantity_available').notNull().default(0),
   quantityReserved: integer('quantity_reserved').notNull().default(0),
 }, (table) => ({
-  itemBranchUnique: unique('stock_levels_item_branch_unique').on(table.inventoryItemId, table.branchId),
+  // itemBranchUnique: unique('stock_levels_item_branch_unique').on(table.inventoryItemId, table.branchId),
 }));
 
 export const stockMovements = pgTable('stock_movements', {
@@ -441,6 +442,18 @@ export const financeLedgerEntries = pgTable('finance_ledger_entries', {
 }));
 
 // ==========================================================
+// PAYMENT METHODS (Settings)
+// ==========================================================
+
+export const paymentMethods = pgTable('payment_methods', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  name: varchar('name', { length: 50 }).notNull(), // e.g., "Tunai", "BCA", "QRIS", "Tempo"
+  type: varchar('type', { length: 20 }).notNull(), // "cash", "transfer", "qris", "tempo"
+  isActive: boolean('is_active').notNull().default(true),
+});
+
+// ==========================================================
 // AUDIT LOG: lintas modul — siapa melakukan apa, di entitas mana, kapan
 // ==========================================================
 
@@ -506,6 +519,49 @@ export const printerAssignments = pgTable('printer_assignments', {
 }));
 
 // ==========================================================
+// POS & SALES
+// ==========================================================
+
+export const posInvoices = pgTable('pos_invoices', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  branchId: uuid('branch_id').notNull().references(() => branches.id),
+  invoiceNumber: varchar('invoice_number', { length: 50 }).notNull().unique(),
+  customerName: text('customer_name'), // Opsional untuk walk-in tunai, wajib untuk tempo
+  serviceTicketId: uuid('service_ticket_id').references(() => serviceTickets.id),
+  subtotal: numeric('subtotal').notNull().default('0'),
+  discountAmount: numeric('discount_amount').notNull().default('0'),
+  taxAmount: numeric('tax_amount').notNull().default('0'),
+  grandTotal: numeric('grand_total').notNull().default('0'),
+  paymentStatus: varchar('payment_status', { length: 20 }).notNull(), // 'unpaid', 'partial', 'paid'
+  paymentMethod: varchar('payment_method', { length: 20 }).notNull(), // 'cash', 'transfer', 'qris', 'split', 'tempo'
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdBy: uuid('created_by').references(() => users.id),
+}, (table) => ({
+  branchIdx: index('pos_invoices_branch_idx').on(table.branchId),
+  ticketIdx: index('pos_invoices_ticket_idx').on(table.serviceTicketId),
+}));
+
+export const posInvoiceLines = pgTable('pos_invoice_lines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  posInvoiceId: uuid('pos_invoice_id').notNull().references(() => posInvoices.id),
+  inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
+  partBrandId: uuid('part_brand_id').references(() => partBrands.id),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 12, scale: 2 }).notNull(),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull(),
+});
+
+export const posDrafts = pgTable('pos_drafts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  branchId: uuid('branch_id').notNull().references(() => branches.id),
+  name: varchar('name', { length: 100 }).notNull(),
+  cartItems: jsonb('cart_items').notNull(), // array of { inventoryItemId, quantity, unitPrice, name, sku }
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ==============================================================================================
 // RELATIONS (untuk relational query API Drizzle: db.query.x.findMany({ with: {...} }))
 // Tambahkan relasi lain mengikuti pola yang sama kalau dibutuhkan
 // ==========================================================
@@ -599,6 +655,12 @@ export const inventoryItemsRelations = relations(inventoryItems, ({ one, many })
   stockBatches: many(stockBatches),
   compatibility: many(productCompatibility),
   productSuppliers: many(productSuppliers),
+  brandPricing: many(itemBrandPricing),
+}));
+
+export const itemBrandPricingRelations = relations(itemBrandPricing, ({ one }) => ({
+  inventoryItem: one(inventoryItems, { fields: [itemBrandPricing.inventoryItemId], references: [inventoryItems.id] }),
+  partBrand: one(partBrands, { fields: [itemBrandPricing.partBrandId], references: [partBrands.id] }),
 }));
 
 export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
@@ -677,4 +739,21 @@ export const suppliersRelations = relations(suppliers, ({ many }) => ({
 export const supplierBrandsRelations = relations(supplierBrands, ({ one }) => ({
   supplier: one(suppliers, { fields: [supplierBrands.supplierId], references: [suppliers.id] }),
   partBrand: one(partBrands, { fields: [supplierBrands.partBrandId], references: [partBrands.id] }),
+}));
+
+export const posInvoicesRelations = relations(posInvoices, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [posInvoices.tenantId], references: [tenants.id] }),
+  branch: one(branches, { fields: [posInvoices.branchId], references: [branches.id] }),
+  serviceTicket: one(serviceTickets, { fields: [posInvoices.serviceTicketId], references: [serviceTickets.id] }),
+  creator: one(users, { fields: [posInvoices.createdBy], references: [users.id] }),
+  lines: many(posInvoiceLines),
+}));
+
+export const posInvoiceLinesRelations = relations(posInvoiceLines, ({ one }) => ({
+  posInvoice: one(posInvoices, { fields: [posInvoiceLines.posInvoiceId], references: [posInvoices.id] }),
+  inventoryItem: one(inventoryItems, { fields: [posInvoiceLines.inventoryItemId], references: [inventoryItems.id] }),
+}));
+
+export const paymentMethodsRelations = relations(paymentMethods, ({ one }) => ({
+  tenant: one(tenants, { fields: [paymentMethods.tenantId], references: [tenants.id] }),
 }));

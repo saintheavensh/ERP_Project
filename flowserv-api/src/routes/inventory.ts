@@ -26,7 +26,14 @@ inventoryRouter.get('/', async (c) => {
       with: {
         category: true,
         stockLevels: true,
-        compatibility: { columns: { deviceModelId: true } }
+        stockBatches: true,
+        compatibility: { columns: { deviceModelId: true } },
+        brandPricing: {
+          with: {
+            partBrand: true
+          }
+        },
+        partBrand: true
       },
       orderBy: [desc(inventoryItems.sku)]
     });
@@ -36,10 +43,24 @@ inventoryRouter.get('/', async (c) => {
       const totalAvailable = item.stockLevels.reduce((sum, level) => sum + level.quantityAvailable, 0);
       const totalReserved = item.stockLevels.reduce((sum, level) => sum + level.quantityReserved, 0);
       
+      // Calculate stock per brand per branch
+      const brandStock: Record<string, Record<string, number>> = {};
+      if (item.stockBatches) {
+        for (const batch of item.stockBatches) {
+          if (batch.quantityRemaining > 0) {
+            const bId = batch.partBrandId || 'generic';
+            const branchId = batch.branchId;
+            if (!brandStock[branchId]) brandStock[branchId] = {};
+            brandStock[branchId][bId] = (brandStock[branchId][bId] || 0) + batch.quantityRemaining;
+          }
+        }
+      }
+      
       return {
         ...item,
         totalAvailable,
-        totalReserved
+        totalReserved,
+        brandStock
       };
     });
       

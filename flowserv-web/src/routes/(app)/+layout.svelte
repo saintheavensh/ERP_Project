@@ -20,6 +20,8 @@
           { label: 'Initial Stock Upload', path: '/inventory/opname' }
         ]
       });
+      items.push({ label: 'Point of Sales', path: '/pos' });
+      items.push({ label: 'Settings', path: '/settings' });
     } else if (user?.roleId === 'Technician') {
       items.push({ label: 'My Jobs', path: '/tickets' });
     }
