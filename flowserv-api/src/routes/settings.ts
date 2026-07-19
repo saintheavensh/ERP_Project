@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/connection.js';
-import { paymentMethods } from '../db/schema.js';
+import { paymentMethods } from '../db/schema/index.js';
 import { eq } from 'drizzle-orm';
 import { successResponse, errorResponse } from '../lib/response.js';
 import { requireAuth, getAuthContext } from '../middleware/auth.js';

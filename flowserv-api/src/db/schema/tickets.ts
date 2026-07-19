@@ -1,0 +1,86 @@
+import {
+  pgTable,
+  uuid,
+  text,
+  varchar,
+  integer,
+  decimal,
+  timestamp,
+  boolean,
+  jsonb,
+  unique,
+  index,
+  uniqueIndex,
+  primaryKey,
+  numeric,
+} from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+
+import { tenants, branches } from './core';
+import { flowTemplates, flowNodes } from './flow';
+
+
+export const customers = pgTable('customers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  phone: text('phone'),
+  email: text('email'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  tenantIdx: index('customers_tenant_idx').on(table.tenantId),
+}));
+
+export const customerAssets = pgTable('customer_assets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  customerId: uuid('customer_id').notNull().references(() => customers.id),
+  assetType: text('asset_type').notNull(), // "HP", "Motor", "Kulkas", dst — bebas per tenant
+  brand: text('brand'),
+  model: text('model'),
+  serialNumber: text('serial_number'),
+});
+
+export const serviceTickets = pgTable('service_tickets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  branchId: uuid('branch_id').notNull().references(() => branches.id),
+  customerId: uuid('customer_id').notNull().references(() => customers.id),
+  customerAssetId: uuid('customer_asset_id').notNull().references(() => customerAssets.id),
+  flowTemplateId: uuid('flow_template_id').notNull().references(() => flowTemplates.id),
+  currentNodeId: uuid('current_node_id').references(() => flowNodes.id),
+  status: varchar('status', { length: 20 }).notNull().default('open'), // open, closed, cancelled
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  closedAt: timestamp('closed_at'),
+}, (table) => ({
+  tenantBranchIdx: index('service_tickets_tenant_branch_idx').on(table.tenantId, table.branchId),
+}));
+
+export const ticketStageHistory = pgTable('ticket_stage_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ticketId: uuid('ticket_id').notNull().references(() => serviceTickets.id),
+  nodeId: uuid('node_id').notNull().references(() => flowNodes.id),
+  actorId: uuid('actor_id'),
+  notes: text('notes'),
+  enteredAt: timestamp('entered_at').notNull().defaultNow(),
+}, (table) => ({
+  ticketIdx: index('ticket_stage_history_ticket_idx').on(table.ticketId),
+}));
+
+export const approvalRequests = pgTable('approval_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ticketId: uuid('ticket_id').notNull().references(() => serviceTickets.id),
+  requestedAt: timestamp('requested_at').notNull().defaultNow(),
+  respondedAt: timestamp('responded_at'),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  amount: decimal('amount', { precision: 14, scale: 2 }),
+  magicToken: text('magic_token').unique(), // dipakai untuk link approval customer
+});
+
+export const warrantyRecords = pgTable('warranty_records', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ticketId: uuid('ticket_id').notNull().unique().references(() => serviceTickets.id),
+  customerAssetId: uuid('customer_asset_id').notNull().references(() => customerAssets.id),
+  warrantyStart: timestamp('warranty_start').notNull(),
+  warrantyEnd: timestamp('warranty_end').notNull(),
+});
+
