@@ -297,12 +297,14 @@
                         {#if bd.unitCostAvg > 0}
                           <div class="text-sm text-slate-900 font-medium">Rata-rata: Rp {bd.unitCostAvg.toLocaleString('id-ID')}</div>
                           {#if bd.maxCost > bd.minCost}
+                            {@const fluktuasi = ((bd.maxCost - bd.minCost) / bd.minCost * 100)}
                             <div class="text-xs text-slate-500 mt-0.5">
-                              Rentang: Rp {bd.minCost.toLocaleString('id-ID')} - Rp {bd.maxCost.toLocaleString('id-ID')}
+                              Rentang: Rp {bd.minCost.toLocaleString('id-ID')} - Rp {bd.maxCost.toLocaleString('id-ID')} 
+                              <span class="font-semibold text-amber-600">(Naik {fluktuasi.toFixed(1)}%)</span>
                             </div>
                             {@const safeMargin = ((bd.maxCost - bd.unitCostAvg) / bd.unitCostAvg * 100)}
-                            <div class="text-[10px] text-amber-600 font-medium mt-0.5">
-                              Min. Margin Aman: {safeMargin.toFixed(1)}%
+                            <div class="text-[10px] text-blue-600 font-medium mt-1 p-1 bg-blue-50 border border-blue-100 rounded inline-block">
+                              Titik Impas (BEP) Batch Termahal: Margin {safeMargin.toFixed(1)}%
                             </div>
                           {/if}
                         {:else}
