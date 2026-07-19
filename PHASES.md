@@ -177,11 +177,11 @@
 - [ ] 4B.4 FE: Auto-fill due date when selecting 'Tempo'
 
 ### 4C. Dynamic Margin Pricing
-- [ ] 4C.1 BE: Add Margin Config (Type: Markup/GrossMargin, Target: X%) to settings/tenant
-- [ ] 4C.2 BE: Update product pricing when new stock arrives (based on new modal/cost & margin config)
-- [ ] 4C.3 FE: Show warning if new price changes drastically or modal > margin limit
-- [ ] 4C.4 FE: Inventory page enhancements (show margin column, filter/sort by margin)
-- [ ] 4C.5 Git commit: `feat: phase 4 complete — purchasing & margins`
+- [x] 4C.1 BE: Add Margin Config (Type: Markup/GrossMargin, Target: X%) to settings/tenant
+- [x] 4C.2 BE: Update product pricing when new stock arrives (based on new modal/cost & margin config)
+- [x] 4C.3 FE: Show warning if new price changes drastically or modal > margin limit
+- [x] 4C.4 FE: Inventory page enhancements (show margin column, filter/sort by margin)
+- [x] 4C.5 Git commit: `feat: phase 4 complete — purchasing & margins`
 
 ---
 

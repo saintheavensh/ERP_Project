@@ -101,6 +101,8 @@
     } catch (err: any) {
       alert(err.message);
     }
+  }
+
   function getMarginInfo(unitCost: number, sellingPrice: number) {
     if (!unitCost || unitCost <= 0) return { pct: 0, text: 'No Cost Data', color: 'text-slate-400', bg: 'bg-slate-100' };
     const marginAmt = sellingPrice - unitCost;
@@ -160,6 +162,9 @@
       </thead>
       <tbody class="divide-y divide-slate-100">
         {#each inventory as item}
+          {@const cost = parseFloat(item.unitCostAvg || 0)}
+          {@const price = parseFloat(item.sellingPrice || 0)}
+          {@const margin = getMarginInfo(cost, price)}
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="p-4 font-mono text-sm text-slate-500">{item.sku}</td>
             <td class="p-4 font-medium text-slate-900">{item.name}</td>
@@ -175,9 +180,6 @@
               {/if}
             </td>
             <td class="p-4">
-              {@const cost = parseFloat(item.unitCostAvg || 0)}
-              {@const price = parseFloat(item.sellingPrice || 0)}
-              {@const margin = getMarginInfo(cost, price)}
               <div class="flex flex-col gap-1">
                 <div class="text-sm font-bold text-slate-900">Rp {price.toLocaleString('id-ID')}</div>
                 <div class="flex items-center gap-2 text-xs">
