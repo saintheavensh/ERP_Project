@@ -28,8 +28,9 @@
     editingBrandId = null;
   }
 
-  async function saveBrandPrice(brandId: string) {
+  async function saveBrandPrice(brandId: string, customPrice?: number) {
     savingBrand = true;
+    const finalPrice = customPrice !== undefined ? customPrice : editBrandPrice;
     try {
       const res = await fetch(`http://localhost:3001/v1/inventory/${item.id}/brands/${brandId}`, {
         method: 'PUT',
@@ -37,7 +38,7 @@
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${data.token}`
         },
-        body: JSON.stringify({ sellingPrice: editBrandPrice })
+        body: JSON.stringify({ sellingPrice: finalPrice })
       });
       if (!res.ok) {
         const errorData = await res.json();
@@ -148,8 +149,13 @@
     const netProfit = totalOmzet - totalModal;
     const netProfitPct = totalModal > 0 ? (netProfit / totalModal) * 100 : 0;
     
+    // Sort batchDetails by FIFO order (receivedAt ascending)
+    const sortedBatches = batchDetails.sort((a,b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime());
+    
     // Find highest cost for recommendation
     const maxCost = batchDetails.reduce((max, b) => Math.max(max, b.cost), 0);
+    // Find latest cost (the cost of the last batch in FIFO)
+    const latestCost = sortedBatches.length > 0 ? sortedBatches[sortedBatches.length - 1].cost : 0;
 
     return {
       totalQty,
@@ -160,7 +166,8 @@
       totalLabaPositif,
       totalBebanFluktuasi,
       maxCost,
-      batchDetails: batchDetails.sort((a,b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()) // FIFO Order (Oldest First)
+      latestCost,
+      batchDetails: sortedBatches
     };
   });
 
@@ -568,13 +575,13 @@
           
           <!-- Recommendation Block -->
           <div class="bg-white p-3 rounded-lg border border-blue-100 shadow-sm text-sm">
-            <div class="font-semibold text-slate-700 mb-1">Rekomendasi Aman:</div>
+            <div class="font-semibold text-slate-700 mb-1">Rekomendasi Pintar (Target Margin 30%):</div>
             <div class="flex flex-col gap-1">
-              <button onclick={() => simSellingPrice = simData.maxCost} class="text-left text-xs hover:bg-slate-50 p-1 -ml-1 rounded transition-colors text-slate-600">
-                Titik Impas Termahal: <span class="font-bold text-slate-900">Rp {simData.maxCost.toLocaleString('id-ID')}</span>
+              <button onclick={() => simSellingPrice = (simData.totalModal * 1.3) / simData.totalQty} class="text-left text-xs hover:bg-slate-50 p-1 -ml-1 rounded transition-colors text-slate-600">
+                Target 30% Laba Bersih Total: <span class="font-bold text-slate-900">Rp {Math.round((simData.totalModal * 1.3) / simData.totalQty).toLocaleString('id-ID')}</span>
               </button>
-              <button onclick={() => simSellingPrice = simData.maxCost * 1.1} class="text-left text-xs hover:bg-green-50 p-1 -ml-1 rounded transition-colors text-green-700">
-                Min. Untung 10%: <span class="font-bold text-green-800">Rp {(simData.maxCost * 1.1).toLocaleString('id-ID')}</span>
+              <button onclick={() => simSellingPrice = simData.latestCost * 1.3} class="text-left text-xs hover:bg-green-50 p-1 -ml-1 rounded transition-colors text-green-700">
+                Target 30% dari Modal Terbaru: <span class="font-bold text-green-800">Rp {Math.round(simData.latestCost * 1.3).toLocaleString('id-ID')}</span>
               </button>
             </div>
           </div>
@@ -669,10 +676,21 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-5 border-t border-slate-100 bg-slate-50 flex justify-end">
+      <div class="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
         <button onclick={closeSimModal} class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium rounded-lg transition-colors">
-          Tutup Simulasi
+          Batal / Tutup
         </button>
+        {#if simBrandId}
+          <button onclick={() => saveBrandPrice(simBrandId!, simSellingPrice)} disabled={savingBrand} class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2">
+            {#if savingBrand}
+              <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+              Menyimpan...
+            {:else}
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Terapkan sebagai Harga Jual
+            {/if}
+          </button>
+        {/if}
       </div>
     </div>
   </div>
