@@ -329,9 +329,13 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                               </button>
                             </div>
-                            {#if bd.maxCost > 0 && bd.sellingPrice < bd.maxCost}
-                              <div class="text-[10px] text-red-600 font-bold bg-red-50 p-1 rounded border border-red-100 leading-tight">
-                                ⚠️ Harga Jual &lt; Modal Tertinggi!<br>Bisa rugi di laporan harian.
+                            {#if bd.sellingPrice < bd.unitCostAvg}
+                              <div class="text-[10px] text-red-600 font-bold bg-red-50 p-1.5 rounded border border-red-100 leading-tight">
+                                ⚠️ RUGI TOTAL: Harga jual di bawah modal rata-rata!
+                              </div>
+                            {:else if bd.maxCost > 0 && bd.sellingPrice < bd.maxCost}
+                              <div class="text-[10px] text-amber-600 font-bold bg-amber-50 p-1.5 rounded border border-amber-200 leading-tight">
+                                💡 Info: Harga pasar. Laporan harian pada batch termahal akan tercatat sebagai Beban Fluktuasi.
                               </div>
                             {/if}
                           </div>
