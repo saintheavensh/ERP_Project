@@ -103,6 +103,73 @@
     return Object.values(merged);
   }));
 
+  // Pricing Simulator State & Logic
+  let showSimModal = $state(false);
+  let simBrandId = $state<string | null>(null);
+  let simBrandName = $state('');
+  let simSellingPrice = $state(0);
+
+  let simData = $derived.by(() => {
+    if (!showSimModal || !simBrandId || !item.stockBatches) return null;
+    const batches = item.stockBatches.filter((b: any) => b.partBrandId === simBrandId && b.quantityRemaining > 0);
+    if (batches.length === 0) return null;
+
+    let totalQty = 0;
+    let totalOmzet = 0;
+    let totalModal = 0;
+    const batchDetails: any[] = [];
+    
+    let totalLabaPositif = 0;
+    let totalBebanFluktuasi = 0;
+
+    batches.forEach((b: any) => {
+       const qty = b.quantityRemaining;
+       const cost = parseFloat(b.unitCost);
+       const revenue = qty * simSellingPrice;
+       const cogs = qty * cost;
+       const profit = revenue - cogs;
+       
+       totalQty += qty;
+       totalOmzet += revenue;
+       totalModal += cogs;
+
+       if (profit > 0) totalLabaPositif += profit;
+       if (profit < 0) totalBebanFluktuasi += Math.abs(profit);
+
+       batchDetails.push({
+         qty,
+         cost,
+         revenue,
+         profit
+       });
+    });
+
+    const netProfit = totalOmzet - totalModal;
+    const netProfitPct = totalModal > 0 ? (netProfit / totalModal) * 100 : 0;
+
+    return {
+      totalQty,
+      totalOmzet,
+      totalModal,
+      netProfit,
+      netProfitPct,
+      totalLabaPositif,
+      totalBebanFluktuasi,
+      batchDetails: batchDetails.sort((a,b) => a.cost - b.cost)
+    };
+  });
+
+  function openSimModal(brandId: string, name: string, currentPrice: number) {
+    simBrandId = brandId;
+    simBrandName = name;
+    simSellingPrice = currentPrice;
+    showSimModal = true;
+  }
+  
+  function closeSimModal() {
+    showSimModal = false;
+  }
+
   function getBrandMargin(cost: number, price: number) {
     if (!cost) return { pct: 0, color: 'text-slate-400', text: 'No Cost Data', bg: 'bg-slate-100' };
     const pct = ((price - cost) / cost) * 100;
@@ -285,6 +352,7 @@
                     <th class="p-3">Modal & Fluktuasi (HPP)</th>
                     <th class="p-3">Harga Jual Aktual</th>
                     <th class="p-3">Margin (WAC)</th>
+                    <th class="p-3 text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -351,6 +419,12 @@
                         {:else}
                           <span class="text-xs text-slate-400 italic">No Cost Data</span>
                         {/if}
+                      </td>
+                      <td class="p-3 text-right">
+                        <button onclick={() => openSimModal(bd.id, bd.name, bd.sellingPrice)} class="text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded inline-flex items-center gap-1 transition-colors" title="Lihat Proyeksi Laba Bersih">
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                          Simulasi
+                        </button>
                       </td>
                     </tr>
                   {/each}
@@ -459,3 +533,121 @@
     </div>
   {/if}
 </div>
+
+<!-- Simulasi Profit Modal -->
+{#if showSimModal && simData}
+  <div class="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-5 border-b border-slate-100">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900">Simulasi Proyeksi Laba</h2>
+          <p class="text-sm text-slate-500 mt-1">Merk: <span class="font-bold text-slate-700">{simBrandName}</span></p>
+        </div>
+        <button onclick={closeSimModal} class="text-slate-400 hover:text-slate-600 p-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-6">
+        <!-- Input Harga Simulasi -->
+        <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
+          <label class="block text-sm font-semibold text-slate-700 mb-2">Simulasikan Harga Jual per Pcs:</label>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-500 font-medium">Rp</span>
+            <input type="number" bind:value={simSellingPrice} class="w-48 px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-900" min="0" />
+            <span class="text-xs text-slate-500 ml-2">Ganti angka ini untuk melihat perubahan proyeksi di bawah.</span>
+          </div>
+        </div>
+
+        <!-- Ringkasan Eksekutif -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium mb-1">Total Stok</div>
+            <div class="text-lg font-bold text-slate-900">{simData.totalQty} <span class="text-xs font-normal">pcs</span></div>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium mb-1">Potensi Omzet</div>
+            <div class="text-lg font-bold text-blue-600">Rp {simData.totalOmzet.toLocaleString('id-ID')}</div>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="text-xs text-slate-500 font-medium mb-1">Total Modal</div>
+            <div class="text-lg font-bold text-slate-700">Rp {simData.totalModal.toLocaleString('id-ID')}</div>
+          </div>
+          <div class="p-4 {simData.netProfit >= 0 ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'} rounded-lg border">
+            <div class="text-xs text-slate-500 font-medium mb-1">Laba Bersih Akhir</div>
+            <div class="text-lg font-bold {simData.netProfit >= 0 ? 'text-green-700' : 'text-red-700'}">
+              {simData.netProfit >= 0 ? '+' : ''}Rp {simData.netProfit.toLocaleString('id-ID')}
+            </div>
+            <div class="text-xs font-bold mt-1 {simData.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}">
+              Margin: {simData.netProfitPct.toFixed(1)}%
+            </div>
+          </div>
+        </div>
+
+        <!-- Pembedahan Laba / Beban -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Rincian Komponen Laba Bersih</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 rounded-lg bg-green-50/50 border border-green-100">
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                <h4 class="font-bold text-green-800">Total Profit Positif</h4>
+              </div>
+              <p class="text-xs text-green-700 mb-2">Laba yang dikumpulkan dari batch-batch dengan modal murah.</p>
+              <div class="text-xl font-black text-green-600">+ Rp {simData.totalLabaPositif.toLocaleString('id-ID')}</div>
+            </div>
+
+            <div class="p-4 rounded-lg bg-amber-50/50 border border-amber-100">
+              <div class="flex items-center gap-2 mb-2">
+                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path></svg>
+                <h4 class="font-bold text-amber-800">Beban Fluktuasi</h4>
+              </div>
+              <p class="text-xs text-amber-700 mb-2">Kerugian yang disubsidi dari profit di atas (karena ada batch mahal).</p>
+              <div class="text-xl font-black text-amber-600">- Rp {simData.totalBebanFluktuasi.toLocaleString('id-ID')}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rincian per Batch -->
+        <div>
+          <h3 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Rincian Penjualan per Batch (FIFO)</h3>
+          <div class="border border-slate-200 rounded-lg overflow-hidden">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-slate-50 text-slate-500 font-medium">
+                <tr>
+                  <th class="p-3">Sisa Stok</th>
+                  <th class="p-3">Harga Modal (HPP)</th>
+                  <th class="p-3">Status Profit</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                {#each simData.batchDetails as b, i}
+                  <tr class="hover:bg-slate-50">
+                    <td class="p-3 font-semibold text-slate-900">{b.qty} <span class="font-normal text-slate-500">pcs</span></td>
+                    <td class="p-3 text-slate-600">Rp {b.cost.toLocaleString('id-ID')}</td>
+                    <td class="p-3">
+                      {#if b.profit >= 0}
+                        <span class="text-green-600 font-bold">+ Rp {b.profit.toLocaleString('id-ID')}</span>
+                      {:else}
+                        <span class="text-amber-600 font-bold bg-amber-50 px-2 py-0.5 rounded">- Rp {Math.abs(b.profit).toLocaleString('id-ID')}</span>
+                      {/if}
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-5 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <button onclick={closeSimModal} class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-medium rounded-lg transition-colors">
+          Tutup Simulasi
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
