@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../db/connection';
-import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines } from '../db/schema';
+import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing } from '../db/schema';
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
