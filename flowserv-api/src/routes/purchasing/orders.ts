@@ -9,6 +9,139 @@ import { z } from 'zod';
 
 const router = new Hono();
 
+// GET /v1/purchasing/orders
+router.get('/orders', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const status = c.req.query('status');
+  
+  try {
+    const filters = [eq(purchaseOrders.tenantId, tenantId)];
+    if (status) {
+      filters.push(eq(purchaseOrders.status, status));
+    }
+    
+    const orders = await db.query.purchaseOrders.findMany({
+      where: and(...filters),
+      orderBy: [desc(purchaseOrders.createdAt)],
+      with: {
+        supplier: true,
+        supplierInvoices: true
+      }
+    });
+    return successResponse(c, orders);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch purchase orders', [err.message]);
+  }
+});
+
+// GET /v1/purchasing/orders/:id
+router.get('/orders/:id', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const orderId = c.req.param('id');
+  
+  try {
+    const order = await db.query.purchaseOrders.findFirst({
+      where: and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.tenantId, tenantId)),
+      with: {
+        supplier: true,
+        supplierInvoices: true,
+        purchaseOrderLines: {
+          with: {
+            inventoryItem: {
+              with: {
+                category: true
+              }
+            },
+            stockBatches: {
+              with: {
+                partBrand: true
+              }
+            }
+          }
+        }
+      }
+    });
+    if (!order) return errorResponse(c, 'NOT_FOUND', 'Order not found', [], 404);
+    return successResponse(c, order);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch order', [err.message]);
+  }
+});
+
+// POST /v1/purchasing/orders
+const createOrderSchema = z.object({
+  branchId: z.string().uuid(),
+  supplierId: z.string().uuid(),
+  expectedDeliveryDate: z.string().optional(),
+  lines: z.array(z.object({
+    inventoryItemId: z.string().uuid(),
+    quantity: z.number().min(1),
+    unitPrice: z.number().min(0).optional().default(0) // Estimated, now optional
+  })).min(1)
+});
+
+router.post('/orders', zValidator('json', createOrderSchema), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const data = c.req.valid('json');
+  
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Calculate estimated total
+      const estimatedTotal = data.lines.reduce((acc, line) => acc + (line.quantity * line.unitPrice), 0);
+      
+      const [order] = await tx.insert(purchaseOrders).values({
+        tenantId,
+        branchId: data.branchId,
+        supplierId: data.supplierId,
+        poNumber: `PO-${Date.now().toString().slice(-6)}`, // simple generator
+        status: 'draft',
+        expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
+        estimatedTotal: estimatedTotal.toString(),
+        createdBy: userId // User UUID
+      }).returning();
+      
+      const lineValues = data.lines.map(line => ({
+        purchaseOrderId: order.id,
+        inventoryItemId: line.inventoryItemId,
+        quantity: line.quantity,
+        unitPrice: line.unitPrice.toString()
+      }));
+      
+      await tx.insert(purchaseOrderLines).values(lineValues);
+      
+      return order;
+    });
+    
+    return successResponse(c, result, undefined, 201);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to create purchase order', [err.message]);
+  }
+});
+
+// PUT /v1/purchasing/orders/:id/status
+const updateStatusSchema = z.object({
+  status: z.enum(['draft', 'ordered', 'received', 'completed'])
+});
+
+router.put('/orders/:id/status', zValidator('json', updateStatusSchema), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const orderId = c.req.param('id');
+  const { status } = c.req.valid('json');
+  
+  try {
+    const [updated] = await db.update(purchaseOrders)
+      .set({ status })
+      .where(and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.tenantId, tenantId)))
+      .returning();
+      
+    if (!updated) return errorResponse(c, 'NOT_FOUND', 'Order not found', [], 404);
+    
+    return successResponse(c, updated);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update status', [err.message]);
+  }
+});
+
 // DELETE /v1/purchasing/orders/:id
 router.delete('/orders/:id', async (c) => {
   const { tenantId } = getAuthContext(c);

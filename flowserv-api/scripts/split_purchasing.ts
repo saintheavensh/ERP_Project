@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const purchasingFile = path.join(__dirname, '../src/routes/purchasing.ts');
+const purchasingFile = path.join(__dirname, 'original_purchasing.ts');
 const purchasingDir = path.join(__dirname, '../src/routes/purchasing');
 
 if (!fs.existsSync(purchasingDir)) {
@@ -34,7 +34,7 @@ const extractRoute = (commentMarker: string, endMarker: string) => {
 const ordersContent = 
   topImports + 
   `const router = new Hono();\n\n` + 
-  extractRoute('GET /v1/purchasing/orders\n', 'POST /v1/purchasing/orders/:id/receive') +
+  extractRoute('GET /v1/purchasing/orders', 'POST /v1/purchasing/orders/:id/receive') +
   extractRoute('DELETE /v1/purchasing/orders/:id', 'export {') +
   `export { router as ordersRouter };\n`;
 
