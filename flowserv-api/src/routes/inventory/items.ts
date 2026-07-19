@@ -1,17 +1,16 @@
 import { Hono } from 'hono';
-import { db } from '../db/connection';
-import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing } from '../db/schema';
+import { db } from '../../db/connection';
+import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing } from '../../db/schema/index';
 import { eq, desc, and, gt } from 'drizzle-orm';
-import { requireAuth, getAuthContext } from '../middleware/auth';
-import { successResponse, errorResponse } from '../lib/response';
+import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
-const inventoryRouter = new Hono();
-inventoryRouter.use('*', requireAuth);
+const router = new Hono();
 
 // GET /v1/inventory (List all SKUs)
-inventoryRouter.get('/', async (c) => {
+router.get('/', async (c) => {
   const { tenantId } = getAuthContext(c);
   const uninitialized = c.req.query('uninitialized');
   
@@ -81,7 +80,7 @@ const createItemSchema = z.object({
   reorderPoint: z.number().default(0)
 });
 
-inventoryRouter.post('/', zValidator('json', createItemSchema), async (c) => {
+router.post('/', zValidator('json', createItemSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -109,7 +108,7 @@ inventoryRouter.post('/', zValidator('json', createItemSchema), async (c) => {
         where: eq(deviceBrands.tenantId, tenantId)
       });
       
-      const { parseCompatibilityStrings } = await import('../utils/compatibilityParser');
+      const { parseCompatibilityStrings } = await import('../../utils/compatibilityParser');
       const parsedModels = parseCompatibilityStrings(data.name, allBrands);
       
       const resolvedModelIds: string[] = [];
@@ -173,8 +172,9 @@ inventoryRouter.post('/', zValidator('json', createItemSchema), async (c) => {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to create inventory item', [err.message]);
   }
 });
+
 // GET /v1/inventory/:id (Get single item with details)
-inventoryRouter.get('/:id', async (c) => {
+router.get('/:id', async (c) => {
   const { tenantId } = getAuthContext(c);
   const itemId = c.req.param('id');
   
@@ -212,165 +212,8 @@ inventoryRouter.get('/:id', async (c) => {
   }
 });
 
-// PUT /v1/inventory/:id/compatibility (Update resolved/unresolved compatibility)
-const updateCompatibilitySchema = z.object({
-  resolvedModelIds: z.array(z.string().uuid()),
-  unresolvedCompatibility: z.array(z.string())
-});
-
-inventoryRouter.put('/:id/compatibility', zValidator('json', updateCompatibilitySchema), async (c) => {
-  const { tenantId } = getAuthContext(c);
-  const itemId = c.req.param('id');
-  const data = c.req.valid('json');
-
-  try {
-    await db.transaction(async (tx) => {
-      // Clear existing compatibility
-      await tx.delete(productCompatibility).where(eq(productCompatibility.inventoryItemId, itemId));
-      
-      // Insert new compatibility
-      if (data.resolvedModelIds.length > 0) {
-        const uniqueIds = [...new Set(data.resolvedModelIds)];
-        for (const modelId of uniqueIds) {
-          await tx.insert(productCompatibility).values({
-            inventoryItemId: itemId,
-            deviceModelId: modelId
-          });
-        }
-      }
-
-      // Update unresolved
-      await tx.update(inventoryItems)
-        .set({ unresolvedCompatibility: data.unresolvedCompatibility })
-        .where(and(
-          eq(inventoryItems.id, itemId),
-          eq(inventoryItems.tenantId, tenantId)
-        ));
-    });
-
-    return successResponse(c, { message: 'Compatibility updated' });
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update compatibility', [err.message]);
-  }
-});
-
-// PUT /v1/inventory/:id/brands/:brandId (Update Selling Price for a Brand)
-const updateBrandPriceSchema = z.object({
-  sellingPrice: z.number().min(0)
-});
-
-inventoryRouter.put('/:id/brands/:brandId', zValidator('json', updateBrandPriceSchema), async (c) => {
-  const { tenantId } = getAuthContext(c);
-  const itemId = c.req.param('id');
-  const brandId = c.req.param('brandId');
-  const data = c.req.valid('json');
-
-  try {
-    await db.transaction(async (tx) => {
-      // Check if it exists
-      const existing = await tx.select().from(itemBrandPricing).where(
-        and(
-          eq(itemBrandPricing.inventoryItemId, itemId),
-          eq(itemBrandPricing.partBrandId, brandId),
-          eq(itemBrandPricing.tenantId, tenantId)
-        )
-      );
-
-      if (existing.length > 0) {
-        await tx.update(itemBrandPricing)
-          .set({ sellingPrice: data.sellingPrice.toString(), updatedAt: new Date() })
-          .where(eq(itemBrandPricing.id, existing[0].id));
-      } else {
-        await tx.insert(itemBrandPricing).values({
-          tenantId,
-          inventoryItemId: itemId,
-          partBrandId: brandId,
-          sellingPrice: data.sellingPrice.toString()
-        });
-      }
-    });
-
-    return successResponse(c, { message: 'Brand price updated' });
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update brand price', [err.message]);
-  }
-});
-// POST /v1/inventory/:id/receive (Goods Receipt)
-const receiveStockSchema = z.object({
-  branchId: z.string().uuid(),
-  supplierId: z.string().uuid(),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
-  unitCost: z.number().min(0, 'Unit cost cannot be negative')
-});
-
-inventoryRouter.post('/:id/receive', zValidator('json', receiveStockSchema), async (c) => {
-  const { tenantId } = getAuthContext(c);
-  const inventoryItemId = c.req.param('id');
-  const data = c.req.valid('json');
-  
-  try {
-    // DB Transaction for atomicity
-    const result = await db.transaction(async (tx) => {
-      // 1. Create Stock Batch (FIFO Tracking)
-      const [batch] = await tx.insert(stockBatches).values({
-        tenantId,
-        branchId: data.branchId,
-        inventoryItemId,
-        supplierId: data.supplierId,
-        unitCost: data.unitCost.toString(),
-        quantityReceived: data.quantity,
-        quantityRemaining: data.quantity
-      }).returning();
-      
-      // 2. Create Stock Movement (Ledger/Audit)
-      await tx.insert(stockMovements).values({
-        tenantId,
-        branchId: data.branchId,
-        inventoryItemId,
-        stockBatchId: batch.id,
-        movementType: 'in', // Goods Receipt
-        quantity: data.quantity,
-        referenceType: 'manual_receipt'
-      });
-      
-      // 3. Upsert Stock Level (Current Total)
-      const existingLevels = await tx.select().from(stockLevels).where(
-        and(
-          eq(stockLevels.inventoryItemId, inventoryItemId),
-          eq(stockLevels.branchId, data.branchId)
-        )
-      );
-      
-      if (existingLevels.length > 0) {
-        // Update existing
-        await tx.update(stockLevels)
-          .set({ quantityAvailable: existingLevels[0].quantityAvailable + data.quantity })
-          .where(eq(stockLevels.id, existingLevels[0].id));
-      } else {
-        // Insert new
-        await tx.insert(stockLevels).values({
-          inventoryItemId,
-          branchId: data.branchId,
-          quantityAvailable: data.quantity,
-          quantityReserved: 0
-        });
-      }
-      
-      // Note: Ideally we also recalculate the `unitCostAvg` in `inventoryItems` here.
-      // Weighted Average Cost formula = (Current Qty * Current Avg + New Qty * New Cost) / (Current Qty + New Qty)
-      // We will skip that complex math for MVP or just update it naively.
-      
-      return batch;
-    });
-    
-    return successResponse(c, result, undefined, 201);
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to receive stock', [err.message]);
-  }
-});
-
 // DELETE /v1/inventory/:id
-inventoryRouter.delete('/:id', async (c) => {
+router.delete('/:id', async (c) => {
   const { tenantId } = getAuthContext(c);
   const inventoryItemId = c.req.param('id');
   
@@ -417,4 +260,5 @@ inventoryRouter.delete('/:id', async (c) => {
   }
 });
 
-export { inventoryRouter };
+
+export { router as itemsRouter };
