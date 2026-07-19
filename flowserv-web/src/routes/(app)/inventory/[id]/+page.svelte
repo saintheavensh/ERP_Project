@@ -149,6 +149,10 @@
     const netProfit = totalOmzet - totalModal;
     const netProfitPct = totalModal > 0 ? (netProfit / totalModal) * 100 : 0;
     
+    // Dynamic margin configuration from DB
+    const targetMarginPct = parseFloat(item.targetMargin || item.category?.targetMargin || '30');
+    const targetMultiplier = 1 + (targetMarginPct / 100);
+    
     // Sort batchDetails by FIFO order (receivedAt ascending)
     const sortedBatches = batchDetails.sort((a,b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime());
     
@@ -167,6 +171,8 @@
       totalBebanFluktuasi,
       maxCost,
       latestCost,
+      targetMarginPct,
+      targetMultiplier,
       batchDetails: sortedBatches
     };
   });
@@ -575,13 +581,13 @@
           
           <!-- Recommendation Block -->
           <div class="bg-white p-3 rounded-lg border border-blue-100 shadow-sm text-sm">
-            <div class="font-semibold text-slate-700 mb-1">Rekomendasi Pintar (Target Margin 30%):</div>
+            <div class="font-semibold text-slate-700 mb-1">Rekomendasi Pintar (Target Margin {simData.targetMarginPct}%):</div>
             <div class="flex flex-col gap-1">
-              <button onclick={() => simSellingPrice = (simData.totalModal * 1.3) / simData.totalQty} class="text-left text-xs hover:bg-slate-50 p-1 -ml-1 rounded transition-colors text-slate-600">
-                Target 30% Laba Bersih Total: <span class="font-bold text-slate-900">Rp {Math.round((simData.totalModal * 1.3) / simData.totalQty).toLocaleString('id-ID')}</span>
+              <button onclick={() => simSellingPrice = (simData.totalModal * simData.targetMultiplier) / simData.totalQty} class="text-left text-xs hover:bg-slate-50 p-1 -ml-1 rounded transition-colors text-slate-600">
+                Target {simData.targetMarginPct}% Laba Bersih Total: <span class="font-bold text-slate-900">Rp {Math.round((simData.totalModal * simData.targetMultiplier) / simData.totalQty).toLocaleString('id-ID')}</span>
               </button>
-              <button onclick={() => simSellingPrice = simData.latestCost * 1.3} class="text-left text-xs hover:bg-green-50 p-1 -ml-1 rounded transition-colors text-green-700">
-                Target 30% dari Modal Terbaru: <span class="font-bold text-green-800">Rp {Math.round(simData.latestCost * 1.3).toLocaleString('id-ID')}</span>
+              <button onclick={() => simSellingPrice = simData.latestCost * simData.targetMultiplier} class="text-left text-xs hover:bg-green-50 p-1 -ml-1 rounded transition-colors text-green-700">
+                Target {simData.targetMarginPct}% dari Modal Terbaru: <span class="font-bold text-green-800">Rp {Math.round(simData.latestCost * simData.targetMultiplier).toLocaleString('id-ID')}</span>
               </button>
             </div>
           </div>
