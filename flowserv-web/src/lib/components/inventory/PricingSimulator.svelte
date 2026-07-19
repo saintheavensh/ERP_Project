@@ -15,6 +15,7 @@
     onApplyPrice: (brandId: string, price: number) => void
   }>();
 
+  // svelte-ignore state_referenced_locally
   let simSellingPrice = $state(initialSellingPrice);
   let savingBrand = $state(false);
 
