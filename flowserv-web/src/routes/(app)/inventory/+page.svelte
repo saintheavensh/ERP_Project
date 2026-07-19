@@ -103,24 +103,76 @@
     }
   }
 
-  function getMarginInfo(unitCost: number, sellingPrice: number) {
-    if (!unitCost || unitCost <= 0) return { pct: 0, text: 'No Cost Data', color: 'text-slate-400', bg: 'bg-slate-100' };
-    const marginAmt = sellingPrice - unitCost;
-    const marginPct = (marginAmt / unitCost) * 100;
-    
-    let color = 'text-green-700';
-    let bg = 'bg-green-100';
-    if (marginPct < 0) {
-      color = 'text-red-700';
-      bg = 'bg-red-100';
-    } else if (marginPct < 15) {
-      color = 'text-orange-700';
-      bg = 'bg-orange-100';
+  function getMarginInfo(item: any) {
+    if (!item.brandPricing || item.brandPricing.length === 0) {
+      // Single price mode
+      const cost = parseFloat(item.unitCostAvg || 0);
+      const price = parseFloat(item.sellingPrice || 0);
+      if (!cost || cost <= 0) return { type: 'single', costText: `HPP: Rp ${cost.toLocaleString('id-ID')}`, priceText: `Rp ${price.toLocaleString('id-ID')}`, pct: 0, text: 'No Cost Data', color: 'text-slate-400', bg: 'bg-slate-100' };
+      const marginPct = ((price - cost) / cost) * 100;
+      let color = marginPct < 0 ? 'text-red-700' : marginPct < 15 ? 'text-orange-700' : 'text-green-700';
+      let bg = marginPct < 0 ? 'bg-red-100' : marginPct < 15 ? 'bg-orange-100' : 'bg-green-100';
+      return {
+        type: 'single',
+        priceText: `Rp ${price.toLocaleString('id-ID')}`,
+        costText: `HPP: Rp ${cost.toLocaleString('id-ID')}`,
+        pct: marginPct,
+        text: `${marginPct > 0 ? '+' : ''}${marginPct.toFixed(1)}%`,
+        color, bg
+      };
     }
     
+    // Range mode
+    const brandCosts: Record<string, { totalCost: number, totalQty: number }> = {};
+    if (item.stockBatches) {
+      item.stockBatches.forEach((b: any) => {
+        if (b.quantityRemaining > 0 && b.partBrandId) {
+          if (!brandCosts[b.partBrandId]) brandCosts[b.partBrandId] = { totalCost: 0, totalQty: 0 };
+          brandCosts[b.partBrandId].totalCost += parseFloat(b.unitCost) * b.quantityRemaining;
+          brandCosts[b.partBrandId].totalQty += b.quantityRemaining;
+        }
+      });
+    }
+
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+    let minMargin = Infinity;
+    let maxMargin = -Infinity;
+
+    item.brandPricing.forEach((bp: any) => {
+      const price = parseFloat(bp.sellingPrice || 0);
+      minPrice = Math.min(minPrice, price);
+      maxPrice = Math.max(maxPrice, price);
+      
+      const bCostData = brandCosts[bp.partBrandId];
+      if (bCostData && bCostData.totalQty > 0) {
+        const cost = bCostData.totalCost / bCostData.totalQty;
+        const marginPct = ((price - cost) / cost) * 100;
+        minMargin = Math.min(minMargin, marginPct);
+        maxMargin = Math.max(maxMargin, marginPct);
+      }
+    });
+
+    if (minPrice === Infinity) {
+      const p = parseFloat(item.sellingPrice || 0);
+      minPrice = p; maxPrice = p;
+    }
+
+    let priceText = minPrice === maxPrice ? `Rp ${minPrice.toLocaleString('id-ID')}` : `Rp ${minPrice.toLocaleString('id-ID')} - Rp ${maxPrice.toLocaleString('id-ID')}`;
+    
+    if (minMargin === Infinity) {
+       return { type: 'range', priceText, costText: 'HPP: Multi-brand', text: 'No Cost Data', color: 'text-slate-400', bg: 'bg-slate-100' };
+    }
+
+    let marginText = minMargin.toFixed(1) === maxMargin.toFixed(1) ? `${minMargin > 0 ? '+' : ''}${minMargin.toFixed(1)}%` : `${minMargin.toFixed(1)}% s/d ${maxMargin.toFixed(1)}%`;
+    let color = minMargin < 0 ? 'text-red-700' : minMargin < 15 ? 'text-orange-700' : 'text-green-700';
+    let bg = minMargin < 0 ? 'bg-red-100' : minMargin < 15 ? 'bg-orange-100' : 'bg-green-100';
+
     return {
-      pct: marginPct,
-      text: `${marginPct > 0 ? '+' : ''}${marginPct.toFixed(1)}%`,
+      type: 'range',
+      priceText,
+      costText: `HPP: Multi-brand`,
+      text: marginText,
       color,
       bg
     };
@@ -162,9 +214,7 @@
       </thead>
       <tbody class="divide-y divide-slate-100">
         {#each inventory as item}
-          {@const cost = parseFloat(item.unitCostAvg || 0)}
-          {@const price = parseFloat(item.sellingPrice || 0)}
-          {@const margin = getMarginInfo(cost, price)}
+          {@const margin = getMarginInfo(item)}
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="p-4 font-mono text-sm text-slate-500">{item.sku}</td>
             <td class="p-4 font-medium text-slate-900">{item.name}</td>
@@ -181,10 +231,10 @@
             </td>
             <td class="p-4">
               <div class="flex flex-col gap-1">
-                <div class="text-sm font-bold text-slate-900">Rp {price.toLocaleString('id-ID')}</div>
+                <div class="text-sm font-bold text-slate-900">{margin.priceText}</div>
                 <div class="flex items-center gap-2 text-xs">
-                  <span class="text-slate-500">HPP: Rp {cost.toLocaleString('id-ID')}</span>
-                  {#if cost > 0}
+                  <span class="text-slate-500">{margin.costText}</span>
+                  {#if margin.text !== 'No Cost Data'}
                     <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold {margin.bg} {margin.color}">
                       {margin.text}
                     </span>

@@ -196,6 +196,11 @@ inventoryRouter.get('/:id', async (c) => {
               with: { deviceBrand: true }
             }
           }
+        },
+        brandPricing: {
+          with: {
+            partBrand: true
+          }
         }
       }
     });
@@ -246,6 +251,48 @@ inventoryRouter.put('/:id/compatibility', zValidator('json', updateCompatibility
     return successResponse(c, { message: 'Compatibility updated' });
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update compatibility', [err.message]);
+  }
+});
+
+// PUT /v1/inventory/:id/brands/:brandId (Update Selling Price for a Brand)
+const updateBrandPriceSchema = z.object({
+  sellingPrice: z.number().min(0)
+});
+
+inventoryRouter.put('/:id/brands/:brandId', zValidator('json', updateBrandPriceSchema), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const itemId = c.req.param('id');
+  const brandId = c.req.param('brandId');
+  const data = c.req.valid('json');
+
+  try {
+    await db.transaction(async (tx) => {
+      // Check if it exists
+      const existing = await tx.select().from(itemBrandPricing).where(
+        and(
+          eq(itemBrandPricing.inventoryItemId, itemId),
+          eq(itemBrandPricing.partBrandId, brandId),
+          eq(itemBrandPricing.tenantId, tenantId)
+        )
+      );
+
+      if (existing.length > 0) {
+        await tx.update(itemBrandPricing)
+          .set({ sellingPrice: data.sellingPrice.toString(), updatedAt: new Date() })
+          .where(eq(itemBrandPricing.id, existing[0].id));
+      } else {
+        await tx.insert(itemBrandPricing).values({
+          tenantId,
+          inventoryItemId: itemId,
+          partBrandId: brandId,
+          sellingPrice: data.sellingPrice.toString()
+        });
+      }
+    });
+
+    return successResponse(c, { message: 'Brand price updated' });
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update brand price', [err.message]);
   }
 });
 // POST /v1/inventory/:id/receive (Goods Receipt)
