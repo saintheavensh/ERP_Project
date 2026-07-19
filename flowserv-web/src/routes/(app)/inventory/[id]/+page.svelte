@@ -54,15 +54,18 @@
     if (!item) return [];
     
     // Group costs from stockBatches
-    const costs: Record<string, { totalCost: number, totalQty: number, name: string }> = {};
+    const costs: Record<string, { totalCost: number, totalQty: number, name: string, maxCost: number, minCost: number }> = {};
     if (item.stockBatches) {
       item.stockBatches.forEach((b: any) => {
         if (b.quantityRemaining > 0 && b.partBrandId) {
           if (!costs[b.partBrandId]) {
-            costs[b.partBrandId] = { totalCost: 0, totalQty: 0, name: b.partBrand?.name || 'Tanpa Merk' };
+            costs[b.partBrandId] = { totalCost: 0, totalQty: 0, name: b.partBrand?.name || 'Tanpa Merk', maxCost: -Infinity, minCost: Infinity };
           }
-          costs[b.partBrandId].totalCost += parseFloat(b.unitCost) * b.quantityRemaining;
+          const uCost = parseFloat(b.unitCost);
+          costs[b.partBrandId].totalCost += uCost * b.quantityRemaining;
           costs[b.partBrandId].totalQty += b.quantityRemaining;
+          costs[b.partBrandId].maxCost = Math.max(costs[b.partBrandId].maxCost, uCost);
+          costs[b.partBrandId].minCost = Math.min(costs[b.partBrandId].minCost, uCost);
         }
       });
     }
@@ -74,6 +77,8 @@
         id: bId,
         name: costs[bId].name,
         unitCostAvg: costs[bId].totalCost / costs[bId].totalQty,
+        maxCost: costs[bId].maxCost,
+        minCost: costs[bId].minCost,
         stock: costs[bId].totalQty,
         sellingPrice: parseFloat(item.sellingPrice) // fallback
       };
@@ -86,6 +91,8 @@
              id: bp.partBrandId,
              name: bp.partBrand?.name || 'Tanpa Merk',
              unitCostAvg: 0,
+             maxCost: 0,
+             minCost: 0,
              stock: 0
            };
         }
@@ -275,9 +282,9 @@
                   <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
                     <th class="p-3">Merk (Brand)</th>
                     <th class="p-3">Stok</th>
-                    <th class="p-3">Modal Rata-Rata (HPP)</th>
+                    <th class="p-3">Modal & Fluktuasi (HPP)</th>
                     <th class="p-3">Harga Jual Aktual</th>
-                    <th class="p-3">Margin</th>
+                    <th class="p-3">Margin (WAC)</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -286,8 +293,21 @@
                     <tr class="hover:bg-slate-50 transition-colors group">
                       <td class="p-3 font-medium text-slate-900">{bd.name}</td>
                       <td class="p-3 font-semibold {bd.stock > 0 ? 'text-slate-900' : 'text-slate-400'}">{bd.stock}</td>
-                      <td class="p-3 text-slate-600">
-                        {bd.unitCostAvg > 0 ? `Rp ${bd.unitCostAvg.toLocaleString('id-ID')}` : '-'}
+                      <td class="p-3">
+                        {#if bd.unitCostAvg > 0}
+                          <div class="text-sm text-slate-900 font-medium">Rata-rata: Rp {bd.unitCostAvg.toLocaleString('id-ID')}</div>
+                          {#if bd.maxCost > bd.minCost}
+                            <div class="text-xs text-slate-500 mt-0.5">
+                              Rentang: Rp {bd.minCost.toLocaleString('id-ID')} - Rp {bd.maxCost.toLocaleString('id-ID')}
+                            </div>
+                            {@const safeMargin = ((bd.maxCost - bd.unitCostAvg) / bd.unitCostAvg * 100)}
+                            <div class="text-[10px] text-amber-600 font-medium mt-0.5">
+                              Min. Margin Aman: {safeMargin.toFixed(1)}%
+                            </div>
+                          {/if}
+                        {:else}
+                          <span class="text-slate-500">-</span>
+                        {/if}
                       </td>
                       <td class="p-3">
                         {#if editingBrandId === bd.id}
@@ -302,11 +322,18 @@
                             </button>
                           </div>
                         {:else}
-                          <div class="flex items-center justify-between group-hover:bg-blue-50/50 rounded -mx-2 px-2 py-1">
-                            <span class="font-bold text-slate-900">Rp {bd.sellingPrice.toLocaleString('id-ID')}</span>
-                            <button onclick={() => startEditBrand(bd.id, bd.sellingPrice)} class="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-blue-100 rounded" title="Edit Harga Jual">
-                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                            </button>
+                          <div class="flex flex-col gap-1">
+                            <div class="flex items-center justify-between group-hover:bg-blue-50/50 rounded -mx-2 px-2 py-1">
+                              <span class="font-bold text-slate-900">Rp {bd.sellingPrice.toLocaleString('id-ID')}</span>
+                              <button onclick={() => startEditBrand(bd.id, bd.sellingPrice)} class="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-blue-100 rounded" title="Edit Harga Jual">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                              </button>
+                            </div>
+                            {#if bd.maxCost > 0 && bd.sellingPrice < bd.maxCost}
+                              <div class="text-[10px] text-red-600 font-bold bg-red-50 p-1 rounded border border-red-100 leading-tight">
+                                ⚠️ Harga Jual &lt; Modal Tertinggi!<br>Bisa rugi di laporan harian.
+                              </div>
+                            {/if}
                           </div>
                         {/if}
                       </td>
