@@ -126,7 +126,10 @@ opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
         
         const wac = totalRemaining > 0 ? (totalValue / totalRemaining).toString() : '0';
         
-        let updateData: any = { unitCostAvg: wac, isStockInitialized: true };
+        let updateData: { unitCostAvg: string; isStockInitialized: boolean; sellingPrice?: string } = { 
+          unitCostAvg: wac, 
+          isStockInitialized: true 
+        };
         if (item.sellingPrice !== undefined) {
           updateData.sellingPrice = item.sellingPrice.toString();
         }
