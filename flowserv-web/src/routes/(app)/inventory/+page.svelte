@@ -101,6 +101,27 @@
     } catch (err: any) {
       alert(err.message);
     }
+  function getMarginInfo(unitCost: number, sellingPrice: number) {
+    if (!unitCost || unitCost <= 0) return { pct: 0, text: 'No Cost Data', color: 'text-slate-400', bg: 'bg-slate-100' };
+    const marginAmt = sellingPrice - unitCost;
+    const marginPct = (marginAmt / unitCost) * 100;
+    
+    let color = 'text-green-700';
+    let bg = 'bg-green-100';
+    if (marginPct < 0) {
+      color = 'text-red-700';
+      bg = 'bg-red-100';
+    } else if (marginPct < 15) {
+      color = 'text-orange-700';
+      bg = 'bg-orange-100';
+    }
+    
+    return {
+      pct: marginPct,
+      text: `${marginPct > 0 ? '+' : ''}${marginPct.toFixed(1)}%`,
+      color,
+      bg
+    };
   }
 </script>
 
@@ -131,8 +152,8 @@
           <th class="p-4">SKU</th>
           <th class="p-4">Item Name</th>
           <th class="p-4">Category</th>
-          <th class="p-4">Available</th>
-          <th class="p-4">Reserved</th>
+          <th class="p-4">Stock</th>
+          <th class="p-4">Pricing & Margin</th>
           <th class="p-4">Status</th>
           <th class="p-4 text-right">Actions</th>
         </tr>
@@ -147,8 +168,28 @@
                 {getCategoryName(item.categoryId)}
               </span>
             </td>
-            <td class="p-4 font-semibold text-slate-900">{item.totalAvailable} <span class="text-xs font-normal text-slate-500">{item.unitOfMeasure}</span></td>
-            <td class="p-4 text-amber-600">{item.totalReserved} <span class="text-xs">{item.unitOfMeasure}</span></td>
+            <td class="p-4">
+              <div class="font-semibold text-slate-900">{item.totalAvailable} <span class="text-xs font-normal text-slate-500">{item.unitOfMeasure}</span></div>
+              {#if item.totalReserved > 0}
+                <div class="text-xs text-amber-600 mt-0.5">{item.totalReserved} reserved</div>
+              {/if}
+            </td>
+            <td class="p-4">
+              {@const cost = parseFloat(item.unitCostAvg || 0)}
+              {@const price = parseFloat(item.sellingPrice || 0)}
+              {@const margin = getMarginInfo(cost, price)}
+              <div class="flex flex-col gap-1">
+                <div class="text-sm font-bold text-slate-900">Rp {price.toLocaleString('id-ID')}</div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="text-slate-500">HPP: Rp {cost.toLocaleString('id-ID')}</span>
+                  {#if cost > 0}
+                    <span class="inline-flex items-center px-1.5 py-0.5 rounded font-bold {margin.bg} {margin.color}">
+                      {margin.text}
+                    </span>
+                  {/if}
+                </div>
+              </div>
+            </td>
             <td class="p-4">
               <div class="flex flex-col gap-1 items-start">
                 {#if !item.isStockInitialized}
