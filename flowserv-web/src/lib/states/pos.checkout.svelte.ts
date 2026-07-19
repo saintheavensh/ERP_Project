@@ -1,44 +1,64 @@
 import { invalidateAll } from '$app/navigation';
+import type { PosProductsState } from './pos.products.svelte';
+import type { PosCartState } from './pos.cart.svelte';
+import type { PosCommonState } from './pos.svelte';
 
-export function createPosCheckout(data: any, productsState: any, cartState: any, commonState: any) {
-  let paymentMethods = $derived(data.paymentMethods);
-  let customers = $derived(data.customers);
+export class PosCheckoutState {
+  data: any = $state({});
+  productsState: PosProductsState;
+  cartState: PosCartState;
+  commonState: PosCommonState;
 
-  let showCheckoutModal = $state(false);
-  let paymentMethod = $state('cash');
-  let selectedCustomerId = $state(''); 
-  let customerNameInput = $state(''); 
+  showCheckoutModal = $state(false);
+  paymentMethod = $state('cash');
+  selectedCustomerId = $state('');
+  customerNameInput = $state('');
 
-  $effect(() => {
-    if (selectedCustomerId) {
-      const cust = customers.find((c: any) => c.id === selectedCustomerId);
-      if (cust) customerNameInput = cust.name;
-    }
-  });
+  constructor(data: any, productsState: PosProductsState, cartState: PosCartState, commonState: PosCommonState) {
+    this.data = data;
+    this.productsState = productsState;
+    this.cartState = cartState;
+    this.commonState = commonState;
 
-  function openCheckout() {
-    if (cartState.cart.length === 0) return;
-    commonState.errorMsg = '';
-    showCheckoutModal = true;
+    $effect(() => {
+      if (this.selectedCustomerId) {
+        const cust = this.customers.find((c: any) => c.id === this.selectedCustomerId);
+        if (cust) this.customerNameInput = cust.name;
+      }
+    });
   }
 
-  async function processCheckout() {
-    if (paymentMethod === 'tempo' && !customerNameInput.trim()) {
-      commonState.errorMsg = 'Nama pelanggan wajib diisi untuk pembayaran tempo!';
+  get paymentMethods() {
+    return this.data.paymentMethods || [];
+  }
+
+  get customers() {
+    return this.data.customers || [];
+  }
+
+  openCheckout() {
+    if (this.cartState.cart.length === 0) return;
+    this.commonState.errorMsg = '';
+    this.showCheckoutModal = true;
+  }
+
+  async processCheckout() {
+    if (this.paymentMethod === 'tempo' && !this.customerNameInput.trim()) {
+      this.commonState.errorMsg = 'Nama pelanggan wajib diisi untuk pembayaran tempo!';
       return;
     }
 
-    commonState.processing = true;
-    commonState.errorMsg = '';
+    this.commonState.processing = true;
+    this.commonState.errorMsg = '';
     
     try {
       const payload = {
-        branchId: productsState.selectedBranchId,
-        customerName: customerNameInput,
+        branchId: this.productsState.selectedBranchId,
+        customerName: this.customerNameInput,
         serviceTicketId: undefined,
-        paymentMethod,
-        discountAmount: cartState.discountAmount,
-        items: cartState.cart.map((item: any) => ({
+        paymentMethod: this.paymentMethod,
+        discountAmount: this.cartState.discountAmount,
+        items: this.cartState.cart.map((item: any) => ({
           inventoryItemId: item.inventoryItemId,
           partBrandId: item.partBrandId || undefined,
           quantity: item.quantity,
@@ -50,7 +70,7 @@ export function createPosCheckout(data: any, productsState: any, cartState: any,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${data.token}`
+          'Authorization': `Bearer ${this.data.token}`
         },
         body: JSON.stringify(payload)
       });
@@ -61,33 +81,21 @@ export function createPosCheckout(data: any, productsState: any, cartState: any,
         throw new Error(result.error?.message || 'Gagal memproses transaksi');
       }
 
-      commonState.successMsg = `Transaksi berhasil! Invoice: ${result.data.invoiceNumber}`;
+      this.commonState.successMsg = `Transaksi berhasil! Invoice: ${result.data.invoiceNumber}`;
       
-      cartState.clearCart();
-      customerNameInput = '';
-      selectedCustomerId = '';
-      cartState.discountAmount = 0;
-      showCheckoutModal = false;
+      this.cartState.clearCart();
+      this.customerNameInput = '';
+      this.selectedCustomerId = '';
+      this.cartState.discountAmount = 0;
+      this.showCheckoutModal = false;
       
       await invalidateAll();
-      setTimeout(() => commonState.successMsg = '', 5000);
+      setTimeout(() => this.commonState.successMsg = '', 5000);
       
     } catch (err: any) {
-      commonState.errorMsg = err.message;
+      this.commonState.errorMsg = err.message;
     } finally {
-      commonState.processing = false;
+      this.commonState.processing = false;
     }
   }
-
-  return {
-    get paymentMethods() { return paymentMethods; },
-    get showCheckoutModal() { return showCheckoutModal; },
-    set showCheckoutModal(val) { showCheckoutModal = val; },
-    get paymentMethod() { return paymentMethod; },
-    set paymentMethod(val) { paymentMethod = val; },
-    get customerNameInput() { return customerNameInput; },
-    set customerNameInput(val) { customerNameInput = val; },
-    openCheckout,
-    processCheckout
-  };
 }

@@ -1,18 +1,30 @@
-export function createPosCart(productsState: any) {
-  let cart: any[] = $state([]);
-  let discountAmount = $state(0);
+import type { PosProductsState } from './pos.products.svelte';
 
-  let subtotal = $derived(cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0));
-  let grandTotal = $derived(subtotal - discountAmount);
+export class PosCartState {
+  productsState: PosProductsState;
+  cart: any[] = $state([]);
+  discountAmount = $state(0);
 
-  function restoreCart() {
+  constructor(productsState: PosProductsState) {
+    this.productsState = productsState;
+  }
+
+  get subtotal() {
+    return this.cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+  }
+
+  get grandTotal() {
+    return this.subtotal - this.discountAmount;
+  }
+
+  restoreCart() {
     const restore = localStorage.getItem('pos_restore_cart');
     if (restore) {
       try {
         const parsed = JSON.parse(restore);
-        if (parsed.branchId) productsState.selectedBranchId = parsed.branchId;
+        if (parsed.branchId) this.productsState.selectedBranchId = parsed.branchId;
         if (parsed.items && Array.isArray(parsed.items)) {
-          cart = parsed.items;
+          this.cart = parsed.items;
         }
         localStorage.removeItem('pos_restore_cart');
       } catch (e) {
@@ -21,13 +33,13 @@ export function createPosCart(productsState: any) {
     }
   }
 
-  function addToCart(product: any) {
-    if (!productsState.selectedBranchId) {
+  addToCart(product: any) {
+    if (!this.productsState.selectedBranchId) {
       alert("Pilih cabang terlebih dahulu");
       return;
     }
 
-    const available = productsState.getStockForBranch(product, productsState.selectedBranchId);
+    const available = this.productsState.getStockForBranch(product, this.productsState.selectedBranchId);
     if (available <= 0) {
       alert("Stok kosong di cabang ini!");
       return;
@@ -35,21 +47,21 @@ export function createPosCart(productsState: any) {
 
     let price = parseFloat(product.sellingPrice) || 0;
 
-    const existingIndex = cart.findIndex(item => 
+    const existingIndex = this.cart.findIndex(item => 
       item.inventoryItemId === product.inventoryItemId && 
       item.partBrandId === product.partBrandId
     );
 
     if (existingIndex !== -1) {
-      const existing = cart[existingIndex];
+      const existing = this.cart[existingIndex];
       if (existing.quantity >= available) {
         alert("Stok tidak mencukupi!");
         return;
       }
-      cart[existingIndex].quantity += 1;
-      cart = [...cart];
+      this.cart[existingIndex].quantity += 1;
+      this.cart = [...this.cart];
     } else {
-      cart = [...cart, {
+      this.cart = [...this.cart, {
         inventoryItemId: product.inventoryItemId,
         partBrandId: product.partBrandId,
         name: product.name,
@@ -61,33 +73,20 @@ export function createPosCart(productsState: any) {
     }
   }
 
-  function updateQty(index: number, delta: number) {
-    const item = cart[index];
+  updateQty(index: number, delta: number) {
+    const item = this.cart[index];
     const newQty = item.quantity + delta;
     if (newQty <= 0) {
-      cart = cart.filter((_, i) => i !== index);
+      this.cart = this.cart.filter((_, i) => i !== index);
     } else if (newQty > item.maxStock) {
       alert("Maksimal stok tercapai!");
     } else {
       item.quantity = newQty;
-      cart = [...cart];
+      this.cart = [...this.cart];
     }
   }
 
-  function clearCart() {
-    cart = [];
+  clearCart() {
+    this.cart = [];
   }
-
-  return {
-    get cart() { return cart; },
-    set cart(val) { cart = val; },
-    get discountAmount() { return discountAmount; },
-    set discountAmount(val) { discountAmount = val; },
-    get subtotal() { return subtotal; },
-    get grandTotal() { return grandTotal; },
-    restoreCart,
-    addToCart,
-    updateQty,
-    clearCart
-  };
 }

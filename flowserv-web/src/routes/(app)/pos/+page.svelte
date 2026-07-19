@@ -13,7 +13,7 @@
   const pos = createPosState(data);
 
   onMount(() => {
-    pos.restoreCart();
+    pos.cart.restoreCart();
   });
 </script>
 
@@ -25,26 +25,26 @@
       
       <div class="flex items-center space-x-2">
         <label for="branch" class="text-sm font-medium text-slate-600">Cabang:</label>
-        <select id="branch" bind:value={pos.selectedBranchId} class="text-sm border-slate-200 rounded-lg py-1.5 focus:ring-blue-500">
-          {#each pos.branches as branch}
+        <select id="branch" bind:value={pos.products.selectedBranchId} class="text-sm border-slate-200 rounded-lg py-1.5 focus:ring-blue-500">
+          {#each pos.products.branches as branch}
             <option value={branch.id}>{branch.name}</option>
           {/each}
         </select>
       </div>
     </div>
     
-    {#if pos.successMsg}
+    {#if pos.commonState.successMsg}
       <div class="bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm font-medium animate-pulse">
-        {pos.successMsg}
+        {pos.commonState.successMsg}
       </div>
     {/if}
 
     <div class="ml-auto flex items-center space-x-3">
-      <button onclick={pos.openDrafts} class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors border border-indigo-200">
+      <button onclick={() => pos.drafts.openDrafts()} class="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors border border-indigo-200">
         Daftar Draft
       </button>
       
-      <button onclick={pos.saveDraft} disabled={pos.cart.length === 0 || pos.processing} class="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-200">
+      <button onclick={() => pos.drafts.saveDraft()} disabled={pos.cart.cart.length === 0 || pos.commonState.processing} class="px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 rounded-lg text-sm font-medium transition-colors border border-slate-200">
         Simpan Draft
       </button>
       

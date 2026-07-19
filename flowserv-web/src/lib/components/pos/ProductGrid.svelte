@@ -4,22 +4,22 @@
 
 <div class="flex-1 flex flex-col overflow-hidden border-r border-slate-200 bg-slate-50/50">
   <div class="p-4 border-b border-slate-200 bg-white/50 backdrop-blur-sm">
-    <input type="text" bind:value={pos.searchQuery} placeholder="Cari SKU atau Nama Produk..." class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
+    <input type="text" bind:value={pos.products.searchQuery} placeholder="Cari SKU atau Nama Produk..." class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
   </div>
   
   <div class="flex-1 overflow-y-auto p-4">
-    {#if !pos.selectedBranchId}
+    {#if !pos.products.selectedBranchId}
       <div class="text-center text-slate-500 mt-10">Silakan pilih cabang terlebih dahulu</div>
     {:else}
       <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {#each pos.filteredProducts as product}
-          {@const stock = pos.getStockForBranch(product, pos.selectedBranchId)}
+        {#each pos.products.filteredProducts as product}
+          {@const stock = pos.products.getStockForBranch(product, pos.products.selectedBranchId)}
           <div 
             role="button"
             tabindex="0"
             class="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col {stock <= 0 ? 'opacity-50 grayscale' : 'hover:border-blue-300'}"
-            onclick={() => stock > 0 && pos.addToCart(product)}
-            onkeydown={(e) => e.key === 'Enter' && stock > 0 && pos.addToCart(product)}
+            onclick={() => stock > 0 && pos.cart.addToCart(product)}
+            onkeydown={(e) => e.key === 'Enter' && stock > 0 && pos.cart.addToCart(product)}
           >
             <div class="p-4 flex-1 flex flex-col">
               <div class="flex flex-wrap gap-1 mb-2">

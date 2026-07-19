@@ -1,9 +1,29 @@
-export function createPosProducts(data: any) {
-  let branches = $derived(data.branches);
-  let products = $derived(data.products);
-  let flattenedProducts = $derived.by(() => {
+export class PosProductsState {
+  data: any = $state({});
+  selectedBranchId = $state('');
+  searchQuery = $state('');
+
+  constructor(data: any) {
+    this.data = data;
+    
+    $effect(() => {
+      if (this.branches.length > 0 && !this.selectedBranchId) {
+        this.selectedBranchId = this.branches[0].id;
+      }
+    });
+  }
+
+  get branches() {
+    return this.data.branches || [];
+  }
+
+  get products() {
+    return this.data.products || [];
+  }
+
+  get flattenedProducts() {
     const flat = [];
-    for (const p of products) {
+    for (const p of this.products) {
       if (p.brandPricing && p.brandPricing.length > 0) {
         for (const bp of p.brandPricing) {
           flat.push({
@@ -27,27 +47,18 @@ export function createPosProducts(data: any) {
       }
     }
     return flat;
-  });
+  }
 
-  let selectedBranchId = $state('');
-  let searchQuery = $state('');
-
-  let filteredProducts = $derived.by(() => {
-    if (!searchQuery) return flattenedProducts;
-    const terms = searchQuery.toLowerCase().split(' ').filter((t: string) => t);
-    return flattenedProducts.filter((p: any) => {
+  get filteredProducts() {
+    if (!this.searchQuery) return this.flattenedProducts;
+    const terms = this.searchQuery.toLowerCase().split(' ').filter(t => t);
+    return this.flattenedProducts.filter(p => {
       const searchableStr = `${p.name} ${p.brandName} ${p.categoryName} ${p.sku}`.toLowerCase();
-      return terms.every((term: string) => searchableStr.includes(term));
+      return terms.every(term => searchableStr.includes(term));
     });
-  });
+  }
 
-  $effect(() => {
-    if (branches.length > 0 && !selectedBranchId) {
-      selectedBranchId = branches[0].id;
-    }
-  });
-
-  function getStockForBranch(product: any, branchId: string) {
+  getStockForBranch(product: any, branchId: string) {
     if (product.partBrandId !== undefined) {
       if (!product.brandStock || !product.brandStock[branchId]) return 0;
       const bId = product.partBrandId || 'generic';
@@ -58,14 +69,4 @@ export function createPosProducts(data: any) {
     const level = product.stockLevels.find((l: any) => l.branchId === branchId);
     return level ? level.quantityAvailable : 0;
   }
-
-  return {
-    get branches() { return branches; },
-    get selectedBranchId() { return selectedBranchId; },
-    set selectedBranchId(val) { selectedBranchId = val; },
-    get searchQuery() { return searchQuery; },
-    set searchQuery(val) { searchQuery = val; },
-    get filteredProducts() { return filteredProducts; },
-    getStockForBranch
-  };
 }

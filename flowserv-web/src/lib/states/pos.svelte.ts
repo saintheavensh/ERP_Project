@@ -1,40 +1,33 @@
-import { createPosProducts } from './pos.products.svelte';
-import { createPosCart } from './pos.cart.svelte';
-import { createPosCheckout } from './pos.checkout.svelte';
-import { createPosDrafts } from './pos.drafts.svelte';
+import { PosProductsState } from './pos.products.svelte';
+import { PosCartState } from './pos.cart.svelte';
+import { PosCheckoutState } from './pos.checkout.svelte';
+import { PosDraftsState } from './pos.drafts.svelte';
+
+export class PosCommonState {
+  processing = $state(false);
+  errorMsg = $state('');
+  successMsg = $state('');
+}
+
+export class PosState {
+  commonState = new PosCommonState();
+  products: PosProductsState;
+  cart: PosCartState;
+  checkout: PosCheckoutState;
+  drafts: PosDraftsState;
+
+  constructor(data: any) {
+    this.products = new PosProductsState(data);
+    this.cart = new PosCartState(this.products);
+    this.checkout = new PosCheckoutState(data, this.products, this.cart, this.commonState);
+    this.drafts = new PosDraftsState(data, this.products, this.cart, this.commonState);
+  }
+
+  formatRp(num: number) {
+    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(num);
+  }
+}
 
 export function createPosState(data: any) {
-  // Shared common UI state
-  let processing = $state(false);
-  let errorMsg = $state('');
-  let successMsg = $state('');
-
-  const commonState = {
-    get processing() { return processing; },
-    set processing(val) { processing = val; },
-    get errorMsg() { return errorMsg; },
-    set errorMsg(val) { errorMsg = val; },
-    get successMsg() { return successMsg; },
-    set successMsg(val) { successMsg = val; },
-  };
-
-  const formatRp = (num: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(num);
-  };
-
-  // Instantiate composable state modules
-  const productsState = createPosProducts(data);
-  const cartState = createPosCart(productsState);
-  const checkoutState = createPosCheckout(data, productsState, cartState, commonState);
-  const draftsState = createPosDrafts(data, productsState, cartState, commonState);
-
-  // Return a single glued object so the UI components don't break
-  return {
-    ...productsState,
-    ...cartState,
-    ...checkoutState,
-    ...draftsState,
-    ...commonState,
-    formatRp
-  };
+  return new PosState(data);
 }
