@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { OpnameState } from '$lib/states/opname.svelte';
+  import { OpnameState } from '$lib/states/inventory/opname.svelte';
   import OpnameTable from '$lib/components/inventory/OpnameTable.svelte';
   import OpnameFooter from '$lib/components/inventory/OpnameFooter.svelte';
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { createPosState } from '$lib/states/pos.svelte';
+  import { createPosState } from '$lib/states/pos/pos.svelte';
   
   import ProductGrid from '$lib/components/pos/ProductGrid.svelte';
   import CartSidebar from '$lib/components/pos/CartSidebar.svelte';

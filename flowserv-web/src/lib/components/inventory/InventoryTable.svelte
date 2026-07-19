@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { InventoryState } from '$lib/states/inventory.svelte';
+  import type { InventoryState } from '$lib/states/inventory/inventory.svelte';
 
   let { inv } = $props<{ inv: InventoryState }>();
 </script>

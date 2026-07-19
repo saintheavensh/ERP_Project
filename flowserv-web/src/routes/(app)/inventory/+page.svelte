@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { InventoryState } from '$lib/states/inventory.svelte';
+  import { InventoryState } from '$lib/states/inventory/inventory.svelte';
   import InventoryTable from '$lib/components/inventory/InventoryTable.svelte';
   import AddItemModal from '$lib/components/inventory/AddItemModal.svelte';
 

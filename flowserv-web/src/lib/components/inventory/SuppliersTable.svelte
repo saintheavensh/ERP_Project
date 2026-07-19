@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { SuppliersState } from '$lib/states/suppliers.svelte';
+  import type { SuppliersState } from '$lib/states/inventory/suppliers.svelte';
 
   let { state } = $props<{ state: SuppliersState }>();
 </script>

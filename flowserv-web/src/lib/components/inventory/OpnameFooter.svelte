@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { OpnameState } from '$lib/states/opname.svelte';
+  import type { OpnameState } from '$lib/states/inventory/opname.svelte';
 
   let { state } = $props<{ state: OpnameState }>();
 </script>

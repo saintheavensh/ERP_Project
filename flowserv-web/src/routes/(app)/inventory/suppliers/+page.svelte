@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { SuppliersState } from '$lib/states/suppliers.svelte';
+  import { SuppliersState } from '$lib/states/inventory/suppliers.svelte';
   import SuppliersTable from '$lib/components/inventory/SuppliersTable.svelte';
   import AddSupplierModal from '$lib/components/inventory/AddSupplierModal.svelte';
 
