@@ -140,12 +140,16 @@
          qty,
          cost,
          revenue,
-         profit
+         profit,
+         receivedAt: b.receivedAt
        });
     });
 
     const netProfit = totalOmzet - totalModal;
     const netProfitPct = totalModal > 0 ? (netProfit / totalModal) * 100 : 0;
+    
+    // Find highest cost for recommendation
+    const maxCost = batchDetails.reduce((max, b) => Math.max(max, b.cost), 0);
 
     return {
       totalQty,
@@ -155,7 +159,8 @@
       netProfitPct,
       totalLabaPositif,
       totalBebanFluktuasi,
-      batchDetails: batchDetails.sort((a,b) => a.cost - b.cost)
+      maxCost,
+      batchDetails: batchDetails.sort((a,b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()) // FIFO Order (Oldest First)
     };
   });
 
@@ -544,7 +549,7 @@
           <h2 class="text-xl font-bold text-slate-900">Simulasi Proyeksi Laba</h2>
           <p class="text-sm text-slate-500 mt-1">Merk: <span class="font-bold text-slate-700">{simBrandName}</span></p>
         </div>
-        <button onclick={closeSimModal} class="text-slate-400 hover:text-slate-600 p-2">
+        <button onclick={closeSimModal} aria-label="Tutup Simulasi" class="text-slate-400 hover:text-slate-600 p-2">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
       </div>
@@ -552,12 +557,26 @@
       <!-- Modal Body -->
       <div class="p-5 overflow-y-auto flex-1 space-y-6">
         <!-- Input Harga Simulasi -->
-        <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-100">
-          <label class="block text-sm font-semibold text-slate-700 mb-2">Simulasikan Harga Jual per Pcs:</label>
-          <div class="flex items-center gap-2">
-            <span class="text-slate-500 font-medium">Rp</span>
-            <input type="number" bind:value={simSellingPrice} class="w-48 px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-900" min="0" />
-            <span class="text-xs text-slate-500 ml-2">Ganti angka ini untuk melihat perubahan proyeksi di bawah.</span>
+        <div class="bg-blue-50/50 rounded-xl p-4 border border-blue-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <label for="sim-price-input" class="block text-sm font-semibold text-slate-700 mb-2">Simulasikan Harga Jual per Pcs:</label>
+            <div class="flex items-center gap-2">
+              <span class="text-slate-500 font-medium">Rp</span>
+              <input id="sim-price-input" type="number" bind:value={simSellingPrice} class="w-48 px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-900" min="0" />
+            </div>
+          </div>
+          
+          <!-- Recommendation Block -->
+          <div class="bg-white p-3 rounded-lg border border-blue-100 shadow-sm text-sm">
+            <div class="font-semibold text-slate-700 mb-1">Rekomendasi Aman:</div>
+            <div class="flex flex-col gap-1">
+              <button onclick={() => simSellingPrice = simData.maxCost} class="text-left text-xs hover:bg-slate-50 p-1 -ml-1 rounded transition-colors text-slate-600">
+                Titik Impas Termahal: <span class="font-bold text-slate-900">Rp {simData.maxCost.toLocaleString('id-ID')}</span>
+              </button>
+              <button onclick={() => simSellingPrice = simData.maxCost * 1.1} class="text-left text-xs hover:bg-green-50 p-1 -ml-1 rounded transition-colors text-green-700">
+                Min. Untung 10%: <span class="font-bold text-green-800">Rp {(simData.maxCost * 1.1).toLocaleString('id-ID')}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -612,11 +631,12 @@
 
         <!-- Rincian per Batch -->
         <div>
-          <h3 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Rincian Penjualan per Batch (FIFO)</h3>
+          <h3 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Rincian Penjualan per Batch (Urutan FIFO)</h3>
           <div class="border border-slate-200 rounded-lg overflow-hidden">
             <table class="w-full text-left text-sm">
               <thead class="bg-slate-50 text-slate-500 font-medium">
                 <tr>
+                  <th class="p-3">Tanggal Diterima</th>
                   <th class="p-3">Sisa Stok</th>
                   <th class="p-3">Harga Modal (HPP)</th>
                   <th class="p-3">Status Profit</th>
@@ -624,7 +644,13 @@
               </thead>
               <tbody class="divide-y divide-slate-100">
                 {#each simData.batchDetails as b, i}
-                  <tr class="hover:bg-slate-50">
+                  <tr class="hover:bg-slate-50 relative">
+                    <td class="p-3 font-medium text-slate-700">
+                      {b.receivedAt ? new Date(b.receivedAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', year: 'numeric'}) : 'N/A'}
+                      {#if i === simData.batchDetails.length - 1}
+                        <span class="ml-2 text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">Terbaru (Harga Pasar)</span>
+                      {/if}
+                    </td>
                     <td class="p-3 font-semibold text-slate-900">{b.qty} <span class="font-normal text-slate-500">pcs</span></td>
                     <td class="p-3 text-slate-600">Rp {b.cost.toLocaleString('id-ID')}</td>
                     <td class="p-3">
