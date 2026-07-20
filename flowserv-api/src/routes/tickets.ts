@@ -203,8 +203,11 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
   if (!ticket.currentNodeId) return errorResponse(c, 'INVALID_STATE', 'Ticket has no current node', [], 400);
   
   // Validate using FlowEngine
-  const allowed = await FlowEngine.validateTransition(ticket.currentNodeId, targetNodeId, roleId);
-  
+  // NOTE: this check is not yet enforced correctly — `allowed` is an object,
+  // which is always truthy, so `!allowed` never fires. See RECOVERY-PLAN BUG-01.
+  // Fixed in task 03; left as-is here since this task only reshapes flow-engine.ts.
+  const allowed = await FlowEngine.validateTransition(tenantId, ticket.flowTemplateId, ticket.currentNodeId, targetNodeId, roleId);
+
   if (!allowed) {
     return errorResponse(c, 'FORBIDDEN', 'Transition not allowed or you lack permission', [], 403);
   }

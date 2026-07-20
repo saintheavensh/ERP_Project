@@ -4,9 +4,33 @@
 > Before starting any work, check this file to know which phase is current.
 > Mark items `[/]` when in progress, `[x]` when done.
 
+> **⚠️ Corrected 2026-07-20.** This file previously claimed work that did not exist.
+> It was rewritten from a code audit — see `RECOVERY-PLAN.md` for what was wrong and
+> why. Read that file before starting Phase 3.5.
+
 ---
 
-## Current Phase: `PHASE 4 (Purchasing, Supplier Debts, & Margins)` ← IN PROGRESS
+## Current Phase: `PHASE 3.5 (Stabilization)` ← IN PROGRESS
+
+> Phase 4 was built on top of an incomplete Phase 3. Phase 3.5 closes the gap and
+> fixes the defects found in the audit. **Nothing new gets built until it is done.**
+
+---
+
+## ⚠️ Definition of Done (MANDATORY)
+
+A task may only be marked `[x]` when **one** of the following exists:
+
+1. A passing automated test, **or**
+2. A recorded API request + response showing the expected result, **or**
+3. For frontend-only work, a screenshot or a written click-path that was actually walked
+
+**"I wrote the code and it looked correct" is not done.** Every incorrect `[x]` found
+in the 2026-07-20 audit was written in good faith by someone who had just finished
+writing the code and had not run it end to end.
+
+If you cannot produce evidence, mark the task `[/]` (in progress) and say what is
+missing.
 
 ---
 
@@ -17,6 +41,9 @@
 - **Merge to main** after a phase is fully verified
 - **Before starting work:** Check current branch with `git branch`
 - **Never commit to `main` directly** — always work in a phase branch
+
+> **Current debt:** `phase-4/purchasing` contains all of Phase 2, 3, and 4.
+> `main` has not moved since Phase 1. Task 3.5D below resolves this.
 
 ---
 
@@ -35,10 +62,8 @@
 
 ---
 
-## PHASE 1 — Project Setup, Cleanup & Database
+## PHASE 1 — Project Setup, Cleanup & Database ✅ COMPLETE
 > **Goal:** Clean root, init git, setup monorepo (BE + FE), push schema to local PostgreSQL.
-> **Prerequisite:** PHASE 0 complete. PostgreSQL installed locally.
-> **Network:** Local-first. Access via LAN/WiFi (192.168.x.x). VPS deployment is a future phase.
 
 ### 1A. Root Cleanup
 - [x] 1A.1 Delete unused files: `ROADMAP.md`, `CHANGELOG.md`, `CONTRIBUTING.md`
@@ -48,7 +73,7 @@
 
 ### 1B. Git Initialization
 - [x] 1B.1 Initialize git repo (or reinitialize if `.git` exists)
-- [x] 1B.2 Create initial commit with current state: `docs: phase 0 complete — specification consolidated`
+- [x] 1B.2 Create initial commit with current state
 - [x] 1B.3 Create branch `phase-1/project-setup`
 
 ### 1C. Backend Setup (flowserv-api/)
@@ -68,16 +93,16 @@
 ### 1D. Frontend Setup (flowserv-web/)
 - [x] 1D.1 Create SvelteKit project in `flowserv-web/`
 - [x] 1D.2 Install dependencies: tailwindcss, shadcn-svelte
-- [x] 1D.3 Create `flowserv-web/src/lib/api/client.ts` (base API client pointing to localhost:3001)
+- [x] 1D.3 Create `flowserv-web/src/lib/api/client.ts`
 - [x] 1D.4 Create basic layout with sidebar placeholder
-- [x] 1D.5 Create health check page that calls `/v1/health` and displays result
+- [x] 1D.5 Create health check page that calls `/v1/health`
 - [x] 1D.6 Verify: `npm run dev` starts, health check page shows "API Connected"
 
 ### 1E. Seed Data
 - [x] 1E.1 Create `flowserv-api/src/db/seed.ts`
 - [x] 1E.2 Add script to `package.json` (`"db:seed": "tsx src/db/seed.ts"`)
 - [x] 1E.3 Write seed data for `roles` (Super Admin, Manager, Technician, Cashier)
-- [x] 1E.4 Write seed data for one default `tenant` (e.g., "Demo Service Center")
+- [x] 1E.4 Write seed data for one default `tenant`
 - [x] 1E.5 Write seed data for one `user` (Super Admin) linked to Demo tenant
 - [x] 1E.6 Run `npm run db:seed` and verify data in database
 - [x] 1E.7 Commit: "feat: phase 1E complete - seed data"
@@ -87,7 +112,7 @@
 - [x] 1F.2 Frontend starts and health check passes
 - [x] 1F.3 Verify all files follow strict typing rules (`no implicit any`)
 - [x] 1F.4 Commit: "feat: phase 1 completed - system verification"
-- [ ] 1F.5 Merge `phase-1/project-setup` → `main`
+- [ ] 1F.5 Merge `phase-1/project-setup` → `main` — ⚠️ **never done**, superseded by task 3.5D.1
 
 ---
 
@@ -97,7 +122,7 @@
 > **Branch:** `phase-2/auth-flow-engine`
 
 ### 2A. Authentication (BE + FE)
-- [x] 2A.1 BE: Auth routes — register, login (returns JWT with tenant_id + user_id)
+- [/] 2A.1 BE: Auth routes — login works; **register endpoint does not exist**
 - [x] 2A.2 BE: Auth middleware (verify JWT, extract tenant_id)
 - [x] 2A.3 FE: Login page (form → call API → store token)
 - [x] 2A.4 FE: Protected layout (redirect to login if no token)
@@ -105,15 +130,18 @@
 
 ### 2B. Flow Engine Core (BE)
 - [x] 2B.1 Flow Template CRUD (read/write FlowTemplate + FlowNode from DB)
-- [x] 2B.2 Transition validation engine (validate state changes per FlowTransition rules)
+- [ ] 2B.2 Transition validation engine — ⚠️ **written but not enforced.** The route
+      ignores the return value, so every transition passes. See RECOVERY-PLAN BUG-01.
 - [x] 2B.3 Stage history recording (TicketStageHistory — append-only)
-- [x] 2B.4 Event emission on state change (internal event bus)
-- [x] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
+- [ ] 2B.4 Event emission on state change — ⚠️ event bus exists, but
+      `executeTransition` is never called so the event never fires. No listeners exist.
+- [ ] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
+      — ⚠️ **no test files exist anywhere in the repo.** `npm test` exits 1.
 
 ### 2C. Flow Engine Visualization (FE)
 - [x] 2C.1 FE: Flow template list UI
 - [x] 2C.2 FE: Flow detail view (visualize nodes and transitions)
-- [x] 2C.3 Merge `phase-2/auth-flow-engine` → `main`
+- [ ] 2C.3 Merge `phase-2/auth-flow-engine` → `main` — never done, superseded by 3.5D.1
 - [x] 2C.4 Git commit: `feat: phase 2 complete — auth + flow engine`
 
 ---
@@ -123,33 +151,38 @@
 > **Read first:** specification/features/02-service.md, specification/features/06-inventory.md
 > **Branch:** `phase-3/vertical-slice`
 
-### 3A. Customer & Device (BE + FE)
-- [ ] 3A.1 BE: Customer CRUD endpoints
-- [ ] 3A.2 BE: Device (CustomerAsset) CRUD endpoints
-- [ ] 3A.3 FE: Customer list + create form
-- [ ] 3A.4 FE: Device list + create form
+### 3A. Customer & Device (BE + FE) ✅
+- [x] 3A.1 BE: Customer CRUD endpoints
+- [x] 3A.2 BE: Device (CustomerAsset) CRUD endpoints
+- [x] 3A.3 FE: Customer list + create form
+- [x] 3A.4 FE: Device list + create form
 
 ### 3B. Service Ticket (BE + FE)
-- [ ] 3B.1 BE: Create ticket (intake) — with Zod validation
-- [ ] 3B.2 BE: Transition ticket to next stage (uses Flow Engine)
-- [ ] 3B.3 BE: Get ticket detail + stage history
-- [ ] 3B.4 FE: Ticket creation form (select customer, device, complaint)
+- [x] 3B.1 BE: Create ticket (intake) — with Zod validation
+- [ ] 3B.2 BE: Transition ticket to next stage (uses Flow Engine) — endpoint exists but
+      validation is bypassed; blocked on 2B.2
+- [x] 3B.3 BE: Get ticket detail + stage history
+- [x] 3B.4 FE: Ticket creation form (select customer, device, complaint)
 - [ ] 3B.5 FE: Ticket Kanban board (columns = flow nodes, drag-drop)
-- [ ] 3B.6 FE: Ticket detail page (timeline, current stage, actions)
+- [x] 3B.6 FE: Ticket detail page (timeline, current stage, actions)
 
 ### 3C. Inventory + FIFO (BE + FE)
 - [x] 3C.1 BE: Inventory item CRUD
 - [x] 3C.2 BE: Batch creation (goods receipt → FIFO batch)
-- [x] 3C.3 BE: Parts reservation (soft-lock)
-- [x] 3C.4 BE: Parts consumption (hard deduction, FIFO order)
+- [ ] 3C.3 BE: Parts reservation (soft-lock) — ⚠️ **not implemented.**
+      `quantityReserved` is only ever written as the literal `0`.
+- [ ] 3C.4 BE: Parts consumption from a ticket (hard deduction, FIFO order) — ⚠️ FIFO
+      deduction exists **only in POS checkout**. Nothing consumes parts from a service ticket.
 - [x] 3C.5 FE: Inventory list page (stock levels, alerts)
 - [x] 3C.6 FE: Stock receipt form (add batch)
 
 ### 3D. POS + Finance (BE + FE)
-- [ ] 3D.1 BE: POS transaction + invoice generation
-- [ ] 3D.2 BE: Payment processing (partial/full)
-- [ ] 3D.3 BE: Finance ledger posting (COGS, revenue)
-- [ ] 3D.4 FE: Simple POS page (linked to ticket)
+- [x] 3D.1 BE: POS transaction + invoice generation
+- [ ] 3D.2 BE: Payment processing (partial/full) — `payments` table never written to;
+      `paymentStatus` is a flat string, partial payment impossible
+- [ ] 3D.3 BE: Finance ledger posting (COGS, revenue) — ⚠️ **`financeLedgerEntries` is
+      never written to by any route.** FIFO already computes the cost and discards it.
+- [x] 3D.4 FE: Simple POS page
 - [ ] 3D.5 FE: Payment form
 - [ ] 3D.6 **Unit tests** — FIFO batch split, ledger accuracy, stock levels
 
@@ -158,30 +191,129 @@
 - [ ] 3E.2 Verify: stock levels decreased, finance ledger entries created, ticket closed
 - [ ] 3E.3 Git commit: `feat: phase 3 complete — vertical slice working`
 
+> **Note:** 3E cannot pass today. Diagnosis, approval, reservation, ticket-linked
+> consumption, ledger posting, and ticket closure all do not exist. Phases 3.5 and
+> 4.5 close these gaps.
+
+---
+
+## PHASE 3.5 — Stabilization ← **CURRENT PHASE**
+> **Goal:** Fix the defects found in the 2026-07-20 audit. Make the checkboxes honest.
+> **Read first:** `RECOVERY-PLAN.md` (Parts 3 and 4)
+> **Branch:** `phase-3.5/stabilization`
+> **Rule:** No new features. Only fixes, tests, and the merge to main.
+
+### 3.5A. P0 — Correctness & Security
+- [ ] 3.5A.1 Fix BUG-01: `if (!allowed.valid)` in `routes/tickets.ts`. Return **409**
+      for invalid transition, **403** for permission failure, include the `reason`.
+- [ ] 3.5A.2 Fix BUG-02: validate `targetNodeId` belongs to the ticket's flow template;
+      add `tenantId` filter to both queries in `FlowEngine.validateTransition`
+- [ ] 3.5A.3 Fix BUG-03: use the `allReceived` flag — set PO status to `partial` vs `received`
+- [ ] 3.5A.4 Fix BUG-04: increment `receivedQuantity` instead of overwriting
+- [ ] 3.5A.5 Fix BUG-05: verify `lineId` belongs to the order and tenant before updating
+- [ ] 3.5A.6 Fix BUG-11: include role **name** in the JWT; fix the sidebar role check in
+      `(app)/+layout.svelte` (currently compares a UUID to `'Super Admin'`, so real users
+      see only "Dashboard")
+
+### 3.5B. P1 — Data Integrity
+- [ ] 3.5B.1 Fix BUG-06: set `status='closed'` and `closedAt` when entering a terminal node
+- [ ] 3.5B.2 Fix BUG-07: add `SELECT ... FOR UPDATE` row locking on batch reads in POS
+      checkout, purchasing receive, and opname
+- [ ] 3.5B.3 Fix BUG-08: stop swallowing POS errors — log them, and return **422**
+      `INSUFFICIENT_STOCK` instead of a generic 500
+- [ ] 3.5B.4 Fix BUG-09: decide between the two goods-receipt paths; make costing consistent
+- [ ] 3.5B.5 Fix BUG-10: guard void so restored quantity cannot exceed `quantityReceived`
+- [ ] 3.5B.6 GAP-01: add `POST /v1/finance/payables/:id/payments` so supplier debt can
+      actually be settled (completes 4A.3)
+
+### 3.5C. P1 — Testing Foundation
+- [x] 3.5C.1 Add `vitest.config.ts` and fix the `test` script in `flowserv-api/package.json`
+- [x] 3.5C.2 Extract `flow-engine` logic so it is testable without HTTP (start of decision D1)
+- [ ] 3.5C.3 **Tests:** transition validation — valid, invalid, missing permission, cross-tenant
+- [ ] 3.5C.4 **Tests:** FIFO batch splitting and consumption order
+- [ ] 3.5C.5 **Tests:** stock level arithmetic across receive → sell → void
+- [ ] 3.5C.6 Verify `npm test` passes
+
+### 3.5D. Branch Hygiene & Docs
+- [ ] 3.5D.1 Merge current work → `main` (resolves the orphaned 1F.5 and 2C.3)
+- [ ] 3.5D.2 Branch fresh from `main` for the next phase
+- [ ] 3.5D.3 Add implementation-status headers to `specification/features/*.md` (decision D4)
+- [ ] 3.5D.4 Git commit: `fix: phase 3.5 complete — stabilization`
+
 ---
 
 ## PHASE 4 — Purchasing, Supplier Debts, & Margins
-> **Goal:** Build Supplier Management, Purchasing (Costing), AP (Hutang), and Dynamic Margin Pricing (Markup vs Gross Margin).
+> **Goal:** Supplier Management, Purchasing (Costing), AP (Hutang), Dynamic Margin Pricing.
 > **Branch:** `phase-4/purchasing`
+> **Status:** mostly built, but was marked complete prematurely.
 
 ### 4A. Supplier & Hutang (Accounts Payable)
-- [ ] 4A.1 BE: Create Supplier CRUD routes & schema
-- [ ] 4A.2 FE: Supplier Management page
-- [ ] 4A.3 BE: AP (Accounts Payable) routes for tracking supplier debts
-- [ ] 4A.4 FE: Manajemen Hutang Supplier page (with aging/tempo limits)
+- [x] 4A.1 BE: Create Supplier CRUD routes & schema
+- [x] 4A.2 FE: Supplier Management page
+- [/] 4A.3 BE: AP routes for tracking supplier debts — read-only today; **no payment
+      endpoint**, so `amountPaid` is permanently `0`. Completed by task 3.5B.6.
+- [x] 4A.4 FE: Manajemen Hutang Supplier page (with aging/tempo limits)
 
 ### 4B. Purchasing (PO & Costing)
-- [ ] 4B.1 BE: Purchase Order routes (receiving goods, updating stock_batches)
-- [ ] 4B.2 FE: Input Invoice/Costing page (with Payment Method: Tunai, Transfer, Tempo)
-- [ ] 4B.3 BE: Auto-calculate `dueDate` based on Supplier's `paymentTermDays`
-- [ ] 4B.4 FE: Auto-fill due date when selecting 'Tempo'
+- [x] 4B.1 BE: Purchase Order routes (receiving goods, updating stock_batches)
+- [x] 4B.2 FE: Input Invoice/Costing page (Payment Method: Tunai, Transfer, Tempo)
+- [x] 4B.3 BE: Auto-calculate `dueDate` based on Supplier's `paymentTermDays`
+- [x] 4B.4 FE: Auto-fill due date when selecting 'Tempo'
+
+> ⚠️ 4B.1 carries BUG-03, BUG-04, and BUG-05. Fixed in Phase 3.5.
 
 ### 4C. Dynamic Margin Pricing
-- [x] 4C.1 BE: Add Margin Config (Type: Markup/GrossMargin, Target: X%) to settings/tenant
-- [x] 4C.2 BE: Update product pricing when new stock arrives (based on new modal/cost & margin config)
+- [/] 4C.1 BE: Margin Config (Markup/GrossMargin, Target %) — schema columns
+      `marginStrategy` / `targetMargin` exist on categories and items, but **no endpoint
+      sets them**. `settings.ts` only serves payment methods.
+- [ ] 4C.2 BE: Update product pricing when new stock arrives — ⚠️ **not automatic.** The
+      margin calculation lives entirely in the frontend simulator; the backend accepts
+      whatever `sellingPrice` the client sends and never validates it against `targetMargin`.
 - [x] 4C.3 FE: Show warning if new price changes drastically or modal > margin limit
-- [x] 4C.4 FE: Inventory page enhancements (show margin column, filter/sort by margin)
-- [x] 4C.5 Git commit: `feat: phase 4 complete — purchasing & margins`
+- [x] 4C.4 FE: Inventory page enhancements (margin column, filter/sort by margin)
+- [ ] 4C.5 Git commit: `feat: phase 4 complete — purchasing & margins`
+
+---
+
+## PHASE 4.5 — Finance Ledger, RBAC & Audit
+> **Goal:** Build the three cross-cutting foundations that have schema tables but no code.
+> **Read first:** specification/features/10-finance.md, specification/03-rbac-roles.md
+> **Branch:** `phase-4.5/foundations`
+>
+> **Why this phase exists:** the old Quick Reference table listed Phase 4 as
+> "RBAC + Audit" while the phase body said Purchasing. Both fell into that gap. This
+> gives them a home. These are MVP features (FIN-007, PLT-003, PLT-006) and everything
+> downstream — dashboards, reports, the customer portal — depends on them.
+
+### 4.5A. Finance Ledger (FIN-007, FIN-010)
+- [ ] 4.5A.1 BE: Post COGS + revenue to `financeLedgerEntries` on POS checkout
+      (the FIFO code already computes the cost — currently discarded)
+- [ ] 4.5A.2 BE: Post reversal entries on invoice void
+- [ ] 4.5A.3 BE: Post AP entries on supplier invoice creation and payment
+- [ ] 4.5A.4 GAP-06: delete the dead `posTransactions` / `invoiceLines` schema, or migrate
+      onto it — do not leave two competing POS models
+- [ ] 4.5A.5 **Tests:** ledger accuracy — COGS matches consumed batch cost, entries balance
+- [ ] 4.5A.6 FE: simple ledger view (Simple Mode per DAS-004)
+
+### 4.5B. RBAC Enforcement (PLT-003)
+- [ ] 4.5B.1 BE: Create `middleware/rbac.ts` with `requirePermission('...')`
+- [ ] 4.5B.2 BE: Seed the permission catalog from specification/03-rbac-roles.md
+- [ ] 4.5B.3 BE: Apply `requirePermission` to every mutating endpoint
+- [ ] 4.5B.4 **Tests:** 403 on unauthorized access; tenant isolation holds
+
+### 4.5C. Audit Log (PLT-006)
+- [ ] 4.5C.1 BE: Create `middleware/audit.ts` writing to the existing `auditLogs` table
+- [ ] 4.5C.2 BE: Apply to all mutations
+- [ ] 4.5C.3 FE: Audit log viewer (admin only)
+
+### 4.5D. API Hardening
+- [ ] 4.5D.1 Create `lib/pagination.ts`; apply cursor pagination to tickets, inventory,
+      POS invoices (currently a hardcoded `limit: 100`)
+- [ ] 4.5D.2 Create `lib/idempotency.ts`; apply `Idempotency-Key` to the three endpoints
+      named in coding-guidelines §3.4
+- [ ] 4.5D.3 Create the `BusinessError` class (guidelines §8) and wire it to the error
+      handler so 409 and 422 are actually returned
+- [ ] 4.5D.4 Git commit: `feat: phase 4.5 complete — ledger, rbac, audit`
 
 ---
 
@@ -191,7 +323,7 @@
 > **Branch:** `phase-5/core-ui`
 
 - [ ] 5.1 Dashboard: Per-role default dashboards with widget layout
-- [ ] 5.2 Ticket Board: Polish Kanban with status colors, filters
+- [ ] 5.2 Ticket Board: Kanban with status colors, filters (completes 3B.5)
 - [ ] 5.3 Ticket Detail: Timeline, cost breakdown, attachments
 - [ ] 5.4 Inventory Dashboard: Stock levels, low-stock alerts, batch history
 - [ ] 5.5 Product Catalog: Browse by category, supplier price comparison
@@ -224,7 +356,7 @@
 
 - [ ] 7.1 Flow Template Builder: Visual editor for nodes + transitions
 - [ ] 7.2 Printer Template Builder: WYSIWYG editor + preview
-- [ ] 7.3 RBAC Management UI: Visual permission matrix
+- [ ] 7.3 RBAC Management UI: Visual permission matrix (depends on 4.5B)
 - [ ] 7.4 Git commit: `feat: phase 7 complete — builder UIs`
 
 ---
@@ -242,7 +374,7 @@
 - [ ] 8.6 Service Billing (quotation, deposit, invoice, refund)
 - [ ] 8.7 Warranty (templates, activation, claims)
 - [ ] 8.8 Technician (skills, performance, commission)
-- [ ] 8.9 Finance (AR, AP, COA, journal, P&L)
+- [ ] 8.9 Finance (AR, COA, journal, P&L) — builds on 4.5A
 - [ ] 8.10 Dashboard Alerts (service, inventory, finance, warranty)
 - [ ] 8.11 Customer Portal (magic link, approve/reject quote)
 - [ ] 8.12 Git commit: `feat: phase 8 complete — all MVP modules`
@@ -259,7 +391,7 @@
 - [ ] 9.4 Performance: API response time
 - [ ] 9.5 UX review: Mobile responsiveness, touch targets
 - [ ] 9.6 Real-time: WebSocket updates working
-- [ ] 9.7 Local network: Configure server to listen on 0.0.0.0 (accessible from LAN)
+- [ ] 9.7 Local network: Configure server to listen on 0.0.0.0
 - [ ] 9.8 Test from other devices on same WiFi (phone, tablet, other PC)
 - [ ] 9.9 Create startup script (one-click start for backend + frontend + database)
 - [ ] 9.10 Git commit: `feat: phase 9 complete — tested and running on local network`
@@ -289,6 +421,10 @@
 - [ ] 11.6 Backup strategy (automated daily)
 - [ ] 11.7 Monitoring & alerting
 
+> **Before VPS:** replace the hardcoded `JWT_SECRET` fallback in `middleware/auth.ts`
+> with a required env var that throws on startup if missing, and remove the legacy
+> unsalted SHA-256 password path in `routes/auth.ts`.
+
 ---
 
 ## PHASE 12 — Phase 2 Features (Post-MVP)
@@ -309,6 +445,28 @@
 
 ---
 
+## Architecture Debt (read before refactoring)
+
+The backend does **not** follow the module structure in
+`specification/coding-guidelines.md` §2. There is no service layer — all business
+logic lives inline in HTTP route handlers, which is why none of it is testable.
+
+**Decision (see RECOVERY-PLAN.md D1): retrofit incrementally, never big-bang.**
+
+When you touch a module for a fix or a feature, extract its `service.ts` *then*,
+with a test. Do **not** refactor modules you are not otherwise changing. A
+whole-codebase restructure with zero tests is the fastest way to break a working
+application.
+
+Other known debt, to be addressed as modules are touched:
+- `drizzle-zod` is installed but never used; Zod schemas are hand-written (§4)
+- `services/flow-engine.ts` should be `flow-engine/{engine,types,events}.ts`
+- Two schema files violate kebab-case naming: `payment_methods__settings_.ts`,
+  `relations__untuk_relational_query_api_drizzle.ts`
+- Comments and error strings mix Indonesian and English — pick one for user-facing text
+
+---
+
 ## Folders to Ignore (DO NOT modify or delete)
 
 These folders are reference/examples and should NOT be touched unless explicitly asked:
@@ -320,16 +478,22 @@ These folders are reference/examples and should NOT be touched unless explicitly
 
 ## Quick Reference
 
+> Corrected 2026-07-20 — this table previously contradicted the phase bodies
+> (it listed Phase 4 as "RBAC + Audit" while the body said Purchasing, which is
+> how both features ended up with schema tables and no code).
+
 | Phase | Focus | Depends On |
 |-------|-------|-----------|
 | 0 | Documentation | — |
 | 1 | Project Setup + DB + Cleanup + Git | Phase 0 |
 | 2 | Auth + Flow Engine (BE+FE) | Phase 1 |
 | 3 | Vertical Slice (BE+FE) | Phase 2 |
-| 4 | RBAC + Audit (BE+FE) | Phase 3 |
-| 5 | Core UI Polish | Phase 4 |
-| 6 | Printer Agent | Phase 4 |
-| 7 | Builder UIs | Phase 5+6 |
+| **3.5** | **Stabilization — bug fixes + first tests** | Phase 3 |
+| 4 | Purchasing, Supplier Debts, Margins | Phase 3.5 |
+| **4.5** | **Finance Ledger, RBAC, Audit** | Phase 4 |
+| 5 | Core UI Polish | Phase 4.5 |
+| 6 | Printer Agent | Phase 5 |
+| 7 | Builder UIs | Phase 5 + 6 |
 | 8 | Module Expansion | Phase 5 |
 | 9 | Testing + Local Network | Phase 8 |
 | 10 | Production Use (1 Shop) | Phase 9 |
