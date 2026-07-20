@@ -28,7 +28,7 @@ export const auditLogs = pgTable('audit_logs', {
   entityId: uuid('entity_id'),
   changes: jsonb('changes'), // detail before/after, fleksibel per jenis aksi
   ipAddress: text('ip_address'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('audit_logs_tenant_idx').on(table.tenantId),
   entityIdx: index('audit_logs_entity_idx').on(table.entityType, table.entityId),

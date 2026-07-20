@@ -24,8 +24,8 @@ export const tenants = pgTable('tenants', {
   subscriptionTier: varchar('subscription_tier', { length: 50 }).notNull().default('trial'),
   status: varchar('status', { length: 50 }).notNull().default('trial'),
   settings: jsonb('settings').notNull().default({}), // termasuk { simplifiedFinanceMode: true } — default sembunyikan istilah akuntansi
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const branches = pgTable('branches', {
@@ -33,7 +33,7 @@ export const branches = pgTable('branches', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   name: text('name').notNull(),
   address: text('address'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('branches_tenant_idx').on(table.tenantId),
 }));
@@ -45,7 +45,7 @@ export const users = pgTable('users', {
   email: text('email').notNull(),
   passwordHash: text('password_hash').notNull(),
   status: varchar('status', { length: 50 }).notNull().default('active'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantEmailUnique: unique('users_tenant_email_unique').on(table.tenantId, table.email),
   tenantIdx: index('users_tenant_idx').on(table.tenantId),

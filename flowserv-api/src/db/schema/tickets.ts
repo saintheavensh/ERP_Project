@@ -27,7 +27,7 @@ export const customers = pgTable('customers', {
   name: text('name').notNull(),
   phone: text('phone'),
   email: text('email'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('customers_tenant_idx').on(table.tenantId),
 }));
@@ -50,8 +50,8 @@ export const serviceTickets = pgTable('service_tickets', {
   flowTemplateId: uuid('flow_template_id').notNull().references(() => flowTemplates.id),
   currentNodeId: uuid('current_node_id').references(() => flowNodes.id),
   status: ticketStatusEnum('status').notNull().default('open'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  closedAt: timestamp('closed_at'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({
   tenantBranchIdx: index('service_tickets_tenant_branch_idx').on(table.tenantId, table.branchId),
 }));
@@ -62,7 +62,7 @@ export const ticketStageHistory = pgTable('ticket_stage_history', {
   nodeId: uuid('node_id').notNull().references(() => flowNodes.id),
   actorId: uuid('actor_id'),
   notes: text('notes'),
-  enteredAt: timestamp('entered_at').notNull().defaultNow(),
+  enteredAt: timestamp('entered_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   ticketIdx: index('ticket_stage_history_ticket_idx').on(table.ticketId),
 }));
@@ -70,8 +70,8 @@ export const ticketStageHistory = pgTable('ticket_stage_history', {
 export const approvalRequests = pgTable('approval_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
   ticketId: uuid('ticket_id').notNull().references(() => serviceTickets.id),
-  requestedAt: timestamp('requested_at').notNull().defaultNow(),
-  respondedAt: timestamp('responded_at'),
+  requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   amount: decimal('amount', { precision: 14, scale: 2 }),
   magicToken: text('magic_token').unique(), // dipakai untuk link approval customer
@@ -81,7 +81,7 @@ export const warrantyRecords = pgTable('warranty_records', {
   id: uuid('id').primaryKey().defaultRandom(),
   ticketId: uuid('ticket_id').notNull().unique().references(() => serviceTickets.id),
   customerAssetId: uuid('customer_asset_id').notNull().references(() => customerAssets.id),
-  warrantyStart: timestamp('warranty_start').notNull(),
-  warrantyEnd: timestamp('warranty_end').notNull(),
+  warrantyStart: timestamp('warranty_start', { withTimezone: true }).notNull(),
+  warrantyEnd: timestamp('warranty_end', { withTimezone: true }).notNull(),
 });
 

@@ -26,7 +26,7 @@ export const flowTemplates = pgTable('flow_templates', {
   name: text('name').notNull(),
   isDefault: boolean('is_default').notNull().default(false),
   version: integer('version').notNull().default(1),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('flow_templates_tenant_idx').on(table.tenantId),
 }));

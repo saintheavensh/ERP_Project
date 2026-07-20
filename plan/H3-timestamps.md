@@ -70,13 +70,47 @@ would need different answers.
 
 ## Verification
 
-- [ ] `SELECT column_name, data_type FROM information_schema.columns WHERE data_type LIKE 'timestamp%';`
-      → every row reads `timestamp with time zone`
-- [ ] An existing known row still shows the same wall-clock time it did before the
-      migration (spot-check one `pos_invoices.created_at` — record it beforehand)
-- [ ] `npx tsc --noEmit` → 0 errors
-- [ ] `npm test` → all passing
-- [ ] A newly created record stores the correct instant
+- [x] `SELECT column_name, data_type FROM information_schema.columns WHERE data_type LIKE 'timestamp%';`
+      → every row reads `timestamp with time zone`. Verified live: query grouped by
+      `data_type` returned exactly one row, `timestamp with time zone | 30`.
+- [x] An existing known row still shows the same wall-clock time it did before the
+      migration (spot-check one `pos_invoices.created_at` — record it beforehand).
+      `pos_invoices` itself was empty, so the spot-check ran instead against every
+      populated table with a timestamp column (`stock_batches.received_at` ×4,
+      `stock_movements.created_at` ×4, `service_tickets.created_at`/`closed_at`,
+      `supplier_invoices.invoice_date`/`due_date`/`created_at`) — recorded before the
+      migration, diffed after. Every value was byte-identical except for the added
+      `+07` suffix (server `TimeZone` is `Asia/Bangkok`, UTC+7 with no DST, same
+      offset as `Asia/Jakarta`) — proof nothing shifted.
+- [x] `npx tsc --noEmit` → 0 errors. Confirmed, empty output.
+- [x] `npm test` → all passing. `37 passed (37)`, 6 test files, unchanged from before
+      this task (no test touches timestamp values directly, so this also confirms no
+      regression).
+- [x] A newly created record stores the correct instant. Verified via a throwaway
+      script that inserted a real row through the Drizzle schema (`customers` table,
+      not raw SQL), captured a `[before, after]` `Date` window around the insert, and
+      confirmed the returned `createdAt` fell inside that window
+      (`2026-07-20T21:31:36.090Z` inside
+      `2026-07-20T21:31:36.036Z..2026-07-20T21:31:36.130Z`). Row was then deleted;
+      script was temporary and is not part of the repo.
+
+**Deviation from the Steps section:** step 2/3 (`drizzle-kit generate` + `migrate`)
+turned out to be unusable here — `generate` diffed against stale local migration
+snapshots (this project has only ever used `db:push`, never `migrate`, so `drizzle/`
+was out of sync with the live DB) and produced a migration that mixed in already-applied
+H1/H2 changes (dropping already-dropped tables, enum casts already live), which would
+have errored on replay. `drizzle-kit push` itself couldn't run non-interactively either:
+it stopped on an unrelated pre-existing prompt (offering to truncate `users` over a
+unique constraint that already exists in the DB — apparently a `push` introspection
+quirk, not caused by this task) and `--force` risked auto-truncating that table's real
+data to get past it. Neither is acceptable for a task whose entire point is proving no
+data is altered.
+Resolution: used `generate` once, read the SQL, hand-extracted only the 30
+`ALTER COLUMN ... SET DATA TYPE timestamp with time zone` (+ paired `SET DEFAULT now()`)
+statements — skipping the unrelated drift — and applied those directly in one
+transaction via `psql`. The generated migration file was discarded (never committed;
+`drizzle/` is gitignored). No `USING ... AT TIME ZONE` clause was needed per the
+2026-07-21 revision at the top of this file.
 
 ## Watch out
 

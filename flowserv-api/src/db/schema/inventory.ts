@@ -29,7 +29,7 @@ export const inventoryCategories = pgTable('inventory_categories', {
   description: text('description'),
   marginStrategy: varchar('margin_strategy', { length: 20 }), // 'markup' or 'gross_margin'
   targetMargin: decimal('target_margin', { precision: 5, scale: 2 }), // e.g. 30.00 for 30%
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('inventory_categories_tenant_idx').on(table.tenantId),
 }));
@@ -61,7 +61,7 @@ export const itemBrandPricing = pgTable('item_brand_pricing', {
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   partBrandId: uuid('part_brand_id').notNull().references(() => partBrands.id),
   sellingPrice: decimal('selling_price', { precision: 14, scale: 2 }).notNull().default('0'),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   itemBrandUnique: unique('item_brand_pricing_unique').on(table.inventoryItemId, table.partBrandId),
 }));
@@ -88,7 +88,7 @@ export const stockMovements = pgTable('stock_movements', {
   referenceType: varchar('reference_type', { length: 30 }),
   referenceId: uuid('reference_id'),
   serviceTicketId: uuid('service_ticket_id').references(() => serviceTickets.id),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantBranchIdx: index('stock_movements_tenant_branch_idx').on(table.tenantId, table.branchId),
   itemIdx: index('stock_movements_item_idx').on(table.inventoryItemId),
@@ -110,7 +110,7 @@ export const stockBatches = pgTable('stock_batches', {
   unitCost: decimal('unit_cost', { precision: 14, scale: 2 }).notNull(), // harga beli asli batch ini, bukan rata-rata
   quantityReceived: integer('quantity_received').notNull(),
   quantityRemaining: integer('quantity_remaining').notNull(),
-  receivedAt: timestamp('received_at').notNull().defaultNow(),
+  receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   fifoOrderIdx: index('stock_batches_fifo_idx').on(table.inventoryItemId, table.receivedAt),
 }));
@@ -152,9 +152,9 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).notNull(),
   amountPaid: decimal('amount_paid', { precision: 14, scale: 2 }).notNull().default('0'),
   paymentMethod: supplierPayMethodEnum('payment_method').notNull(),
-  invoiceDate: timestamp('invoice_date').notNull().defaultNow(),
-  dueDate: timestamp('due_date'), // Tanggal jatuh tempo jika tempo
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  invoiceDate: timestamp('invoice_date', { withTimezone: true }).notNull().defaultNow(),
+  dueDate: timestamp('due_date', { withTimezone: true }), // Tanggal jatuh tempo jika tempo
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantBranchIdx: index('supplier_invoices_tenant_branch_idx').on(table.tenantId, table.branchId),
   supplierIdx: index('supplier_invoices_supplier_idx').on(table.supplierId),
@@ -167,7 +167,7 @@ export const supplierPayments = pgTable('supplier_payments', {
   amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
   paymentMethod: supplierPayMethodEnum('payment_method').notNull(),
   referenceNumber: varchar('reference_number', { length: 100 }), // misal no referensi transfer
-  paymentDate: timestamp('payment_date').notNull().defaultNow(),
+  paymentDate: timestamp('payment_date', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),
 }, (table) => ({
   invoiceIdx: index('supplier_payments_invoice_idx').on(table.supplierInvoiceId),
@@ -180,15 +180,15 @@ export const purchaseOrders = pgTable('purchase_orders', {
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   poNumber: varchar('po_number', { length: 50 }).notNull(),
   status: poStatusEnum('status').notNull().default('draft'),
-  expectedDeliveryDate: timestamp('expected_delivery_date'),
+  expectedDeliveryDate: timestamp('expected_delivery_date', { withTimezone: true }),
   invoiceNumber: varchar('invoice_number', { length: 100 }),
-  invoiceDate: timestamp('invoice_date'),
-  invoiceDueDate: timestamp('invoice_due_date'),
+  invoiceDate: timestamp('invoice_date', { withTimezone: true }),
+  invoiceDueDate: timestamp('invoice_due_date', { withTimezone: true }),
   estimatedTotal: decimal('estimated_total', { precision: 14, scale: 2 }).notNull().default('0'),
   actualTotal: decimal('actual_total', { precision: 14, scale: 2 }),
   createdBy: uuid('created_by'), // -> users.id (for tracking who made the PO)
   approvedBy: uuid('approved_by'), // -> users.id (for tracking who approved)
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantBranchIdx: index('purchase_orders_tenant_branch_idx').on(table.tenantId, table.branchId),
 }));

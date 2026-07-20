@@ -44,7 +44,7 @@ export const printerTemplates = pgTable('printer_templates', {
   paperSize: varchar('paper_size', { length: 10 }).notNull(),
   layoutConfig: jsonb('layout_config').notNull(), // field mana ditampilkan & urutannya — TIDAK PERNAH berisi nilai data transaksi asli
   isDefault: boolean('is_default').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('printer_templates_tenant_idx').on(table.tenantId),
 }));

@@ -27,7 +27,7 @@ export const financeLedgerEntries = pgTable('finance_ledger_entries', {
   amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
   referenceType: varchar('reference_type', { length: 30 }),
   referenceId: uuid('reference_id'),
-  postedAt: timestamp('posted_at').notNull().defaultNow(),
+  postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantBranchIdx: index('finance_ledger_entries_tenant_branch_idx').on(table.tenantId, table.branchId),
 }));

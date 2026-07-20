@@ -37,7 +37,7 @@ export const posInvoices = pgTable('pos_invoices', {
   status: invoiceStatusEnum('status').notNull().default('active'), // document lifecycle — separate from payment
   paymentStatus: paymentStatusEnum('payment_status').notNull(),
   paymentMethod: paymentMethodEnum('payment_method').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),
 }, (table) => ({
   branchIdx: index('pos_invoices_branch_idx').on(table.branchId),
@@ -60,6 +60,6 @@ export const posDrafts = pgTable('pos_drafts', {
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   name: varchar('name', { length: 100 }).notNull(),
   cartItems: jsonb('cart_items').notNull(), // array of { inventoryItemId, quantity, unitPrice, name, sku }
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
