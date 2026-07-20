@@ -1,11 +1,14 @@
 import type { Handle } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+
+const API_URL = env.API_URL ?? 'http://localhost:3001';
 
 export const handle: Handle = async ({ event, resolve }) => {
   const token = event.cookies.get('flowserv_token');
 
   if (token) {
     try {
-      const response = await fetch('http://localhost:3001/v1/auth/me', {
+      const response = await fetch(`${API_URL}/v1/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

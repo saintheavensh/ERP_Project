@@ -6,7 +6,7 @@
   let menuItems = $derived.by(() => {
     let items: any[] = [{ label: 'Dashboard', path: '/' }];
     
-    if (user?.roleId === 'Super Admin' || user?.roleId === 'no-role') {
+    if (user?.roleName === 'Super Admin' || user?.roleName === 'no-role') {
       items.push({ label: 'Customers', path: '/customers' });
       items.push({ label: 'Flow Templates', path: '/flows' });
       items.push({ label: 'Tickets', path: '/tickets' });
@@ -38,7 +38,7 @@
         ]
       });
       items.push({ label: 'Settings', path: '/settings' });
-    } else if (user?.roleId === 'Technician') {
+    } else if (user?.roleName === 'Technician') {
       items.push({ label: 'My Jobs', path: '/tickets' });
     }
     
@@ -55,7 +55,7 @@
     <div class="px-6 py-4 border-b border-slate-800 text-sm">
       <div class="text-slate-400">Logged in as:</div>
       <div class="font-medium truncate">{user?.name}</div>
-      <div class="text-xs text-slate-500 mt-1 capitalize border border-slate-700 bg-slate-800 inline-block px-2 py-0.5 rounded">{user?.roleId}</div>
+      <div class="text-xs text-slate-500 mt-1 capitalize border border-slate-700 bg-slate-800 inline-block px-2 py-0.5 rounded">{user?.roleName}</div>
     </div>
 
     <nav class="flex-1 p-4 space-y-2 overflow-y-auto">

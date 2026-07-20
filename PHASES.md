@@ -211,7 +211,7 @@ missing.
 - [ ] 3.5A.3 Fix BUG-03: use the `allReceived` flag — set PO status to `partial` vs `received`
 - [ ] 3.5A.4 Fix BUG-04: increment `receivedQuantity` instead of overwriting
 - [ ] 3.5A.5 Fix BUG-05: verify `lineId` belongs to the order and tenant before updating
-- [ ] 3.5A.6 Fix BUG-11: include role **name** in the JWT; fix the sidebar role check in
+- [x] 3.5A.6 Fix BUG-11: include role **name** in the JWT; fix the sidebar role check in
       `(app)/+layout.svelte` (currently compares a UUID to `'Super Admin'`, so real users
       see only "Dashboard")
 

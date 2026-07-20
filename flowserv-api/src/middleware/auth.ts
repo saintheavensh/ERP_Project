@@ -6,6 +6,7 @@ export type JwtPayload = {
   userId: string;
   tenantId: string;
   roleId: string;
+  roleName: string;
   exp: number;
 };
 

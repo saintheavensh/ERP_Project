@@ -78,8 +78,8 @@ produced the current state.
 
 ## Progress
 
-- [ ] 01 — Testing foundation
-- [ ] 02 — Sidebar role fix
+- [x] 01 — Testing foundation (task file deleted — see commit bf3adc6)
+- [x] 02 — Sidebar role fix (task file deleted)
 - [ ] 03 — Flow engine enforcement
 - [ ] 04 — Purchasing receive fixes
 - [ ] 05 — Data integrity

@@ -10,6 +10,7 @@ declare global {
 				email: string;
 				tenantId: string;
 				roleId: string;
+				roleName: string;
 			};
 			token?: string;
 		}

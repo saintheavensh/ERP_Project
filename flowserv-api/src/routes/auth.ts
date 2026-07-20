@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
-import { users, userRoleAssignments } from '../db/schema';
+import { users, userRoleAssignments, roles } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcryptjs';
 import { sign } from 'hono/jwt';
@@ -39,13 +39,20 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
     return errorResponse(c, 'AUTH_FAILED', 'Invalid email or password', [], 401);
   }
 
-  const assignments = await db.select().from(userRoleAssignments).where(eq(userRoleAssignments.userId, user.id));
+  const assignments = await db
+    .select({ roleId: userRoleAssignments.roleId, roleName: roles.name })
+    .from(userRoleAssignments)
+    .innerJoin(roles, eq(userRoleAssignments.roleId, roles.id))
+    .where(eq(userRoleAssignments.userId, user.id));
+
   const roleId = assignments[0]?.roleId || 'no-role';
+  const roleName = assignments[0]?.roleName || 'no-role';
 
   const payload = {
     userId: user.id,
     tenantId: user.tenantId,
     roleId,
+    roleName,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7,
   };
 
@@ -59,6 +66,7 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
       email: user.email,
       tenantId: user.tenantId,
       roleId,
+      roleName,
     }
   });
 });
@@ -79,6 +87,7 @@ authRouter.get('/me', requireAuth, async (c) => {
     email: user.email,
     tenantId: user.tenantId,
     roleId: payload.roleId,
+    roleName: payload.roleName,
   });
 });
 
