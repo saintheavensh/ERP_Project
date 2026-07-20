@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class NewPurchaseState {
   data: any;
@@ -23,7 +24,7 @@ export class NewPurchaseState {
     $effect.root(() => {
       $effect(() => {
         if (this.supplierId) {
-          fetch(`http://localhost:3001/v1/suppliers/${this.supplierId}`, {
+          fetch(`${API_BASE}/suppliers/${this.supplierId}`, {
             headers: { 'Authorization': `Bearer ${this.data.token}` }
           })
           .then(r => r.json())
@@ -100,7 +101,7 @@ export class NewPurchaseState {
         lines: validLines
       };
       
-      const res = await fetch('http://localhost:3001/v1/purchasing/orders', {
+      const res = await fetch(`${API_BASE}/purchasing/orders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

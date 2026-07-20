@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class PurchaseReceiveState {
   data: any;
@@ -71,7 +72,7 @@ export class PurchaseReceiveState {
         }))
       };
       
-      const res = await fetch(`http://localhost:3001/v1/purchasing/orders/${this.order.id}/receive`, {
+      const res = await fetch(`${API_BASE}/purchasing/orders/${this.order.id}/receive`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

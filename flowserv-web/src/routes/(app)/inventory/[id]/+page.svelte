@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { API_BASE } from '$lib/api/config';
   import InventoryHeader from '$lib/components/inventory/InventoryHeader.svelte';
   import StockBatches from '$lib/components/inventory/StockBatches.svelte';
   import BrandPricing from '$lib/components/inventory/BrandPricing.svelte';
@@ -29,7 +30,7 @@
 
   async function handleApplyPrice(brandId: string, customPrice: number) {
     try {
-      const res = await fetch(`http://localhost:3001/v1/inventory/${item.id}/brands/${brandId}`, {
+      const res = await fetch(`${API_BASE}/inventory/${item.id}/brands/${brandId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

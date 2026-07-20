@@ -257,17 +257,23 @@ missing.
       6 tests, including the 5@10k/5@12k split-across-two-batches case)
 - [x] 3.5C.5 **Tests:** stock level arithmetic across receive → sell → void
       (`lib/__tests__/stock-lifecycle.test.ts`, including the BUG-10 guard case)
-- [ ] 3.5C.6 Verify `npm test` passes
+- [x] 3.5C.6 Verify `npm test` passes (31/31, re-confirmed after task 08 — backend untouched)
 
 ### 3.5E. Deployment Config & Seed Data
 > Added 2026-07-20 after the audit found these while working on 3.5A. Both are
 > prerequisites for later phases rather than defects in current behaviour.
 
-- [ ] 3.5E.1 Replace the 35 hardcoded `localhost:3001` URLs in **client-side** code
+- [x] 3.5E.1 Replace the 35 hardcoded `localhost:3001` URLs in **client-side** code
       (20 files under `lib/states/` and `*.svelte`) with an env-backed constant, and
       commit `.env.example` files. Server-side (`+page.server.ts`) stays as-is until
-      Phase 11. **Do before Phase 5** — every new UI screen copies the current
-      hardcoded pattern. Supports 9.7/9.8.
+      Phase 11. Added `lib/api/config.ts` as the single definition; `lib/api/client.ts`
+      now imports from it instead of recomputing it. Verified: grep for
+      `localhost:3001` across `*.svelte.ts`/`*.svelte` is empty (44 server-side
+      occurrences in 28 files untouched, as intended); `npm run check` 0 errors;
+      SSR-rendered all touched pages (customers, inventory, POS, tickets, brands,
+      categories, an item detail, a PO detail) with a real login cookie — all 200;
+      confirmed via the dev server's transformed module that `API_BASE` resolves
+      identically to the old hardcoded value under the current `.env`.
 - [ ] 3.5E.2 Fix `db/seed.ts`: assign the Super Admin role (no user currently gets
       *any* role), make the seed idempotent, switch to bcrypt. Then remove the
       `'no-role'` full-menu fallback in `(app)/+layout.svelte`.

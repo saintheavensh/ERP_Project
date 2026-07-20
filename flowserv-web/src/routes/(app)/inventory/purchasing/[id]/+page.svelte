@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { API_BASE } from '$lib/api/config';
   import OrderHeader from '$lib/components/purchasing/OrderHeader.svelte';
   import OrderSteps from '$lib/components/purchasing/OrderSteps.svelte';
   import OrderInfo from '$lib/components/purchasing/OrderInfo.svelte';
@@ -15,7 +16,7 @@
     loading = true;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/purchasing/orders/${order.id}/status`, {
+      const res = await fetch(`${API_BASE}/purchasing/orders/${order.id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -42,7 +43,7 @@
     loading = true;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/purchasing/orders/${order.id}`, {
+      const res = await fetch(`${API_BASE}/purchasing/orders/${order.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${data.token}`

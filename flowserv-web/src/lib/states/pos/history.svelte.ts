@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class PosHistoryState {
   data: any;
@@ -37,7 +38,7 @@ export class PosHistoryState {
     this.loadingDetail = true;
     this.selectedInvoiceDetail = inv; 
     try {
-      const res = await fetch(`http://localhost:3001/v1/pos/invoices/${inv.id}`, {
+      const res = await fetch(`${API_BASE}/pos/invoices/${inv.id}`, {
         headers: { 'Authorization': `Bearer ${this.token}` }
       });
       if (res.ok) {
@@ -54,7 +55,7 @@ export class PosHistoryState {
     if (!confirm('Apakah Anda yakin ingin melakukan VOID transaksi ini? Stok akan dikembalikan ke gudang.')) return;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/pos/invoices/${id}`, {
+      const res = await fetch(`${API_BASE}/pos/invoices/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${this.token}` }
       });
@@ -74,7 +75,7 @@ export class PosHistoryState {
     if (!confirm('Transaksi ini akan di-VOID dan isi keranjangnya akan disalin ke halaman Kasir. Lanjutkan?')) return;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/pos/invoices/${invoice.id}`, {
+      const res = await fetch(`${API_BASE}/pos/invoices/${invoice.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${this.token}` }
       });

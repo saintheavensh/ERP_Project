@@ -1,3 +1,5 @@
+import { API_BASE } from '$lib/api/config';
+
 export class InventoryState {
   data: any = $state({});
   showAddModal = $state(false);
@@ -62,7 +64,7 @@ export class InventoryState {
       if (!payload.partBrandId) delete payload.partBrandId;
       if (!payload.universalCode) delete payload.universalCode;
       
-      const res = await fetch('http://localhost:3001/v1/inventory', {
+      const res = await fetch(`${API_BASE}/inventory`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +90,7 @@ export class InventoryState {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/inventory/${id}`, {
+      const res = await fetch(`${API_BASE}/inventory/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${this.data.token}`

@@ -1,6 +1,4 @@
-import { env } from '$env/dynamic/public';
-
-const API_BASE = `${env.PUBLIC_API_URL ?? 'http://localhost:3001'}/v1`;
+import { API_BASE } from './config';
 
 export async function apiFetch<T>(
   endpoint: string,

@@ -1,6 +1,7 @@
 import type { PosProductsState } from './pos.products.svelte';
 import type { PosCartState } from './pos.cart.svelte';
 import type { PosCommonState } from './pos.svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class PosDraftsState {
   data: any = $state({});
@@ -29,7 +30,7 @@ export class PosDraftsState {
 
     this.commonState.processing = true;
     try {
-      const res = await fetch('http://localhost:3001/v1/pos/drafts', {
+      const res = await fetch(`${API_BASE}/pos/drafts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,7 +65,7 @@ export class PosDraftsState {
     this.showDraftsModal = true;
     this.loadingDrafts = true;
     try {
-      const res = await fetch(`http://localhost:3001/v1/pos/drafts?branchId=${this.productsState.selectedBranchId}`, {
+      const res = await fetch(`${API_BASE}/pos/drafts?branchId=${this.productsState.selectedBranchId}`, {
         headers: { 'Authorization': `Bearer ${this.data.token}` }
       });
       if (res.ok) {
@@ -83,7 +84,7 @@ export class PosDraftsState {
     this.commonState.successMsg = `Draft '${draft.name}' dimuat.`;
     setTimeout(() => this.commonState.successMsg = '', 3000);
 
-    fetch(`http://localhost:3001/v1/pos/drafts/${draft.id}`, {
+    fetch(`${API_BASE}/pos/drafts/${draft.id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${this.data.token}` }
     }).catch(console.error);
@@ -94,7 +95,7 @@ export class PosDraftsState {
     if (!confirm('Hapus draft ini secara permanen?')) return;
     
     try {
-      await fetch(`http://localhost:3001/v1/pos/drafts/${id}`, {
+      await fetch(`${API_BASE}/pos/drafts/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${this.data.token}` }
       });

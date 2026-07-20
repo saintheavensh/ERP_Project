@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class BrandPricingState {
   item: any;
@@ -91,7 +92,7 @@ export class BrandPricingState {
     this.savingBrand = true;
     const finalPrice = customPrice !== undefined ? customPrice : this.editBrandPrice;
     try {
-      const res = await fetch(`http://localhost:3001/v1/inventory/${this.item.id}/brands/${brandId}`, {
+      const res = await fetch(`${API_BASE}/inventory/${this.item.id}/brands/${brandId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

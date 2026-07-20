@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { API_BASE } from '$lib/api/config';
+
   let { data } = $props();
   let brands = $derived(data.brands || []);
   
@@ -15,7 +17,7 @@
     errorMsg = '';
     
     try {
-      const res = await fetch('http://localhost:3001/v1/brands', {
+      const res = await fetch(`${API_BASE}/brands`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,7 +43,7 @@
     if (!confirm('Are you sure you want to delete this brand?')) return;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/brands/${id}`, {
+      const res = await fetch(`${API_BASE}/brands/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${data.token}`

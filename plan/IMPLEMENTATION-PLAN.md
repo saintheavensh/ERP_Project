@@ -90,7 +90,7 @@ produced the current state.
 - [x] 04 — Purchasing receive fixes (task file deleted)
 - [x] 05 — Data integrity (task file deleted; 3.5B.2 marked `[/]` — row locking is
       code-reviewed but not load-tested, per the task's own honesty requirement)
-- [ ] 08 — Client API URLs  ← added 2026-07-20
+- [x] 08 — Client API URLs (task file deleted)
 - [ ] 06 — AP payment endpoint
 - [ ] 07 — Merge and docs
 - [ ] 09 — Seed and roles  ← added 2026-07-20, before Phase 4.5B

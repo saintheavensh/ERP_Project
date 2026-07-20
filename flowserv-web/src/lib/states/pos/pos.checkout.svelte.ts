@@ -1,4 +1,5 @@
 import { invalidateAll } from '$app/navigation';
+import { API_BASE } from '$lib/api/config';
 import type { PosProductsState } from './pos.products.svelte';
 import type { PosCartState } from './pos.cart.svelte';
 import type { PosCommonState } from './pos.svelte';
@@ -66,7 +67,7 @@ export class PosCheckoutState {
         }))
       };
 
-      const res = await fetch('http://localhost:3001/v1/pos/invoices', {
+      const res = await fetch(`${API_BASE}/pos/invoices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

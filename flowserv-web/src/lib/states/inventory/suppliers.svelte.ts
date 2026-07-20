@@ -1,3 +1,5 @@
+import { API_BASE } from '$lib/api/config';
+
 export class SuppliersState {
   data: any;
   showAddModal = $state(false);
@@ -50,7 +52,7 @@ export class SuppliersState {
       if (payload.paymentType === 'cash') payload.paymentTermDays = 0;
       delete (payload as any).paymentType;
       
-      const res = await fetch('http://localhost:3001/v1/suppliers', {
+      const res = await fetch(`${API_BASE}/suppliers`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +78,7 @@ export class SuppliersState {
     if (!confirm('Are you sure you want to delete this supplier? This action cannot be undone if there are no linked transactions.')) return;
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/suppliers/${id}`, {
+      const res = await fetch(`${API_BASE}/suppliers/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${this.data.token}`

@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class SupplierDetailState {
   data: any;
@@ -47,7 +48,7 @@ export class SupplierDetailState {
       if (payload.paymentType === 'cash') payload.paymentTermDays = 0;
       delete (payload as any).paymentType;
       
-      const res = await fetch(`http://localhost:3001/v1/suppliers/${this.supplier.id}`, {
+      const res = await fetch(`${API_BASE}/suppliers/${this.supplier.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +77,7 @@ export class SupplierDetailState {
     this.errorMsg = '';
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/suppliers/${this.supplier.id}/brands`, {
+      const res = await fetch(`${API_BASE}/suppliers/${this.supplier.id}/brands`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ export class SupplierDetailState {
     this.errorMsg = '';
     
     try {
-      const brandRes = await fetch('http://localhost:3001/v1/brands', {
+      const brandRes = await fetch(`${API_BASE}/brands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.data.token}` },
         body: JSON.stringify({ name: this.newBrandName, qualityGrade: this.newBrandGrade || 'OEM' })
@@ -114,7 +115,7 @@ export class SupplierDetailState {
       
       const newBrandId = brandResult.data.id;
       
-      const linkRes = await fetch(`http://localhost:3001/v1/suppliers/${this.supplier.id}/brands`, {
+      const linkRes = await fetch(`${API_BASE}/suppliers/${this.supplier.id}/brands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.data.token}` },
         body: JSON.stringify({ brandId: newBrandId })
@@ -135,7 +136,7 @@ export class SupplierDetailState {
     this.errorMsg = '';
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/suppliers/${this.supplier.id}/brands/${brandId}`, {
+      const res = await fetch(`${API_BASE}/suppliers/${this.supplier.id}/brands/${brandId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${this.data.token}`

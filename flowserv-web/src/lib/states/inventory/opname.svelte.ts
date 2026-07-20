@@ -1,3 +1,5 @@
+import { API_BASE } from '$lib/api/config';
+
 export type BrandLine = { brandId: string; quantity: number; unitCost: number; sellingPrice: number };
 export type OpnameItem = { inventoryItemId: string; name: string; categoryName: string; universalCode: string; sku: string; skipped: boolean; brandLines: BrandLine[] };
 
@@ -87,7 +89,7 @@ export class OpnameState {
 
     this.loading = true;
     try {
-      const res = await fetch(`http://localhost:3001/v1/opname`, {
+      const res = await fetch(`${API_BASE}/opname`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

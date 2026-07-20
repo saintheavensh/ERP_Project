@@ -1,4 +1,5 @@
 import { invalidateAll } from '$app/navigation';
+import { API_BASE } from '$lib/api/config';
 
 export class CustomerDetailState {
   data: any;
@@ -21,7 +22,7 @@ export class CustomerDetailState {
     this.loading = true;
     this.errorMsg = '';
     try {
-      const res = await fetch(`http://localhost:3001/v1/customers/${this.customer.id}/assets`, {
+      const res = await fetch(`${API_BASE}/customers/${this.customer.id}/assets`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

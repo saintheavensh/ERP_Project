@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class CompatibilityManagerState {
   item: any;
@@ -43,7 +44,7 @@ export class CompatibilityManagerState {
   async saveCompatibility() {
     this.saving = true;
     try {
-      const res = await fetch(`http://localhost:3001/v1/inventory/${this.item.id}/compatibility`, {
+      const res = await fetch(`${API_BASE}/inventory/${this.item.id}/compatibility`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

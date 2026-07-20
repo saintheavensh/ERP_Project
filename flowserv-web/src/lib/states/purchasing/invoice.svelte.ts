@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { API_BASE } from '$lib/api/config';
 
 export class PurchaseInvoiceState {
   data: any;
@@ -123,7 +124,7 @@ export class PurchaseInvoiceState {
         }))
       };
       
-      const res = await fetch(`http://localhost:3001/v1/purchasing/orders/${this.order.id}/invoice`, {
+      const res = await fetch(`${API_BASE}/purchasing/orders/${this.order.id}/invoice`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

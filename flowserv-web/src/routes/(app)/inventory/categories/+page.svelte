@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { API_BASE } from '$lib/api/config';
+
   let { data } = $props();
   let categories = $derived(data.categories);
   
@@ -15,7 +17,7 @@
     errorMsg = '';
     
     try {
-      const res = await fetch('http://localhost:3001/v1/categories', {
+      const res = await fetch(`${API_BASE}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

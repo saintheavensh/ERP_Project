@@ -1,4 +1,5 @@
 import { goto } from '$app/navigation';
+import { API_BASE } from '$lib/api/config';
 
 export class TicketIntakeState {
   data: any;
@@ -60,7 +61,7 @@ export class TicketIntakeState {
     }
 
     try {
-      const res = await fetch('http://localhost:3001/v1/tickets/intake', {
+      const res = await fetch(`${API_BASE}/tickets/intake`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

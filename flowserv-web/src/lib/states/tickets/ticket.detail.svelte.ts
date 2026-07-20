@@ -1,5 +1,6 @@
 import { untrack } from 'svelte';
 import { invalidateAll } from '$app/navigation';
+import { API_BASE } from '$lib/api/config';
 
 export class TicketDetailState {
   data: any;
@@ -45,7 +46,7 @@ export class TicketDetailState {
     this.errorMsg = '';
     
     try {
-      const res = await fetch(`http://localhost:3001/v1/tickets/${this.ticket.id}/transition`, {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/transition`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,7 +87,7 @@ export class TicketDetailState {
     this.loading = true;
     this.errorMsg = '';
     try {
-      const res = await fetch(`http://localhost:3001/v1/customers/${this.customer.id}`, {
+      const res = await fetch(`${API_BASE}/customers/${this.customer.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
