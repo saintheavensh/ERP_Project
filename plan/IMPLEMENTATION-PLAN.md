@@ -91,7 +91,7 @@ produced the current state.
 - [x] 05 — Data integrity (task file deleted; 3.5B.2 marked `[/]` — row locking is
       code-reviewed but not load-tested, per the task's own honesty requirement)
 - [x] 08 — Client API URLs (task file deleted)
-- [ ] 06 — AP payment endpoint
+- [x] 06 — AP payment endpoint (task file deleted)
 - [ ] 07 — Merge and docs
 - [ ] 09 — Seed and roles  ← added 2026-07-20, before Phase 4.5B
 

@@ -246,8 +246,19 @@ missing.
       `quantityReceived` (409 `VOID_CONFLICT`). Also added a second double-void guard
       checking `stockMovements` directly, not just `paymentStatus`. Verified live:
       voiding an invoice twice returns 409 `ALREADY_VOIDED` on the second attempt.
-- [ ] 3.5B.6 GAP-01: add `POST /v1/finance/payables/:id/payments` so supplier debt can
-      actually be settled (completes 4A.3) — deferred to task 06
+- [x] 3.5B.6 GAP-01: add `POST /v1/finance/payables/:id/payments` so supplier debt can
+      actually be settled (completes 4A.3). Built as `modules/finance/{service,types}.ts`
+      per coding-guidelines §6 — the first module in this shape, per RECOVERY-PLAN
+      decision D1. Also added `GET /v1/finance/payables/:id` for payment history, and
+      wired the previously-dead "Bayar" button in `PayablesTable.svelte` to a real modal.
+      Discovered `supplier_payments` table + relations already existed in the schema
+      and live DB (unused) — used it as-is rather than creating a duplicate table.
+      Verified live end-to-end: partial payment (400k of 1M) → status `partial`;
+      overpayment attempt (999999 against a 600k remaining balance) → 422
+      `OVERPAYMENT`, balance untouched; completing payment (600k) → status `paid`;
+      further payment attempt → 409 `ALREADY_PAID`; payment history via `GET /:id`
+      shows both records newest-first; invoice correctly drops off the outstanding
+      payables list once paid. 6 new tests (37 total).
 
 ### 3.5C. P1 — Testing Foundation
 - [x] 3.5C.1 Add `vitest.config.ts` and fix the `test` script in `flowserv-api/package.json`
@@ -296,8 +307,8 @@ missing.
 ### 4A. Supplier & Hutang (Accounts Payable)
 - [x] 4A.1 BE: Create Supplier CRUD routes & schema
 - [x] 4A.2 FE: Supplier Management page
-- [/] 4A.3 BE: AP routes for tracking supplier debts — read-only today; **no payment
-      endpoint**, so `amountPaid` is permanently `0`. Completed by task 3.5B.6.
+- [x] 4A.3 BE: AP routes for tracking supplier debts — now supports recording
+      payments and settling debt. See 3.5B.6.
 - [x] 4A.4 FE: Manajemen Hutang Supplier page (with aging/tempo limits)
 
 ### 4B. Purchasing (PO & Costing)

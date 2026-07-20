@@ -1,8 +1,17 @@
 import { differenceInDays, format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { API_BASE } from '$lib/api/config';
 
 export class PayablesState {
   data: any;
+
+  // Pay modal
+  payingInvoice: any = $state(null);
+  payAmount = $state(0);
+  payMethod = $state('cash');
+  payReferenceNumber = $state('');
+  paySubmitting = $state(false);
+  payError = $state('');
 
   constructor(data: any) {
     this.data = data;
@@ -10,6 +19,54 @@ export class PayablesState {
 
   get payables() {
     return this.data.payables || [];
+  }
+
+  outstandingBalance(p: any) {
+    return Number(p.totalAmount) - Number(p.amountPaid);
+  }
+
+  openPayModal(invoice: any) {
+    this.payingInvoice = invoice;
+    this.payAmount = this.outstandingBalance(invoice);
+    this.payMethod = 'cash';
+    this.payReferenceNumber = '';
+    this.payError = '';
+  }
+
+  closePayModal() {
+    this.payingInvoice = null;
+  }
+
+  async submitPayment() {
+    if (!this.payingInvoice) return;
+    this.paySubmitting = true;
+    this.payError = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/finance/payables/${this.payingInvoice.id}/payments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.data.token}`
+        },
+        body: JSON.stringify({
+          amount: this.payAmount,
+          paymentMethod: this.payMethod,
+          referenceNumber: this.payReferenceNumber || undefined
+        })
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error?.message || 'Gagal mencatat pembayaran');
+      }
+
+      window.location.reload();
+    } catch (err: any) {
+      this.payError = err.message;
+      this.paySubmitting = false;
+    }
   }
 
   formatMoney(amount: number | string) {
