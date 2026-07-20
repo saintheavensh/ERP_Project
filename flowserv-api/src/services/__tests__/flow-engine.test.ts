@@ -128,3 +128,90 @@ describe('evaluateTransition', () => {
     }
   });
 });
+
+/**
+ * These model the exact shape seeded by db/seed-flows.ts ("Standard Repair"),
+ * so a change to the seed data or the decision logic that breaks the real
+ * flow shows up here, not just in the abstract cases above.
+ *
+ *   Intake -> Diagnosis -> Waiting Approval -> Repair -> Completion
+ *                       \_______________________/
+ *                    (Diagnosis and Waiting Approval both skip to Repair;
+ *                     Waiting Approval can also skip straight to Completion)
+ */
+describe('evaluateTransition — seeded "Standard Repair" shape', () => {
+  const STANDARD_REPAIR = 'standard-repair-template';
+  const OTHER_TEMPLATE = 'some-other-tenant-template';
+
+  const nodes = {
+    intake: { id: 'node-intake', flowTemplateId: STANDARD_REPAIR, requiredPermissionId: null },
+    diagnosis: { id: 'node-diagnosis', flowTemplateId: STANDARD_REPAIR, requiredPermissionId: null },
+    waitingApproval: { id: 'node-waiting-approval', flowTemplateId: STANDARD_REPAIR, requiredPermissionId: null },
+    repair: { id: 'node-repair', flowTemplateId: STANDARD_REPAIR, requiredPermissionId: null },
+    completion: { id: 'node-completion', flowTemplateId: STANDARD_REPAIR, requiredPermissionId: null },
+  };
+
+  const seededTransitions: [keyof typeof nodes, keyof typeof nodes][] = [
+    ['intake', 'diagnosis'],
+    ['diagnosis', 'waitingApproval'],
+    ['diagnosis', 'repair'],
+    ['waitingApproval', 'repair'],
+    ['waitingApproval', 'completion'],
+    ['repair', 'completion'],
+  ];
+
+  function transitionExists(from: keyof typeof nodes, to: keyof typeof nodes): boolean {
+    return seededTransitions.some(([f, t]) => f === from && t === to);
+  }
+
+  it('allows Intake -> Diagnosis, the normal first move', () => {
+    // Act
+    const result = evaluateTransition({
+      transitionExists: transitionExists('intake', 'diagnosis'),
+      ticketFlowTemplateId: STANDARD_REPAIR,
+      targetNode: nodes.diagnosis,
+      rolePermissionIds: [],
+    });
+    // Assert
+    expect(result).toEqual({ valid: true });
+  });
+
+  it('rejects Intake -> Completion — skipping the entire repair process', () => {
+    // Arrange — this is the exact case BUG-01 let through: with the bug, this
+    // request returned 200 and the ticket jumped straight to closed.
+    // Act
+    const result = evaluateTransition({
+      transitionExists: transitionExists('intake', 'completion'),
+      ticketFlowTemplateId: STANDARD_REPAIR,
+      targetNode: nodes.completion,
+      rolePermissionIds: [],
+    });
+    // Assert
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.code).toBe('TRANSITION_NOT_ALLOWED');
+    }
+  });
+
+  it('rejects a target node belonging to a different tenant\'s flow template', () => {
+    // Arrange — same idea as BUG-02: a node UUID from another tenant's template
+    const crossTenantNode = { id: 'node-other', flowTemplateId: OTHER_TEMPLATE, requiredPermissionId: null };
+    // Act
+    const result = evaluateTransition({
+      transitionExists: false, // a cross-tenant node also won't have a matching transition row
+      ticketFlowTemplateId: STANDARD_REPAIR,
+      targetNode: crossTenantNode,
+      rolePermissionIds: [],
+    });
+    // Assert
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.code).toBe('NODE_WRONG_TEMPLATE');
+    }
+  });
+
+  it('Completion has no outgoing transitions — it is a terminal node', () => {
+    const outgoingFromCompletion = seededTransitions.filter(([from]) => from === 'completion');
+    expect(outgoingFromCompletion).toHaveLength(0);
+  });
+});

@@ -1,5 +1,5 @@
 import { db } from '../db/connection';
-import { flowTransitions, flowNodes, flowTemplates, rolePermissions } from '../db/schema';
+import { flowTransitions, flowNodes, flowTemplates, rolePermissions, serviceTickets, ticketStageHistory } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { emitEvent, AppEvent } from './event-bus';
 
@@ -133,7 +133,11 @@ export class FlowEngine {
   }
 
   /**
-   * Executes a transition. Not yet wired to routes/tickets.ts — see task 03.
+   * Validates, then executes, a transition: updates the ticket's current node,
+   * records the stage history entry, and emits TICKET_STAGE_CHANGED — all inside
+   * one transaction. Returns the same TransitionResult shape as validateTransition
+   * so the route can map { code } to the right HTTP status without a try/catch
+   * for the validation failure case.
    */
   static async executeTransition(
     tenantId: string,
@@ -142,18 +146,30 @@ export class FlowEngine {
     currentNodeId: string,
     targetNodeId: string,
     roleId: string,
-    userId: string
-  ) {
+    userId: string,
+    notes?: string | null
+  ): Promise<TransitionResult> {
     const result = await this.validateTransition(
       tenantId, ticketFlowTemplateId, currentNodeId, targetNodeId, roleId
     );
     if (!result.valid) {
-      throw new Error(result.reason);
+      return result;
     }
 
-    // Phase 3: DB transaction to update ticket stage & insert history
+    await db.transaction(async (tx) => {
+      await tx.update(serviceTickets)
+        .set({ currentNodeId: targetNodeId })
+        .where(eq(serviceTickets.id, ticketId));
 
-    // Emit event for other modules
+      await tx.insert(ticketStageHistory).values({
+        ticketId,
+        nodeId: targetNodeId,
+        actorId: userId,
+        notes: notes || null,
+      });
+    });
+
+    // Emit event for other modules (e.g. Phase 4.5 ledger posting)
     emitEvent(AppEvent.TICKET_STAGE_CHANGED, {
       ticketId,
       fromNodeId: currentNodeId,
@@ -162,6 +178,6 @@ export class FlowEngine {
       timestamp: new Date().toISOString()
     });
 
-    return true;
+    return { valid: true };
   }
 }

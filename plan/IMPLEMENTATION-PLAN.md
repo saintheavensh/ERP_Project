@@ -80,7 +80,7 @@ produced the current state.
 
 - [x] 01 — Testing foundation (task file deleted — see commit bf3adc6)
 - [x] 02 — Sidebar role fix (task file deleted)
-- [ ] 03 — Flow engine enforcement
+- [x] 03 — Flow engine enforcement (task file deleted)
 - [ ] 04 — Purchasing receive fixes
 - [ ] 05 — Data integrity
 - [ ] 06 — AP payment endpoint

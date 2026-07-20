@@ -130,11 +130,13 @@ missing.
 
 ### 2B. Flow Engine Core (BE)
 - [x] 2B.1 Flow Template CRUD (read/write FlowTemplate + FlowNode from DB)
-- [ ] 2B.2 Transition validation engine — ⚠️ **written but not enforced.** The route
-      ignores the return value, so every transition passes. See RECOVERY-PLAN BUG-01.
+- [x] 2B.2 Transition validation engine — now enforced (Phase 3.5A.1/A.2). Verified
+      live: `Intake → Diagnosis` returns 200; `Intake → Completion` returns 409
+      `TRANSITION_NOT_ALLOWED`.
 - [x] 2B.3 Stage history recording (TicketStageHistory — append-only)
-- [ ] 2B.4 Event emission on state change — ⚠️ event bus exists, but
-      `executeTransition` is never called so the event never fires. No listeners exist.
+- [x] 2B.4 Event emission on state change — `FlowEngine.executeTransition` now
+      performs the DB update and emits `TICKET_STAGE_CHANGED` on every successful
+      transition. No listeners subscribe yet (Phase 4.5A will add ledger posting).
 - [ ] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
       — ⚠️ **no test files exist anywhere in the repo.** `npm test` exits 1.
 
@@ -159,8 +161,8 @@ missing.
 
 ### 3B. Service Ticket (BE + FE)
 - [x] 3B.1 BE: Create ticket (intake) — with Zod validation
-- [ ] 3B.2 BE: Transition ticket to next stage (uses Flow Engine) — endpoint exists but
-      validation is bypassed; blocked on 2B.2
+- [x] 3B.2 BE: Transition ticket to next stage (uses Flow Engine) — now genuinely
+      enforces the flow template's transition rules; see Phase 3.5A.1/A.2
 - [x] 3B.3 BE: Get ticket detail + stage history
 - [x] 3B.4 FE: Ticket creation form (select customer, device, complaint)
 - [ ] 3B.5 FE: Ticket Kanban board (columns = flow nodes, drag-drop)
@@ -204,9 +206,9 @@ missing.
 > **Rule:** No new features. Only fixes, tests, and the merge to main.
 
 ### 3.5A. P0 — Correctness & Security
-- [ ] 3.5A.1 Fix BUG-01: `if (!allowed.valid)` in `routes/tickets.ts`. Return **409**
+- [x] 3.5A.1 Fix BUG-01: `if (!allowed.valid)` in `routes/tickets.ts`. Return **409**
       for invalid transition, **403** for permission failure, include the `reason`.
-- [ ] 3.5A.2 Fix BUG-02: validate `targetNodeId` belongs to the ticket's flow template;
+- [x] 3.5A.2 Fix BUG-02: validate `targetNodeId` belongs to the ticket's flow template;
       add `tenantId` filter to both queries in `FlowEngine.validateTransition`
 - [ ] 3.5A.3 Fix BUG-03: use the `allReceived` flag — set PO status to `partial` vs `received`
 - [ ] 3.5A.4 Fix BUG-04: increment `receivedQuantity` instead of overwriting
@@ -229,7 +231,7 @@ missing.
 ### 3.5C. P1 — Testing Foundation
 - [x] 3.5C.1 Add `vitest.config.ts` and fix the `test` script in `flowserv-api/package.json`
 - [x] 3.5C.2 Extract `flow-engine` logic so it is testable without HTTP (start of decision D1)
-- [ ] 3.5C.3 **Tests:** transition validation — valid, invalid, missing permission, cross-tenant
+- [x] 3.5C.3 **Tests:** transition validation — valid, invalid, missing permission, cross-tenant
 - [ ] 3.5C.4 **Tests:** FIFO batch splitting and consumption order
 - [ ] 3.5C.5 **Tests:** stock level arithmetic across receive → sell → void
 - [ ] 3.5C.6 Verify `npm test` passes

@@ -201,37 +201,25 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
   
   const ticket = t[0];
   if (!ticket.currentNodeId) return errorResponse(c, 'INVALID_STATE', 'Ticket has no current node', [], 400);
-  
-  // Validate using FlowEngine
-  // NOTE: this check is not yet enforced correctly — `allowed` is an object,
-  // which is always truthy, so `!allowed` never fires. See RECOVERY-PLAN BUG-01.
-  // Fixed in task 03; left as-is here since this task only reshapes flow-engine.ts.
-  const allowed = await FlowEngine.validateTransition(tenantId, ticket.flowTemplateId, ticket.currentNodeId, targetNodeId, roleId);
 
-  if (!allowed) {
-    return errorResponse(c, 'FORBIDDEN', 'Transition not allowed or you lack permission', [], 403);
-  }
-  
-  // Execute transaction
   try {
-    await db.transaction(async (tx) => {
-      // update ticket
-      await tx.update(serviceTickets).set({
-        currentNodeId: targetNodeId,
-      }).where(eq(serviceTickets.id, ticketId));
-      
-      // insert history
-      await tx.insert(ticketStageHistory).values({
-        ticketId: ticket.id,
-        nodeId: targetNodeId,
-        actorId: userId,
-        notes: notes || null
-      });
-      
-      // Note: If target node implies closing (e.g. Completion), we might also set status='closed' and closedAt. 
-      // We can check if it's the final node, but for now we skip auto-close or do it later.
-    });
-    
+    const result = await FlowEngine.executeTransition(
+      tenantId,
+      ticket.flowTemplateId,
+      ticket.id,
+      ticket.currentNodeId,
+      targetNodeId,
+      roleId,
+      userId,
+      notes
+    );
+
+    if (!result.valid) {
+      // 403 = you are not allowed; 409 = the flow does not permit this move at all
+      const status = result.code === 'PERMISSION_DENIED' ? 403 : 409;
+      return errorResponse(c, result.code, result.reason, [], status);
+    }
+
     return successResponse(c, { success: true });
   } catch (err: any) {
     return errorResponse(c, 'TRANSITION_FAILED', err.message, [], 500);
