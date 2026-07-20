@@ -54,6 +54,11 @@ export const partBrands = pgTable('part_brands', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   name: text('name').notNull(), // merk sparepart: "IncellPro", "MegaScreen", "OEM", "KW Super", dst
+  // Tingkat kualitas ("Original", "OEM", "Grade A", "Incell", dst). Kolom ini
+  // sempat hilang dari schema padahal POST /v1/brands mewajibkannya dan 4 layar
+  // menampilkannya — akibatnya setiap merk yang dibuat lewat UI kehilangan
+  // grade-nya diam-diam dan semua tampilan tercetak "undefined".
+  qualityGrade: varchar('quality_grade', { length: 30 }).notNull().default('OEM'),
 }, (table) => ({
   tenantIdx: index('part_brands_tenant_idx').on(table.tenantId),
 }));

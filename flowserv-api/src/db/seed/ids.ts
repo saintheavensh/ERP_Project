@@ -62,19 +62,43 @@ export const IDS = {
   categoryLcd: '20000000-0000-4000-8000-000000000001',
   categoryBattery: '20000000-0000-4000-8000-000000000002',
 
+  // Merk SPAREPART (bukan merk HP) — menentukan kualitas/harga, bukan kompatibilitas.
+  partBrandIncell: '11000000-0000-4000-8000-000000000001',
+  partBrandMegaScreen: '11000000-0000-4000-8000-000000000002',
+  partBrandOem: '11000000-0000-4000-8000-000000000003',
+
   itemLcdMultiBatch: '30000000-0000-4000-8000-000000000001',
   itemStokSatu: '30000000-0000-4000-8000-000000000002',
 
   supplierCash: '40000000-0000-4000-8000-000000000001',
   supplierTempo: '40000000-0000-4000-8000-000000000002',
 
+  // Supplier -> merk sparepart yang dia jual. Form pembelian membaca ini untuk
+  // membatasi pilihan merk setelah supplier dipilih.
+  supplierBrandCashIncell: '41000000-0000-4000-8000-000000000001',
+  supplierBrandCashOem: '41000000-0000-4000-8000-000000000002',
+  supplierBrandTempoMega: '41000000-0000-4000-8000-000000000003',
+  supplierBrandTempoIncell: '41000000-0000-4000-8000-000000000004',
+
+  // Item -> supplier (many-to-many, is_primary menandai supplier utama).
+  productSupplierLcdCash: '42000000-0000-4000-8000-000000000001',
+  productSupplierLcdTempo: '42000000-0000-4000-8000-000000000002',
+  productSupplierBatCash: '42000000-0000-4000-8000-000000000003',
+
+  // Harga jual per merk untuk satu SKU yang sama.
+  itemBrandPriceLcdIncell: '43000000-0000-4000-8000-000000000001',
+  itemBrandPriceLcdMega: '43000000-0000-4000-8000-000000000002',
+  itemBrandPriceBatOem: '43000000-0000-4000-8000-000000000003',
+
   batchLcdOld: '50000000-0000-4000-8000-000000000001',
   batchLcdNew: '50000000-0000-4000-8000-000000000002',
   batchStokSatu: '50000000-0000-4000-8000-000000000003',
+  batchLcdPo: '50000000-0000-4000-8000-000000000004',
 
   movementLcdOld: '60000000-0000-4000-8000-000000000001',
   movementLcdNew: '60000000-0000-4000-8000-000000000002',
   movementStokSatu: '60000000-0000-4000-8000-000000000003',
+  movementLcdPo: '60000000-0000-4000-8000-000000000004',
 
   levelLcd: '70000000-0000-4000-8000-000000000001',
   levelStokSatu: '70000000-0000-4000-8000-000000000002',

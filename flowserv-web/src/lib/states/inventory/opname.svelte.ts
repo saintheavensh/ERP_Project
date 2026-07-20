@@ -11,29 +11,39 @@ export class OpnameState {
   successMsg = $state('');
   editableItems = $state<OpnameItem[]>([]);
 
+  // Isi awal dibangun langsung di constructor, BUKAN di dalam $effect.
+  //
+  // Versi lama membungkusnya dalam `$effect.root(() => $effect(...))` dengan
+  // penjaga `editableItems.length === 0`. Efek itu MEMBACA editableItems lalu
+  // MENULISinya, jadi begitu daftar item kosong — yang terjadi setiap kali semua
+  // produk sudah diinisialisasi — ia menulis array kosong BARU, referensinya
+  // berubah, $state menandainya kotor, dan efeknya jalan lagi selamanya.
+  // Loop itu memakan main thread sampai halaman tidak pernah selesai dirender.
+  //
+  // Lebih parah lagi: root effect-nya tidak pernah di-dispose (nilai kembalian
+  // $effect.root dibuang), sehingga loop tetap berjalan SETELAH pindah halaman —
+  // itu sebabnya URL berganti tapi layar tidak ikut berganti.
+  //
+  // Data ini hanya perlu dibaca sekali saat mount (server load yang mengirimnya,
+  // dan tiap navigasi membuat instance OpnameState baru), jadi tidak ada alasan
+  // memakai efek sama sekali.
   constructor(data: any) {
     this.data = data;
-    
-    $effect.root(() => {
-      $effect(() => {
-        if (this.data.inventoryItems && this.editableItems.length === 0) {
-          this.editableItems = (this.data.inventoryItems || []).map((item: any) => ({
-            inventoryItemId: item.id,
-            name: item.name,
-            categoryName: item.category?.name || '-',
-            universalCode: item.universalCode,
-            sku: item.sku,
-            skipped: false,
-            brandLines: [{ 
-              brandId: '', 
-              quantity: 1, 
-              unitCost: 0, 
-              sellingPrice: parseFloat(item.sellingPrice) || 0 
-            }]
-          }));
-        }
-      });
-    });
+
+    this.editableItems = (data.inventoryItems || []).map((item: any) => ({
+      inventoryItemId: item.id,
+      name: item.name,
+      categoryName: item.category?.name || '-',
+      universalCode: item.universalCode,
+      sku: item.sku,
+      skipped: false,
+      brandLines: [{
+        brandId: '',
+        quantity: 1,
+        unitCost: 0,
+        sellingPrice: parseFloat(item.sellingPrice) || 0
+      }]
+    }));
   }
 
   get partBrands() {

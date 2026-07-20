@@ -3,6 +3,8 @@ import {
   deviceModels,
   inventoryCategories,
   inventoryItems,
+  itemBrandPricing,
+  partBrands,
 } from '../schema';
 import { IDS } from './ids';
 import type { SeedTx } from './types';
@@ -26,6 +28,15 @@ export async function seedCatalog(tx: SeedTx): Promise<void> {
     { id: IDS.deviceModelIphoneX, deviceBrandId: IDS.deviceBrandApple, name: 'iPhone X' },
   ]).onConflictDoNothing();
 
+  // Merk SPAREPART — beda konsep dari deviceBrands di atas: ini menentukan
+  // KUALITAS/harga part, bukan kompatibilitas HP. Tiga grade supaya perbedaan
+  // harga jual per merk (itemBrandPricing di bawah) punya arti.
+  await tx.insert(partBrands).values([
+    { id: IDS.partBrandIncell, tenantId: IDS.tenantMain, name: 'IncellPro', qualityGrade: 'Original' },
+    { id: IDS.partBrandMegaScreen, tenantId: IDS.tenantMain, name: 'MegaScreen', qualityGrade: 'Grade A' },
+    { id: IDS.partBrandOem, tenantId: IDS.tenantMain, name: 'OEM Standard', qualityGrade: 'OEM' },
+  ]).onConflictDoNothing();
+
   // Categories
   await tx.insert(inventoryCategories).values([
     { id: IDS.categoryLcd, tenantId: IDS.tenantMain, name: 'LCD & Touchscreen', description: 'Layar dan digitizer' },
@@ -42,7 +53,11 @@ export async function seedCatalog(tx: SeedTx): Promise<void> {
       universalCode: 'SAM-A10-LCD',
       name: 'LCD Samsung A10',
       categoryId: IDS.categoryLcd,
-      unitCostAvg: '157500', // WAC of the two seeded batches: (5*150000 + 5*165000) / 10
+      partBrandId: IDS.partBrandIncell,
+      // WAC across ALL THREE seeded batches, including the 20 units received
+      // against PO-SEED-0002 in 07-transactions.ts:
+      // (5*150000 + 5*165000 + 20*165000) / 30 = 162500
+      unitCostAvg: '162500',
       sellingPrice: '220000',
       reorderPoint: 2,
       isStockInitialized: true,
@@ -55,11 +70,20 @@ export async function seedCatalog(tx: SeedTx): Promise<void> {
       universalCode: 'APL-IPX-BAT',
       name: 'Baterai iPhone X',
       categoryId: IDS.categoryBattery,
+      partBrandId: IDS.partBrandOem,
       unitCostAvg: '200000',
       sellingPrice: '300000',
       reorderPoint: 2,
       isStockInitialized: true,
       unitOfMeasure: 'pcs',
     },
+  ]).onConflictDoNothing();
+
+  // Harga jual per merk untuk SKU yang sama — merk yang lebih tinggi grade-nya
+  // dijual lebih mahal. Ini yang dibaca kolom margin di halaman inventory.
+  await tx.insert(itemBrandPricing).values([
+    { id: IDS.itemBrandPriceLcdIncell, tenantId: IDS.tenantMain, inventoryItemId: IDS.itemLcdMultiBatch, partBrandId: IDS.partBrandIncell, sellingPrice: '220000' },
+    { id: IDS.itemBrandPriceLcdMega, tenantId: IDS.tenantMain, inventoryItemId: IDS.itemLcdMultiBatch, partBrandId: IDS.partBrandMegaScreen, sellingPrice: '195000' },
+    { id: IDS.itemBrandPriceBatOem, tenantId: IDS.tenantMain, inventoryItemId: IDS.itemStokSatu, partBrandId: IDS.partBrandOem, sellingPrice: '300000' },
   ]).onConflictDoNothing();
 }

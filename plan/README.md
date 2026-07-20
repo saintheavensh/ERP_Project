@@ -223,6 +223,18 @@ evidence requirement — if you cannot produce what it asks for, the task stays 
 
 Stage 1
 - [x] H0 Complete seed + `db:reset` workflow — 2026-07-21
+  - **Follow-up 2026-07-21 (H0a):** the first pass was complete enough to log in and
+    sell, but not complete enough to *exercise* purchasing. Three gaps found by using
+    it: (1) `part_brands` / `supplier_brands` / `product_suppliers` / `item_brand_pricing`
+    were never seeded, so every brand dropdown was empty and the supplier→brand filter
+    on "Pembelian Baru" had nothing to filter; (2) PO-SEED-0002 was `completed` with
+    `receivedQuantity: 20` but created no batch, so the master product read 10 where
+    it should read 30 — the seed asserted a receipt that never happened; (3)
+    `part_brands.quality_grade` was missing from the schema entirely although
+    `POST /v1/brands` requires it and four screens display it.
+    All three fixed; seed now reconciles (level = Σ batches = Σ movements, cached WAC =
+    recomputed WAC) for every item. This is exactly the "halfway H0" the risk register
+    above warns about — the seed is only a safety net while it stays complete.
 
 Stage 2
 - [x] H1 Delete dead schema — 2026-07-21

@@ -4,6 +4,8 @@ import {
   supplierInvoices,
   serviceTickets,
   ticketStageHistory,
+  stockBatches,
+  stockMovements,
 } from '../schema';
 import { IDS } from './ids';
 import type { SeedTx } from './types';
@@ -64,6 +66,41 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
     receivedQuantity: 20,
     unitPrice: '160000',
     actualUnitPrice: '165000',
+  }).onConflictDoNothing();
+
+  // Barang yang BENAR-BENAR masuk dari penerimaan PO di atas. Bentuknya sengaja
+  // dibuat sama persis dengan yang dihasilkan routes/purchasing/receipts.ts
+  // (purchaseOrderLineId terisi, movement referenceType 'purchase_order'),
+  // supaya data seed tidak beda bentuk dari data hasil pemakaian aplikasi.
+  //
+  // Tanpa dua baris ini, PO berstatus 'completed' dengan receivedQuantity 20
+  // sementara stoknya tidak pernah bertambah — inkonsistensi yang bikin
+  // "beli 20, master produk cuma 10".
+  await tx.insert(stockBatches).values({
+    id: IDS.batchLcdPo,
+    tenantId: IDS.tenantMain,
+    branchId: IDS.branchPusat,
+    inventoryItemId: IDS.itemLcdMultiBatch,
+    partBrandId: IDS.partBrandIncell,
+    supplierId: IDS.supplierTempo,
+    purchaseOrderLineId: IDS.poCompletedLine,
+    unitCost: '165000', // actualUnitPrice, bukan unitPrice — ini harga yang betul-betul dibayar
+    quantityReceived: 20,
+    quantityRemaining: 20,
+    receivedAt: yesterday,
+  }).onConflictDoNothing();
+
+  await tx.insert(stockMovements).values({
+    id: IDS.movementLcdPo,
+    tenantId: IDS.tenantMain,
+    branchId: IDS.branchPusat,
+    inventoryItemId: IDS.itemLcdMultiBatch,
+    stockBatchId: IDS.batchLcdPo,
+    movementType: 'in',
+    quantity: 20,
+    referenceType: 'purchase_order',
+    referenceId: IDS.poCompleted,
+    createdAt: yesterday,
   }).onConflictDoNothing();
 
   await tx.insert(supplierInvoices).values({
