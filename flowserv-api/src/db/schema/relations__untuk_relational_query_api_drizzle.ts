@@ -21,7 +21,6 @@ import { flowTemplates, flowNodes, flowTransitions } from './flow';
 import { customers, customerAssets, serviceTickets, ticketStageHistory, approvalRequests } from './tickets';
 import { inventoryCategories, inventoryItems, itemBrandPricing, stockLevels, stockMovements, stockBatches, suppliers, supplierBrands, supplierInvoices, supplierPayments, purchaseOrders, purchaseOrderLines } from './inventory';
 import { deviceBrands, deviceModels, productCompatibility, partBrands, productSuppliers } from './product_catalog';
-import { posTransactions, invoiceLines, payments } from './finance';
 import { paymentMethods } from './payment_methods__settings_';
 import { auditLogs } from './audit_log';
 import { printerDevices, printerTemplates, printerAssignments } from './printer';
@@ -138,12 +137,6 @@ export const stockBatchesRelations = relations(stockBatches, ({ one, many }) => 
   supplier: one(suppliers, { fields: [stockBatches.supplierId], references: [suppliers.id] }),
   purchaseOrderLine: one(purchaseOrderLines, { fields: [stockBatches.purchaseOrderLineId], references: [purchaseOrderLines.id] }),
   movements: many(stockMovements),
-}));
-
-export const posTransactionsRelations = relations(posTransactions, ({ one, many }) => ({
-  serviceTicket: one(serviceTickets, { fields: [posTransactions.serviceTicketId], references: [serviceTickets.id] }),
-  lines: many(invoiceLines),
-  payments: many(payments),
 }));
 
 export const deviceBrandsRelations = relations(deviceBrands, ({ many }) => ({
