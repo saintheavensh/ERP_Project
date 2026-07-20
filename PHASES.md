@@ -223,22 +223,40 @@ missing.
       see only "Dashboard")
 
 ### 3.5B. P1 — Data Integrity
-- [ ] 3.5B.1 Fix BUG-06: set `status='closed'` and `closedAt` when entering a terminal node
-- [ ] 3.5B.2 Fix BUG-07: add `SELECT ... FOR UPDATE` row locking on batch reads in POS
-      checkout, purchasing receive, and opname
-- [ ] 3.5B.3 Fix BUG-08: stop swallowing POS errors — log them, and return **422**
-      `INSUFFICIENT_STOCK` instead of a generic 500
-- [ ] 3.5B.4 Fix BUG-09: decide between the two goods-receipt paths; make costing consistent
-- [ ] 3.5B.5 Fix BUG-10: guard void so restored quantity cannot exceed `quantityReceived`
+- [x] 3.5B.1 Fix BUG-06: set `status='closed'` and `closedAt` when entering a terminal node.
+      Detected structurally (a node with no outgoing `flowTransitions` rows), not by
+      name, so it works for any flow template. Verified live: transitioned a real
+      ticket to Completion, `GET /v1/tickets/:id` showed `status: "closed"` with a
+      populated `closedAt`.
+- [/] 3.5B.2 Fix BUG-07: add `SELECT ... FOR UPDATE` row locking on batch/level reads
+      in POS checkout, purchasing receive, and opname (also applied to the manual
+      inventory receive path, which had the same lost-update shape). **Code-reviewed,
+      not load-tested** — no concurrent-request harness was run against two
+      simultaneous checkouts of the last unit. Per the task's own instruction, marked
+      `[/]` rather than `[x]` until that's actually verified.
+- [x] 3.5B.3 Fix BUG-08: stop swallowing POS errors — log them, and return **422**
+      `INSUFFICIENT_STOCK` instead of a generic 500. Verified live: selling 1 unit of
+      a zero-stock item now returns 422 with code `INSUFFICIENT_STOCK` (was a generic
+      500 with no logged cause).
+- [x] 3.5B.4 Fix BUG-09: extracted `calculateWac()` as the single implementation,
+      previously duplicated three times (purchasing/invoices.ts, opname.ts, and
+      missing entirely from inventory/receipts.ts, which is *why* it was
+      inconsistent). The manual receive path now actually recalculates WAC.
+- [x] 3.5B.5 Fix BUG-10: guard void so restored quantity cannot exceed
+      `quantityReceived` (409 `VOID_CONFLICT`). Also added a second double-void guard
+      checking `stockMovements` directly, not just `paymentStatus`. Verified live:
+      voiding an invoice twice returns 409 `ALREADY_VOIDED` on the second attempt.
 - [ ] 3.5B.6 GAP-01: add `POST /v1/finance/payables/:id/payments` so supplier debt can
-      actually be settled (completes 4A.3)
+      actually be settled (completes 4A.3) — deferred to task 06
 
 ### 3.5C. P1 — Testing Foundation
 - [x] 3.5C.1 Add `vitest.config.ts` and fix the `test` script in `flowserv-api/package.json`
 - [x] 3.5C.2 Extract `flow-engine` logic so it is testable without HTTP (start of decision D1)
 - [x] 3.5C.3 **Tests:** transition validation — valid, invalid, missing permission, cross-tenant
-- [ ] 3.5C.4 **Tests:** FIFO batch splitting and consumption order
-- [ ] 3.5C.5 **Tests:** stock level arithmetic across receive → sell → void
+- [x] 3.5C.4 **Tests:** FIFO batch splitting and consumption order (`lib/fifo.ts`,
+      6 tests, including the 5@10k/5@12k split-across-two-batches case)
+- [x] 3.5C.5 **Tests:** stock level arithmetic across receive → sell → void
+      (`lib/__tests__/stock-lifecycle.test.ts`, including the BUG-10 guard case)
 - [ ] 3.5C.6 Verify `npm test` passes
 
 ### 3.5E. Deployment Config & Seed Data

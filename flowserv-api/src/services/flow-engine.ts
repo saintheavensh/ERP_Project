@@ -157,8 +157,21 @@ export class FlowEngine {
     }
 
     await db.transaction(async (tx) => {
+      // A node with no outgoing transitions is the end of the flow (e.g.
+      // "Completion") — entering it closes the ticket. Detected structurally,
+      // not by name, so this works for any flow template, not just the
+      // seeded "Standard Repair" one.
+      const outgoing = await tx.select({ id: flowTransitions.id })
+        .from(flowTransitions)
+        .where(eq(flowTransitions.fromNodeId, targetNodeId));
+
+      const isTerminalNode = outgoing.length === 0;
+
       await tx.update(serviceTickets)
-        .set({ currentNodeId: targetNodeId })
+        .set({
+          currentNodeId: targetNodeId,
+          ...(isTerminalNode ? { status: 'closed', closedAt: new Date() } : {}),
+        })
         .where(eq(serviceTickets.id, ticketId));
 
       await tx.insert(ticketStageHistory).values({

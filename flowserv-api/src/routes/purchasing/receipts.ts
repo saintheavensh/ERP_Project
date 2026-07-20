@@ -7,6 +7,7 @@ import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { computeOrderStatus, type PurchaseOrderStatus } from './order-status';
+import { BusinessError } from '../../lib/errors';
 
 const router = new Hono();
 
@@ -33,10 +34,12 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
         where: and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.tenantId, tenantId))
       });
       
-      if (!order) throw new Error('Order not found');
+      if (!order) throw new BusinessError('NOT_FOUND', 'Order not found', 404);
       // 'partial' must stay receivable — that is the entire point of this fix.
       // Only a fully received or already-costed order is closed to further receipts.
-      if (order.status === 'received' || order.status === 'completed') throw new Error('Order is already received');
+      if (order.status === 'received' || order.status === 'completed') {
+        throw new BusinessError('ORDER_ALREADY_RECEIVED', 'Order is already received', 409);
+      }
 
       for (const lineInput of lines) {
         // Calculate total received for this line
@@ -53,15 +56,23 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
 
         // Fetch the line scoped to THIS order — a lineId alone is not enough,
         // it could belong to a different order (or a different tenant's order).
+        // Locked FOR UPDATE: two concurrent receipts against the same line must
+        // not both read the same receivedQuantity and both "add" onto it, losing
+        // one of the two deliveries.
         const [existingLine] = await tx.select()
           .from(purchaseOrderLines)
           .where(and(
             eq(purchaseOrderLines.id, lineInput.lineId),
             eq(purchaseOrderLines.purchaseOrderId, orderId)
-          ));
+          ))
+          .for('update');
 
         if (!existingLine) {
-          throw new Error(`Line ${lineInput.lineId} does not belong to order ${orderId}`);
+          throw new BusinessError(
+            'LINE_NOT_FOUND',
+            `Line ${lineInput.lineId} does not belong to order ${orderId}`,
+            404
+          );
         }
 
         // Accumulate onto whatever has already been received in a prior delivery,
@@ -69,10 +80,10 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
         const newReceivedTotal = existingLine.receivedQuantity + lineTotalReceived;
 
         if (newReceivedTotal > existingLine.quantity) {
-          // TODO: BusinessError (task 05) — this is a 422 business-rule violation,
-          // not a server error, but the class doesn't exist yet.
-          throw new Error(
-            `Cannot receive ${newReceivedTotal} of ${existingLine.quantity} ordered for line ${existingLine.id}`
+          throw new BusinessError(
+            'OVER_RECEIPT',
+            `Cannot receive ${newReceivedTotal} of ${existingLine.quantity} ordered for line ${existingLine.id}`,
+            422
           );
         }
 
@@ -132,13 +143,14 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
             });
         }
         
-        // Upsert Stock Level (aggregating total)
+        // Upsert Stock Level (aggregating total). Locked FOR UPDATE for the same
+        // reason as the line above — concurrent receipts must not lose an update.
         const existingLevels = await tx.select().from(stockLevels).where(
           and(
             eq(stockLevels.inventoryItemId, line.inventoryItemId),
             eq(stockLevels.branchId, order.branchId)
           )
-        );
+        ).for('update');
         
         if (existingLevels.length > 0) {
           await tx.update(stockLevels)
@@ -171,8 +183,12 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
     });
     
     return successResponse(c, result);
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to receive purchase order', [err.message]);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to receive purchase order:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to receive purchase order', undefined, 500);
   }
 });
 

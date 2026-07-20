@@ -88,7 +88,8 @@ produced the current state.
 - [x] 02 — Sidebar role fix (task file deleted)
 - [x] 03 — Flow engine enforcement (task file deleted)
 - [x] 04 — Purchasing receive fixes (task file deleted)
-- [ ] 05 — Data integrity
+- [x] 05 — Data integrity (task file deleted; 3.5B.2 marked `[/]` — row locking is
+      code-reviewed but not load-tested, per the task's own honesty requirement)
 - [ ] 08 — Client API URLs  ← added 2026-07-20
 - [ ] 06 — AP payment endpoint
 - [ ] 07 — Merge and docs

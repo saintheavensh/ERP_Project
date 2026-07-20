@@ -6,6 +6,7 @@ import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { calculateWac } from '../../lib/wac';
 
 const router = new Hono();
 
@@ -83,18 +84,11 @@ router.post('/orders/:id/invoice', zValidator('json', invoiceSchema), async (c) 
             eq(stockBatches.inventoryItemId, batch.inventoryItemId),
             sql`${stockBatches.quantityRemaining} > 0`
           ));
-          
-        let totalValue = 0;
-        let totalQty = 0;
-        activeBatches.forEach(b => {
-          totalValue += (parseFloat(b.unitCost) * b.quantityRemaining);
-          totalQty += b.quantityRemaining;
-        });
-        
-        const wac = totalQty > 0 ? (totalValue / totalQty).toFixed(2) : '0.00';
-        
+
+        const wac = calculateWac(activeBatches);
+
         await tx.update(inventoryItems)
-          .set({ 
+          .set({
             unitCostAvg: wac
           })
           .where(eq(inventoryItems.id, batch.inventoryItemId));

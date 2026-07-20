@@ -6,6 +6,7 @@ import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { calculateWac } from '../../lib/wac';
 
 const router = new Hono();
 
@@ -47,14 +48,16 @@ router.post('/:id/receive', zValidator('json', receiveStockSchema), async (c) =>
         referenceType: 'manual_receipt'
       });
       
-      // 3. Upsert Stock Level (Current Total)
+      // 3. Upsert Stock Level (Current Total). Locked FOR UPDATE so two
+      // concurrent manual receipts for the same item/branch don't lose one
+      // of the two increments — same pattern as the PO receive path.
       const existingLevels = await tx.select().from(stockLevels).where(
         and(
           eq(stockLevels.inventoryItemId, inventoryItemId),
           eq(stockLevels.branchId, data.branchId)
         )
-      );
-      
+      ).for('update');
+
       if (existingLevels.length > 0) {
         // Update existing
         await tx.update(stockLevels)
@@ -69,11 +72,22 @@ router.post('/:id/receive', zValidator('json', receiveStockSchema), async (c) =>
           quantityReserved: 0
         });
       }
-      
-      // Note: Ideally we also recalculate the `unitCostAvg` in `inventoryItems` here.
-      // Weighted Average Cost formula = (Current Qty * Current Avg + New Qty * New Cost) / (Current Qty + New Qty)
-      // We will skip that complex math for MVP or just update it naively.
-      
+
+      // 4. Recalculate WAC — this manual path previously skipped this step
+      // entirely, so an item costed differently depending on whether it
+      // arrived via a PO or was entered here directly (RECOVERY-PLAN BUG-09).
+      const activeBatches = await tx.select().from(stockBatches)
+        .where(and(
+          eq(stockBatches.inventoryItemId, inventoryItemId),
+          eq(stockBatches.tenantId, tenantId)
+        ));
+
+      const wac = calculateWac(activeBatches);
+
+      await tx.update(inventoryItems)
+        .set({ unitCostAvg: wac })
+        .where(eq(inventoryItems.id, inventoryItemId));
+
       return batch;
     });
     

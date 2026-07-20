@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { BusinessError } from '../../lib/errors';
+import { pickFifoBatches } from '../../lib/fifo';
 
 const router = new Hono();
 
@@ -132,16 +134,16 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
         });
 
         // 4. FIFO Stock Deduction
-        let qtyToDeduct = item.quantity;
-        
-        // Ambil batch dengan stok tersisa, diurutkan dari yang terlama (filter per item & brand)
+        // FOR UPDATE locks these rows for the rest of this transaction — without
+        // it, two concurrent checkouts can both read the same quantityRemaining
+        // and both succeed, overselling the last unit.
         const batchFilters = [
           eq(stockBatches.tenantId, tenantId),
           eq(stockBatches.branchId, data.branchId),
           eq(stockBatches.inventoryItemId, item.inventoryItemId),
           gt(stockBatches.quantityRemaining, 0)
         ];
-        
+
         if (item.partBrandId) {
           batchFilters.push(eq(stockBatches.partBrandId, item.partBrandId));
         } else {
@@ -150,21 +152,30 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
           batchFilters.push(sql`${stockBatches.partBrandId} IS NULL`);
         }
 
-        const availableBatches = await tx.query.stockBatches.findMany({
-          where: and(...batchFilters),
-          orderBy: [asc(stockBatches.receivedAt)]
-        });
+        const availableBatches = await tx.select()
+          .from(stockBatches)
+          .where(and(...batchFilters))
+          .orderBy(asc(stockBatches.receivedAt))
+          .for('update');
 
-        // Loop untuk memotong batch satu per satu (FIFO)
-        for (const batch of availableBatches) {
-          if (qtyToDeduct <= 0) break;
+        const { deductions, remainingUnfulfilled } = pickFifoBatches(availableBatches, item.quantity);
 
-          const deductFromThisBatch = Math.min(batch.quantityRemaining, qtyToDeduct);
-          
+        if (remainingUnfulfilled > 0) {
+          throw new BusinessError(
+            'INSUFFICIENT_STOCK',
+            `Stok tidak cukup untuk item ${item.inventoryItemId}`,
+            422
+          );
+        }
+
+        // Terapkan setiap potongan batch (FIFO) yang sudah diputuskan di atas
+        for (const deduction of deductions) {
+          const batch = availableBatches.find(b => b.id === deduction.batchId)!;
+
           await tx.update(stockBatches)
-            .set({ quantityRemaining: batch.quantityRemaining - deductFromThisBatch })
+            .set({ quantityRemaining: batch.quantityRemaining - deduction.quantity })
             .where(eq(stockBatches.id, batch.id));
-            
+
           // Catat Stock Movement untuk potongan batch ini
           await tx.insert(stockMovements).values({
             tenantId,
@@ -172,17 +183,10 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
             inventoryItemId: item.inventoryItemId,
             stockBatchId: batch.id, // Referensi ke batch mana yang kepakai
             movementType: 'out',
-            quantity: -deductFromThisBatch,
+            quantity: -deduction.quantity,
             referenceType: 'pos_sale',
             referenceId: newInvoice.id
           });
-
-          qtyToDeduct -= deductFromThisBatch;
-        }
-
-        if (qtyToDeduct > 0) {
-          // Artinya stok fisik tidak cukup. Kita batalkan transaksi (roll back)
-          throw new Error(`Stok tidak cukup untuk item ${item.inventoryItemId}`);
         }
 
         // 5. Update Master Stock Level (Global per branch)
@@ -199,12 +203,16 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
             .set({ quantityAvailable: stockLevel.quantityAvailable - item.quantity })
             .where(eq(stockLevels.id, stockLevel.id));
         } else {
-          // Fallback jika anehnya belum ada
-          await tx.insert(stockLevels).values({
-            inventoryItemId: item.inventoryItemId,
-            branchId: data.branchId,
-            quantityAvailable: -item.quantity
-          });
+          // The FIFO deduction above already succeeded against real batches,
+          // so physical stock genuinely exists — a missing stockLevels row here
+          // means the level cache is out of sync with the batches, not that
+          // stock is unavailable. Fail loudly rather than inventing a
+          // negative-quantity row that would corrupt future stock reads.
+          throw new BusinessError(
+            'STOCK_LEVEL_MISSING',
+            `No stock level record found for item ${item.inventoryItemId} at this branch — batches exist but the level cache does not`,
+            422
+          );
         }
       }
 
@@ -212,7 +220,11 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
     });
 
     return successResponse(c, result, undefined, 201);
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      return errorResponse(c, error.code, error.message, error.details, error.statusCode);
+    }
+    console.error('POS checkout failed:', error);
     return errorResponse(c, 'INTERNAL_SERVER_ERROR', 'Terjadi kesalahan saat memproses POS', undefined, 500);
   }
 });
@@ -224,13 +236,31 @@ router.delete('/invoices/:id', async (c) => {
 
   try {
     await db.transaction(async (tx) => {
-      // 1. Fetch invoice and verify it is not already voided
-      const invoice = await tx.query.posInvoices.findFirst({
-        where: and(eq(posInvoices.id, id), eq(posInvoices.tenantId, tenantId))
-      });
+      // 1. Fetch invoice and verify it is not already voided. Locked FOR UPDATE
+      // so two simultaneous void requests for the same invoice can't both pass
+      // this check before either has written 'voided' back.
+      const [invoice] = await tx.select().from(posInvoices)
+        .where(and(eq(posInvoices.id, id), eq(posInvoices.tenantId, tenantId)))
+        .for('update');
 
-      if (!invoice) throw new Error('Invoice not found');
-      if (invoice.paymentStatus === 'voided') throw new Error('Invoice is already voided');
+      if (!invoice) throw new BusinessError('NOT_FOUND', 'Invoice not found', 404);
+      if (invoice.paymentStatus === 'voided') {
+        throw new BusinessError('ALREADY_VOIDED', 'Invoice is already voided', 409);
+      }
+
+      // Second, independent guard: a 'void_pos' movement already existing for
+      // this invoice means it was voided before, even if paymentStatus somehow
+      // disagrees — the movement ledger is append-only and the source of truth.
+      const existingVoidMovements = await tx.select({ id: stockMovements.id })
+        .from(stockMovements)
+        .where(and(
+          eq(stockMovements.referenceType, 'void_pos'),
+          eq(stockMovements.referenceId, id)
+        ));
+
+      if (existingVoidMovements.length > 0) {
+        throw new BusinessError('ALREADY_VOIDED', 'Invoice is already voided', 409);
+      }
 
       // 2. Reverse Stock Movements
       const movements = await tx.query.stockMovements.findMany({
@@ -245,14 +275,28 @@ router.delete('/invoices/:id', async (c) => {
       const itemRestores: Record<string, number> = {};
 
       for (const mov of movements) {
-        // Return stock to batch
-        const batch = await tx.query.stockBatches.findFirst({
-          where: eq(stockBatches.id, mov.stockBatchId!)
-        });
-        
+        // Return stock to batch. Locked FOR UPDATE — the same batch could be
+        // concurrently consumed by another sale between this read and write.
+        const [batch] = await tx.select().from(stockBatches)
+          .where(eq(stockBatches.id, mov.stockBatchId!))
+          .for('update');
+
         if (batch) {
+          const restoredQuantity = batch.quantityRemaining + Math.abs(mov.quantity);
+
+          // A batch can never hold more than it originally received. Exceeding
+          // that means something else already changed this batch in a way that
+          // makes this void inconsistent — fail loudly rather than invent stock.
+          if (restoredQuantity > batch.quantityReceived) {
+            throw new BusinessError(
+              'VOID_CONFLICT',
+              `Cannot void: batch ${batch.id} would exceed its received quantity`,
+              409
+            );
+          }
+
           await tx.update(stockBatches)
-            .set({ quantityRemaining: batch.quantityRemaining + Math.abs(mov.quantity) })
+            .set({ quantityRemaining: restoredQuantity })
             .where(eq(stockBatches.id, batch.id));
         }
 
@@ -272,15 +316,16 @@ router.delete('/invoices/:id', async (c) => {
         });
       }
 
-      // 3. Update Master Stock Levels
+      // 3. Update Master Stock Levels — locked FOR UPDATE for the same lost-update
+      // reason as everywhere else in this file.
       for (const itemId of Object.keys(itemRestores)) {
         const qtyToRestore = itemRestores[itemId];
-        const stockLevel = await tx.query.stockLevels.findFirst({
-          where: and(
+        const [stockLevel] = await tx.select().from(stockLevels)
+          .where(and(
             eq(stockLevels.inventoryItemId, itemId),
             eq(stockLevels.branchId, invoice.branchId)
-          )
-        });
+          ))
+          .for('update');
 
         if (stockLevel) {
           await tx.update(stockLevels)
@@ -296,9 +341,12 @@ router.delete('/invoices/:id', async (c) => {
     });
 
     return successResponse(c, { voided: true });
-  } catch (error: any) {
-    console.error('Failed to void invoice', error);
-    return errorResponse(c, 'INTERNAL_SERVER_ERROR', error.message || 'Gagal melakukan void transaksi', undefined, 500);
+  } catch (error) {
+    if (error instanceof BusinessError) {
+      return errorResponse(c, error.code, error.message, error.details, error.statusCode);
+    }
+    console.error('Failed to void invoice:', error);
+    return errorResponse(c, 'INTERNAL_SERVER_ERROR', 'Gagal melakukan void transaksi', undefined, 500);
   }
 });
 

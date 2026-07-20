@@ -6,6 +6,7 @@ import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { calculateWac } from '../lib/wac';
 
 const opnameRouter = new Hono();
 opnameRouter.use('*', requireAuth);
@@ -85,14 +86,15 @@ opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
           quantity: item.quantity
         });
         
-        // 5. Update stock levels
-        const existingLevel = await tx.query.stockLevels.findFirst({
-          where: and(
+        // 5. Update stock levels — locked FOR UPDATE so two concurrent opname
+        // uploads for the same item/branch don't lose one of the two increments.
+        const [existingLevel] = await tx.select().from(stockLevels).where(
+          and(
             eq(stockLevels.inventoryItemId, item.inventoryItemId),
             eq(stockLevels.branchId, data.branchId)
           )
-        });
-        
+        ).for('update');
+
         if (existingLevel) {
           await tx.update(stockLevels)
             .set({ quantityAvailable: existingLevel.quantityAvailable + item.quantity })
@@ -105,26 +107,16 @@ opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
             quantityReserved: 0
           });
         }
-        
+
         // 6. Recalculate WAC for the inventory item
-        const allActiveBatches = await tx.query.stockBatches.findMany({
-          where: and(
+        const allActiveBatches = await tx.select().from(stockBatches).where(
+          and(
             eq(stockBatches.inventoryItemId, item.inventoryItemId),
             eq(stockBatches.tenantId, tenantId)
           )
-        });
-        
-        let totalValue = 0;
-        let totalRemaining = 0;
-        
-        for (const b of allActiveBatches) {
-          if (b.quantityRemaining > 0) {
-            totalValue += (parseFloat(b.unitCost.toString()) * b.quantityRemaining);
-            totalRemaining += b.quantityRemaining;
-          }
-        }
-        
-        const wac = totalRemaining > 0 ? (totalValue / totalRemaining).toString() : '0';
+        ).for('update');
+
+        const wac = calculateWac(allActiveBatches);
         
         let updateData: { unitCostAvg: string; isStockInitialized: boolean; sellingPrice?: string } = { 
           unitCostAvg: wac, 
