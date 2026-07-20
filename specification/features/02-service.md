@@ -1,5 +1,13 @@
 # Service Lifecycle Features
 
+> **Implementation status (2026-07-20):** Partial
+> **Built:** unified intake (creates customer + device + ticket in one transaction),
+> ticket list and detail, stage transitions enforced by the Flow Engine against the
+> template's transition rules, append-only stage history, automatic ticket closure on
+> reaching a terminal node.
+> **Not built:** diagnosis, estimation, customer approval, parts reservation, change
+> orders, QC checklist, cancellation flow, Kanban board, dynamic intake forms.
+
 ## Purpose
 Define the complete service workflow from customer arrival to device return. This is the core operational domain of FlowServ.
 

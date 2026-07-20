@@ -1,5 +1,10 @@
 # Warranty Features
 
+> **Implementation status (2026-07-20):** Not started
+> No warranty templates, activation, claims, or history exists. Supplier warranty
+> policy fields exist on the supplier record but nothing consumes them.
+> Planned for Phase 8.
+
 ## Purpose
 Manage warranty lifecycle: template definition, auto-activation after service, claim processing, and warranty service orders.
 

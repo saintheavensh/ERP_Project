@@ -1,5 +1,14 @@
 # Purchasing Features
 
+> **Implementation status (2026-07-20):** Partial
+> **Built:** purchase order CRUD, status transitions, goods receiving including
+> correct **partial** receipts (accumulating quantities, `partial` order status, and
+> over-receipt rejection), brand-split batches on receipt, costing/invoice step that
+> sets actual unit cost, selling price, and recalculates WAC, auto due-date from the
+> supplier's payment terms.
+> **Not built:** purchase requests, purchase returns, reorder recommendations,
+> external/technician procurement, purchasing dashboard.
+
 ## Purpose
 Manage procurement from suppliers: purchase requests, purchase orders, goods receiving, and returns.
 

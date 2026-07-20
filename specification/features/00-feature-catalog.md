@@ -1,5 +1,11 @@
 # Feature Catalog — Master List
 
+> **Implementation status (2026-07-20):** This catalog is the full product vision
+> (~170 features). **Roughly 25 are actually built.** Each `features/*.md` document
+> carries its own status header — read that before assuming a feature exists.
+> Treating this catalog as current scope is what caused the plan drift corrected in
+> Phase 3.5. See `PHASES.md` for what is real.
+
 > **~170 features identified** across all domains. ✅ = MVP, 🟡 = Phase 2.
 > This is the single reference for "what needs to be built."
 

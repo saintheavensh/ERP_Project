@@ -1,5 +1,13 @@
 # Settings Features
 
+> **Implementation status (2026-07-20):** Minimal
+> **Built:** `GET /v1/settings/payment-methods` only.
+> **Not built:** company settings, user/role management UI, operational settings,
+> financial settings, document/printing settings, notification settings. Note that
+> margin config columns (`marginStrategy`, `targetMargin`) exist on categories and
+> items but no endpoint sets them — margin calculation currently lives entirely in the
+> frontend simulator. Planned for Phase 5 and Phase 7 (RBAC UI).
+
 ## Purpose
 System-wide configuration: company info, user/role management, operational parameters, financial settings, printing, and notifications.
 

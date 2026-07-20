@@ -1,5 +1,12 @@
 # Supplier Features
 
+> **Implementation status (2026-07-20):** Partial
+> **Built:** supplier CRUD, supplier-to-brand mapping (link/unlink), payment terms
+> (`paymentTermDays`) feeding the purchasing due-date calculation, return and warranty
+> policy fields.
+> **Not built:** supplier performance tracking, pricing history, product catalog with
+> price comparison, supplier dashboard.
+
 ## Purpose
 Manage supplier profiles, product catalogs, pricing history, and performance tracking.
 

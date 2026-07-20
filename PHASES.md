@@ -4,16 +4,28 @@
 > Before starting any work, check this file to know which phase is current.
 > Mark items `[/]` when in progress, `[x]` when done.
 
-> **⚠️ Corrected 2026-07-20.** This file previously claimed work that did not exist.
-> It was rewritten from a code audit — see `RECOVERY-PLAN.md` for what was wrong and
-> why. Read that file before starting Phase 3.5.
+> **⚠️ Corrected 2026-07-20.** This file previously claimed work that did not exist —
+> seven tasks were marked `[x]` for code that was never written. It was rewritten from
+> a verified code audit, and Phase 3.5 below fixed the defects that audit found. The
+> audit's own scaffolding (`RECOVERY-PLAN.md`, `plan/`) has since been deleted; its
+> durable conclusions live in this file. See the Definition of Done immediately below —
+> that rule exists specifically to stop this from recurring.
 
 ---
 
-## Current Phase: `PHASE 3.5 (Stabilization)` ← IN PROGRESS
+## Current Phase: `PHASE 4 (Purchasing, Supplier Debts, & Margins)` ← IN PROGRESS
 
-> Phase 4 was built on top of an incomplete Phase 3. Phase 3.5 closes the gap and
-> fixes the defects found in the audit. **Nothing new gets built until it is done.**
+> **Phase 3.5 (Stabilization) completed 2026-07-20.** All 9 stabilization tasks are
+> done and merged to `main`. The flow engine now actually enforces transitions, stock
+> can no longer be silently oversold or mis-received, tickets close, supplier debt can
+> be paid, and there are 37 passing tests where there were none.
+>
+> **One item is deliberately `[/]`, not `[x]`:** 3.5B.2 (row locking) is code-reviewed
+> but was never load-tested under real concurrency. That gap is recorded rather than
+> papered over — see the Definition of Done below.
+>
+> Phase 4 remains open: 4C.1 and 4C.2 (margin config endpoint + server-side pricing
+> on stock arrival) are still unbuilt. See Phase 4 below.
 
 ---
 
@@ -116,7 +128,8 @@ missing.
 - [x] 1F.2 Frontend starts and health check passes
 - [x] 1F.3 Verify all files follow strict typing rules (`no implicit any`)
 - [x] 1F.4 Commit: "feat: phase 1 completed - system verification"
-- [ ] 1F.5 Merge `phase-1/project-setup` → `main` — ⚠️ **never done**, superseded by task 3.5D.1
+- [x] 1F.5 Merge `phase-1/project-setup` → `main` — was never done at the time;
+      resolved 2026-07-20 by 3.5D.1, which merged all accumulated work to `main`.
 
 ---
 
@@ -147,7 +160,8 @@ missing.
 ### 2C. Flow Engine Visualization (FE)
 - [x] 2C.1 FE: Flow template list UI
 - [x] 2C.2 FE: Flow detail view (visualize nodes and transitions)
-- [ ] 2C.3 Merge `phase-2/auth-flow-engine` → `main` — never done, superseded by 3.5D.1
+- [x] 2C.3 Merge `phase-2/auth-flow-engine` → `main` — was never done at the time;
+      resolved 2026-07-20 by 3.5D.1.
 - [x] 2C.4 Git commit: `feat: phase 2 complete — auth + flow engine`
 
 ---
@@ -203,11 +217,15 @@ missing.
 
 ---
 
-## PHASE 3.5 — Stabilization ← **CURRENT PHASE**
+## PHASE 3.5 — Stabilization ✅ COMPLETE (2026-07-20)
 > **Goal:** Fix the defects found in the 2026-07-20 audit. Make the checkboxes honest.
-> **Read first:** `RECOVERY-PLAN.md` (Parts 3 and 4)
-> **Branch:** `phase-3.5/stabilization`
+> **Branch:** all work landed on `phase-4/purchasing`, merged to `main` by 3.5D.1.
 > **Rule:** No new features. Only fixes, tests, and the merge to main.
+>
+> **Outcome:** 9 tasks, 11 numbered bugs fixed, 37 tests added (from zero). The
+> scaffolding that drove this phase (`RECOVERY-PLAN.md` and `plan/`) was deleted on
+> completion — its durable output is this file, the Definition of Done above, and the
+> Architecture Debt section below.
 
 ### 3.5A. P0 — Correctness & Security
 - [x] 3.5A.1 Fix BUG-01: `if (!allowed.valid)` in `routes/tickets.ts`. Return **409**
@@ -252,8 +270,9 @@ missing.
       voiding an invoice twice returns 409 `ALREADY_VOIDED` on the second attempt.
 - [x] 3.5B.6 GAP-01: add `POST /v1/finance/payables/:id/payments` so supplier debt can
       actually be settled (completes 4A.3). Built as `modules/finance/{service,types}.ts`
-      per coding-guidelines §6 — the first module in this shape, per RECOVERY-PLAN
-      decision D1. Also added `GET /v1/finance/payables/:id` for payment history, and
+      per coding-guidelines §6 — the first module in this shape, per the incremental
+      retrofit rule in Architecture Debt below. Also added
+      `GET /v1/finance/payables/:id` for payment history, and
       wired the previously-dead "Bayar" button in `PayablesTable.svelte` to a real modal.
       Discovered `supplier_payments` table + relations already existed in the schema
       and live DB (unused) — used it as-is rather than creating a duplicate table.
@@ -310,10 +329,12 @@ missing.
       `Super Admin`, no-role notice correctly absent.
 
 ### 3.5D. Branch Hygiene & Docs
-- [ ] 3.5D.1 Merge current work → `main` (resolves the orphaned 1F.5 and 2C.3)
-- [ ] 3.5D.2 Branch fresh from `main` for the next phase
-- [ ] 3.5D.3 Add implementation-status headers to `specification/features/*.md` (decision D4)
-- [ ] 3.5D.4 Git commit: `fix: phase 3.5 complete — stabilization`
+- [x] 3.5D.1 Merge current work → `main` (resolves the orphaned 1F.5 and 2C.3)
+- [x] 3.5D.2 Branch fresh from `main` for the next phase
+- [x] 3.5D.3 Add implementation-status headers to all 14 `specification/features/*.md`
+      (decision D4). Each now states what is actually built vs not, derived from the
+      verified endpoint inventory — so the catalog stops reading as current scope.
+- [x] 3.5D.4 Git commit: `fix: phase 3.5 complete — stabilization`
 
 ---
 
@@ -523,10 +544,15 @@ missing.
 ## Architecture Debt (read before refactoring)
 
 The backend does **not** follow the module structure in
-`specification/coding-guidelines.md` §2. There is no service layer — all business
-logic lives inline in HTTP route handlers, which is why none of it is testable.
+`specification/coding-guidelines.md` §2. Most business logic still lives inline in
+HTTP route handlers, which is why so little of it was testable.
 
-**Decision (see RECOVERY-PLAN.md D1): retrofit incrementally, never big-bang.**
+Phase 3.5 began the correction: `modules/finance/` is the first module in the
+specified shape, and the pure decision functions extracted along the way
+(`services/flow-engine.ts`'s `evaluateTransition`, `lib/fifo.ts`, `lib/wac.ts`,
+`routes/purchasing/order-status.ts`) are what the 37 current tests actually exercise.
+
+**Decision: retrofit incrementally, never big-bang.**
 
 When you touch a module for a fix or a feature, extract its `service.ts` *then*,
 with a test. Do **not** refactor modules you are not otherwise changing. A

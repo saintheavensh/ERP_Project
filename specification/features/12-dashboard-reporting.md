@@ -1,5 +1,10 @@
 # Dashboard, Widgets & Reporting Features
 
+> **Implementation status (2026-07-20):** Not started
+> No dashboards, widgets, widget layout persistence, or alerts exist. The `/` route
+> renders a placeholder. Brand management (BRD-*) is partially built — see
+> `09-supplier.md`. Planned for Phase 5 (dashboards) and Phase 8 (alerts).
+
 ## Purpose
 Provide role-based dashboards with configurable widgets, proactive alerts, and brand management.
 

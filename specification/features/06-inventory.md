@@ -1,5 +1,15 @@
 # Inventory Features
 
+> **Implementation status (2026-07-20):** Partial — the most complete domain
+> **Built:** item CRUD, FIFO batch architecture, batch creation via goods receipt,
+> FIFO consumption on POS sale (with `SELECT ... FOR UPDATE` row locking), stock
+> movement ledger, stock levels per branch, weighted-average cost (single shared
+> implementation in `lib/wac.ts`), brand-level pricing, device compatibility mapping,
+> initial stock upload (opname).
+> **Not built:** parts reservation / soft-lock (`quantity_reserved` exists but is only
+> ever written as 0), warranty consumption, supplier returns, customer returns,
+> stock adjustment with approval, scheduled stock opname, reorder automation.
+
 ## Purpose
 Manage stock with FIFO batch tracking, append-only movement ledger, and automatic reservation from service tickets.
 

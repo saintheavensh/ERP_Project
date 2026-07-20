@@ -1,5 +1,16 @@
 # Finance Features
 
+> **Implementation status (2026-07-20):** Partial — accounts payable only
+> **Built:** accounts payable — outstanding payables list, invoice detail with full
+> payment history, and recording full/partial supplier payments with overpayment and
+> already-paid guards. Supplier invoices are created automatically by the purchasing
+> costing step.
+> **Not built — and this is the largest gap in the system:** the double-entry
+> accounting engine. `finance_ledger_entries` exists in the schema and is **never
+> written to by any route**, so there is no COGS posting, no revenue posting, no
+> general ledger, no P&L, and no accounts receivable — even though the FIFO code
+> already computes exact batch costs and discards them. Scheduled for Phase 4.5A.
+
 ## Purpose
 Manage the complete financial lifecycle: cash management, accounts receivable/payable, double-entry accounting, and financial reporting.
 

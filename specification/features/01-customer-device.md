@@ -1,5 +1,11 @@
 # Customer & Device Features
 
+> **Implementation status (2026-07-20):** Partial
+> **Built:** customer CRUD (list, detail, create, update), customer asset/device
+> list + create, customer edit from the ticket detail screen.
+> **Not built:** duplicate detection, communication log, customer portal,
+> device status/lifecycle management, warranty history, reporting.
+
 ## Customer Module
 
 ### Purpose

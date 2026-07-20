@@ -1,5 +1,10 @@
 # Service Billing Features
 
+> **Implementation status (2026-07-20):** Not started
+> No service quotation, deposit (DP), service invoice, service payment, or refund
+> exists. The POS invoice flow (`08-sales-pos.md`) is retail-only and is not wired
+> to service tickets for billing. Planned for Phase 8.
+
 ## Purpose
 Manage the financial lifecycle of service tickets: quotation → deposit → invoice → payment → refund.
 

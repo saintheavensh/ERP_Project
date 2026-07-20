@@ -1,5 +1,9 @@
 # Service Category Features
 
+> **Implementation status (2026-07-20):** Not started
+> `inventory_categories` exists for parts, but service categories and their pricing
+> architecture do not. Planned for Phase 8.
+
 ## Purpose
 Define service types, pricing rules, time estimations, and warranty policies per category.
 

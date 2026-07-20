@@ -1,5 +1,9 @@
 # Technician Features
 
+> **Implementation status (2026-07-20):** Not started
+> No technician profiles, skills, assignment, scheduling, performance metrics, or
+> commission logic exists. Tickets have no assignee field in use. Planned for Phase 8.
+
 ## Purpose
 Manage technician profiles, assignments, performance, and the technician workspace.
 
