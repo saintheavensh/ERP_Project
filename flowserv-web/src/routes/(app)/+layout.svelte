@@ -6,7 +6,7 @@
   let menuItems = $derived.by(() => {
     let items: any[] = [{ label: 'Dashboard', path: '/' }];
     
-    if (user?.roleName === 'Super Admin' || user?.roleName === 'no-role') {
+    if (user?.roleName === 'Super Admin') {
       items.push({ label: 'Customers', path: '/customers' });
       items.push({ label: 'Flow Templates', path: '/flows' });
       items.push({ label: 'Tickets', path: '/tickets' });
@@ -57,6 +57,12 @@
       <div class="font-medium truncate">{user?.name}</div>
       <div class="text-xs text-slate-500 mt-1 capitalize border border-slate-700 bg-slate-800 inline-block px-2 py-0.5 rounded">{user?.roleName}</div>
     </div>
+
+    {#if user?.roleName === 'no-role'}
+      <div class="mx-4 mt-4 p-3 bg-amber-900/40 border border-amber-700/60 rounded-lg text-xs text-amber-200">
+        Belum ada role yang ditetapkan untuk akun Anda. Hubungi administrator untuk mendapatkan akses.
+      </div>
+    {/if}
 
     <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
       {#each menuItems as item}

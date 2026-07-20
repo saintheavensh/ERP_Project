@@ -103,7 +103,11 @@ missing.
 - [x] 1E.2 Add script to `package.json` (`"db:seed": "tsx src/db/seed.ts"`)
 - [x] 1E.3 Write seed data for `roles` (Super Admin, Manager, Technician, Cashier)
 - [x] 1E.4 Write seed data for one default `tenant`
-- [x] 1E.5 Write seed data for one `user` (Super Admin) linked to Demo tenant
+- [x] 1E.5 Write seed data for one `user` (Super Admin) linked to Demo tenant —
+      **this was a false positive until task 09 (2026-07-20).** The user existed but
+      was never actually linked to the Super Admin role — no `user_role_assignments`
+      row was ever inserted, so the seeded admin logged in as `'no-role'`. Genuinely
+      true now.
 - [x] 1E.6 Run `npm run db:seed` and verify data in database
 - [x] 1E.7 Commit: "feat: phase 1E complete - seed data"
 
@@ -285,11 +289,25 @@ missing.
       categories, an item detail, a PO detail) with a real login cookie — all 200;
       confirmed via the dev server's transformed module that `API_BASE` resolves
       identically to the old hardcoded value under the current `.env`.
-- [ ] 3.5E.2 Fix `db/seed.ts`: assign the Super Admin role (no user currently gets
+- [x] 3.5E.2 Fix `db/seed.ts`: assign the Super Admin role (no user currently gets
       *any* role), make the seed idempotent, switch to bcrypt. Then remove the
       `'no-role'` full-menu fallback in `(app)/+layout.svelte`.
       **Must be done before 4.5B** — RBAC cannot be tested while every user is
       `'no-role'`.
+      Rewrote the seed as find-or-create throughout, so it was safe to run against
+      the existing dev database (preserving all data accumulated across tasks 01–08)
+      rather than wiping it. Verified: ran it twice — first run reused the existing
+      tenant/branch/roles/user and added the one genuinely missing piece (the role
+      assignment); second run created nothing (`SELECT COUNT(*)`: 1 tenant, 4 roles,
+      1 assignment). Login now returns `roleName: "Super Admin"`. A freshly-hashed
+      password starts with `$2b$` and is 60 chars (confirmed via bcryptjs directly),
+      not the old 64-char SHA-256 hex — the existing admin's own hash was left
+      untouched by the find-or-create, so it's still SHA-256 and still logs in via
+      the legacy branch in `routes/auth.ts`, exactly as intended (that branch stays
+      until Phase 11). Removed the `'no-role'` fallback in `+layout.svelte` and added
+      a visible amber notice for unassigned users instead of a silent empty menu.
+      SSR-verified with a real login cookie: full menu renders, badge reads
+      `Super Admin`, no-role notice correctly absent.
 
 ### 3.5D. Branch Hygiene & Docs
 - [ ] 3.5D.1 Merge current work → `main` (resolves the orphaned 1F.5 and 2C.3)

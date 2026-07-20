@@ -93,7 +93,7 @@ produced the current state.
 - [x] 08 — Client API URLs (task file deleted)
 - [x] 06 — AP payment endpoint (task file deleted)
 - [ ] 07 — Merge and docs
-- [ ] 09 — Seed and roles  ← added 2026-07-20, before Phase 4.5B
+- [x] 09 — Seed and roles (task file deleted)
 
 When all nine are checked: delete `RECOVERY-PLAN.md`, delete this `plan/` folder,
 and move `PHASES.md` on to Phase 4.
