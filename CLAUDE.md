@@ -61,7 +61,9 @@ specification/   → Documentation (source of truth)
 - If my instructions conflict with `specification/`, ask first before proceeding — never assume.
 - Update `PHASES.md` checklist after completing each task (mark `[x]`).
 
-## Folders to IGNORE (do NOT modify, delete, or read unless I explicitly ask)
-- `legacy/` — archived old code
-- `my-saas-app/` — previous prototype  
-- `pos_sederhana-main/` — reference POS application
+## Deprecated Documentation (do NOT read or use as reference)
+- `docs/` and `books/` — superseded archives. `specification/` is the single source of truth.
+
+> **Removed 2026-07-20:** `legacy/`, `my-saas-app/`, and `pos_sederhana-main/` were
+> example applications unrelated to FlowServ. They have been deleted from the repo —
+> do not look for them or expect them to exist.

@@ -542,12 +542,14 @@ Other known debt, to be addressed as modules are touched:
 
 ---
 
-## Folders to Ignore (DO NOT modify or delete)
+## Deprecated Documentation (DO NOT use as reference)
 
-These folders are reference/examples and should NOT be touched unless explicitly asked:
-- `legacy/` — archived old code
-- `my-saas-app/` — previous prototype
-- `pos_sederhana-main/` — reference POS application
+- `docs/` and `books/` — superseded archives. `specification/` is the single source of truth.
+
+> **Removed 2026-07-20:** `legacy/`, `my-saas-app/`, and `pos_sederhana-main/` were
+> example applications unrelated to FlowServ and have been deleted from the repo.
+> Earlier task files and commit messages reference them as "folders to ignore" —
+> that guidance is obsolete; they simply no longer exist.
 
 ---
 
