@@ -87,7 +87,7 @@ produced the current state.
 - [x] 01 — Testing foundation (task file deleted — see commit bf3adc6)
 - [x] 02 — Sidebar role fix (task file deleted)
 - [x] 03 — Flow engine enforcement (task file deleted)
-- [ ] 04 — Purchasing receive fixes
+- [x] 04 — Purchasing receive fixes (task file deleted)
 - [ ] 05 — Data integrity
 - [ ] 08 — Client API URLs  ← added 2026-07-20
 - [ ] 06 — AP payment endpoint

@@ -9,17 +9,26 @@ export class PurchaseReceiveState {
 
   constructor(data: any) {
     this.data = data;
-    this.lines = untrack(() => 
-      this.data.order.purchaseOrderLines.map((l: any) => ({
-        lineId: l.id,
-        name: l.inventoryItem.name,
-        sku: l.inventoryItem.sku,
-        categoryName: l.inventoryItem.category?.name || '',
-        orderedQty: l.quantity,
-        splits: [
-          { partBrandId: '', receivedQuantity: l.quantity }
-        ]
-      }))
+    this.lines = untrack(() =>
+      this.data.order.purchaseOrderLines.map((l: any) => {
+        // A second delivery for a partially-received order must default to
+        // what's still owed, not the original ordered quantity — otherwise
+        // resubmitting the full amount double-counts what already arrived.
+        const alreadyReceivedQty = l.receivedQuantity || 0;
+        const remainingQty = Math.max(l.quantity - alreadyReceivedQty, 0);
+        return {
+          lineId: l.id,
+          name: l.inventoryItem.name,
+          sku: l.inventoryItem.sku,
+          categoryName: l.inventoryItem.category?.name || '',
+          orderedQty: l.quantity,
+          alreadyReceivedQty,
+          remainingQty,
+          splits: [
+            { partBrandId: '', receivedQuantity: remainingQty }
+          ]
+        };
+      })
     );
   }
 

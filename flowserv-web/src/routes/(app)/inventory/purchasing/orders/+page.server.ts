@@ -19,7 +19,9 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
     if (res.ok) {
       const result = await res.json();
-      const orders = (result.data || []).filter((o: any) => o.status === 'draft' || o.status === 'ordered');
+      // 'partial' belongs here too — this list is "orders not yet fully arrived",
+      // and a partially-received order still has quantity outstanding.
+      const orders = (result.data || []).filter((o: any) => o.status === 'draft' || o.status === 'ordered' || o.status === 'partial');
       return { token, orders };
     }
   } catch (err) {

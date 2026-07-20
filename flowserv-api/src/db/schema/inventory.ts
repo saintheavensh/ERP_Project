@@ -178,7 +178,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   poNumber: varchar('po_number', { length: 50 }).notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('draft'), // 'draft' | 'ordered' | 'received' | 'completed'
+  status: varchar('status', { length: 20 }).notNull().default('draft'), // 'draft' | 'ordered' | 'partial' | 'received' | 'completed'
   expectedDeliveryDate: timestamp('expected_delivery_date'),
   invoiceNumber: varchar('invoice_number', { length: 100 }),
   invoiceDate: timestamp('invoice_date'),

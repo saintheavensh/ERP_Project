@@ -15,6 +15,11 @@
         <div class="text-right">
           <p class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Pesanan (Qty)</p>
           <p class="text-xl font-bold text-slate-800">{line.orderedQty}</p>
+          {#if line.alreadyReceivedQty > 0}
+            <p class="text-xs text-blue-600 mt-1">
+              Sudah diterima: {line.alreadyReceivedQty} &middot; Sisa: {line.remainingQty}
+            </p>
+          {/if}
         </div>
       </div>
       <div class="p-4 bg-white">

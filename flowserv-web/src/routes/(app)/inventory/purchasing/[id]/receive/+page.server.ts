@@ -22,8 +22,10 @@ export const load = async ({ params, locals }) => {
     if (orderRes.ok) {
       const result = await orderRes.json();
       order = result.data;
-      if (order.status !== 'ordered') {
-        throw error(400, 'Order is not in ordered status');
+      // 'partial' must stay accessible here — otherwise a second delivery can
+      // never be recorded, which defeats the entire point of partial receiving.
+      if (order.status !== 'ordered' && order.status !== 'partial') {
+        throw error(400, 'Order is not in a receivable status');
       }
     } else if (orderRes.status === 404) {
       throw error(404, 'Order not found');

@@ -5,6 +5,7 @@
   function getPoStage(order: any) {
     if (order.status === 'draft') return { step: 1, label: 'Bikin PO', text: 'Draft', color: 'bg-slate-100 text-slate-700' };
     if (order.status === 'ordered') return { step: 1, label: 'Tunggu Barang', text: 'Ordered', color: 'bg-yellow-100 text-yellow-700' };
+    if (order.status === 'partial') return { step: 2, label: 'Terima Sisa', text: 'Partial (Sebagian Diterima)', color: 'bg-orange-100 text-orange-700' };
     if (order.status === 'received') return { step: 2, label: 'Tunggu Harga', text: 'Received (Butuh Costing)', color: 'bg-blue-100 text-blue-700' };
     if (order.status === 'completed') {
       const inv = order.supplierInvoices?.[0];

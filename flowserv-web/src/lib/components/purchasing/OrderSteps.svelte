@@ -23,11 +23,13 @@
   </div>
 
   <!-- Step 2: Receive -->
-  <div class="p-4 rounded-xl border {order?.status === 'ordered' ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'}">
+  <div class="p-4 rounded-xl border {order?.status === 'ordered' || order?.status === 'partial' ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white'}">
     <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Step 2 (Bag. Gudang)</div>
     <div class="font-semibold text-slate-900 mb-3">Terima Fisik Barang</div>
     {#if order?.status === 'ordered'}
       <a href={`/inventory/purchasing/${order?.id}/receive`} class="block text-center w-full text-sm bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors">Buka Form Penerimaan</a>
+    {:else if order?.status === 'partial'}
+      <a href={`/inventory/purchasing/${order?.id}/receive`} class="block text-center w-full text-sm bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg font-medium transition-colors">Terima Sisa Barang</a>
     {:else if order?.status === 'received' || order?.status === 'completed'}
       <div class="text-sm text-green-600 font-medium flex items-center gap-1.5">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>

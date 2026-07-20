@@ -6,6 +6,7 @@ import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { computeOrderStatus, type PurchaseOrderStatus } from './order-status';
 
 const router = new Hono();
 
@@ -33,10 +34,10 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
       });
       
       if (!order) throw new Error('Order not found');
+      // 'partial' must stay receivable — that is the entire point of this fix.
+      // Only a fully received or already-costed order is closed to further receipts.
       if (order.status === 'received' || order.status === 'completed') throw new Error('Order is already received');
-      
-      let allReceived = true;
-      
+
       for (const lineInput of lines) {
         // Calculate total received for this line
         let lineTotalReceived = 0;
@@ -47,18 +48,39 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
         }
 
         if (lineTotalReceived === 0) {
-          allReceived = false;
-          continue; 
+          continue;
         }
-        
-        // Update line received qty
+
+        // Fetch the line scoped to THIS order — a lineId alone is not enough,
+        // it could belong to a different order (or a different tenant's order).
+        const [existingLine] = await tx.select()
+          .from(purchaseOrderLines)
+          .where(and(
+            eq(purchaseOrderLines.id, lineInput.lineId),
+            eq(purchaseOrderLines.purchaseOrderId, orderId)
+          ));
+
+        if (!existingLine) {
+          throw new Error(`Line ${lineInput.lineId} does not belong to order ${orderId}`);
+        }
+
+        // Accumulate onto whatever has already been received in a prior delivery,
+        // never overwrite it — otherwise a second partial receipt erases the first.
+        const newReceivedTotal = existingLine.receivedQuantity + lineTotalReceived;
+
+        if (newReceivedTotal > existingLine.quantity) {
+          // TODO: BusinessError (task 05) — this is a 422 business-rule violation,
+          // not a server error, but the class doesn't exist yet.
+          throw new Error(
+            `Cannot receive ${newReceivedTotal} of ${existingLine.quantity} ordered for line ${existingLine.id}`
+          );
+        }
+
         const [line] = await tx.update(purchaseOrderLines)
-          .set({ receivedQuantity: lineTotalReceived })
-          .where(eq(purchaseOrderLines.id, lineInput.lineId))
+          .set({ receivedQuantity: newReceivedTotal })
+          .where(eq(purchaseOrderLines.id, existingLine.id))
           .returning();
-          
-        if (line.receivedQuantity < line.quantity) allReceived = false;
-        
+
         // If splits are provided, insert multiple batches
         if (lineInput.splits && lineInput.splits.length > 0) {
           for (const split of lineInput.splits) {
@@ -132,12 +154,19 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
         }
       }
       
-      // Update PO Status
+      // Re-read all lines so the status reflects the true accumulated total,
+      // not just what arrived in this delivery.
+      const allLines = await tx.select()
+        .from(purchaseOrderLines)
+        .where(eq(purchaseOrderLines.purchaseOrderId, orderId));
+
+      const newStatus = computeOrderStatus(allLines, order.status as PurchaseOrderStatus);
+
       const [updatedOrder] = await tx.update(purchaseOrders)
-        .set({ status: 'received' })
+        .set({ status: newStatus })
         .where(eq(purchaseOrders.id, orderId))
         .returning();
-        
+
       return updatedOrder;
     });
     

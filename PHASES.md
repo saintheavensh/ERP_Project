@@ -210,9 +210,14 @@ missing.
       for invalid transition, **403** for permission failure, include the `reason`.
 - [x] 3.5A.2 Fix BUG-02: validate `targetNodeId` belongs to the ticket's flow template;
       add `tenantId` filter to both queries in `FlowEngine.validateTransition`
-- [ ] 3.5A.3 Fix BUG-03: use the `allReceived` flag — set PO status to `partial` vs `received`
-- [ ] 3.5A.4 Fix BUG-04: increment `receivedQuantity` instead of overwriting
-- [ ] 3.5A.5 Fix BUG-05: verify `lineId` belongs to the order and tenant before updating
+- [x] 3.5A.3 Fix BUG-03: use the `allReceived` flag — set PO status to `partial` vs `received`.
+      Also fixed the same bug's frontend surface: the receive page hard-blocked any
+      status other than `'ordered'`, the orders list filtered `'partial'` out
+      entirely, and the receive form defaulted to the full original quantity
+      instead of what's still owed. All fixed together — see commit for task 04.
+- [x] 3.5A.4 Fix BUG-04: increment `receivedQuantity` instead of overwriting. Also
+      added an over-receipt guard (422-shaped, pending BusinessError from task 05).
+- [x] 3.5A.5 Fix BUG-05: verify `lineId` belongs to the order and tenant before updating
 - [x] 3.5A.6 Fix BUG-11: include role **name** in the JWT; fix the sidebar role check in
       `(app)/+layout.svelte` (currently compares a UUID to `'Super Admin'`, so real users
       see only "Dashboard")
