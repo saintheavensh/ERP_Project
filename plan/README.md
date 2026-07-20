@@ -222,7 +222,7 @@ evidence requirement — if you cannot produce what it asks for, the task stays 
 ## Progress
 
 Stage 1
-- [ ] H0 Complete seed + `db:reset` workflow
+- [x] H0 Complete seed + `db:reset` workflow — 2026-07-21
 
 Stage 2
 - [x] H1 Delete dead schema — 2026-07-21

@@ -150,16 +150,63 @@ struktural, dan itu yang menutup tiket.
 
 ## Verifikasi
 
-- [ ] `npm run db:reset` selesai tanpa error dari database kosong
-- [ ] Dijalankan **dua kali** berturut-turut tetap berhasil dan hasilnya identik
-- [ ] `db:reset` menolak jalan kalau `DATABASE_URL` bukan localhost (tes betulan — ubah
-      sementara env-nya)
-- [ ] Login berhasil untuk keempat user, tiap role menampilkan menu sesuai
-- [ ] Halaman inventory menampilkan item dengan dua batch harga berbeda
-- [ ] Checkout POS 8 pcs item multi-batch memotong 5 + 3 dari dua batch
-- [ ] Halaman hutang supplier menampilkan invoice belum lunas
-- [ ] Intake tiket bisa langsung dilakukan dengan customer dan flow yang sudah ada
-- [ ] `npm test` tetap 37/37
+- [x] `npm run db:reset` selesai tanpa error dari database kosong — confirmed:
+      `DROP SCHEMA public CASCADE` → `drizzle-kit push` (0 prompts against an empty
+      schema, unlike H1's mid-task snag) → seed, all green.
+- [x] Dijalankan **dua kali** berturut-turut tetap berhasil dan hasilnya identik —
+      confirmed via direct row counts after the second run: 2 tenants, 3 branches,
+      5 roles, 10 permissions, 23 role_permissions, 5 users, 5 assignments, 2 device
+      brands... down to 1 service_ticket / 2 ticket_stage_history — every table
+      matched the seed's intended counts exactly, no duplicates.
+- [x] `db:reset` menolak jalan kalau `DATABASE_URL` bukan localhost — confirmed:
+      ran `src/db/reset.ts` directly with `DATABASE_URL` pointed at a fake
+      `production-db.example.com` host; it threw before touching the database and
+      exited 1.
+- [x] Login berhasil untuk keempat user, tiap role menampilkan menu sesuai — confirmed
+      via real HTTP: `POST /v1/auth/login` for all 4 tenant-main users (and the
+      tenant-second admin) returns the correct `roleName`. The frontend menu, however,
+      only branched on `'Super Admin'` and `'Technician'` before this task — Manager
+      and Cashier fell through to a bare Dashboard. Since this checkbox specifically
+      requires proof of per-role menus, added `Manager`/`Cashier` branches to
+      `(app)/+layout.svelte` (same pattern as the existing branches). Verified by
+      logging in through the actual SvelteKit form action (cookie jar) and reading
+      the rendered SSR HTML per role: Super Admin gets the full menu, Manager gets
+      Tickets/Inventory & Stock/POS/Finance, Technician gets My Jobs, Cashier gets
+      POS only — each role's badge and menu matched. `npm run check` in
+      `flowserv-web` still 0 errors/warnings after the change.
+- [x] Halaman inventory menampilkan item dengan dua batch harga berbeda — confirmed
+      via `GET /v1/inventory`: "LCD Samsung A10" returns with `stockBatches` showing
+      unit costs 150000 and 165000, `totalAvailable: 10`.
+- [x] Checkout POS 8 pcs item multi-batch memotong 5 + 3 dari dua batch — confirmed
+      via `POST /v1/pos/invoices` (8 pcs, no partBrand): resulting stock_movements
+      show `-5` against the 150000 batch (now `quantity_remaining: 0`) and `-3`
+      against the 165000 batch (now `quantity_remaining: 2`); stock_levels dropped
+      10 → 2. Ran `npm run db:reset` afterward to restore the clean seed state.
+- [x] Halaman hutang supplier menampilkan invoice belum lunas — confirmed via
+      `GET /v1/finance/payables`: returns the seeded `INV-SUP-0001`, status `unpaid`,
+      totalAmount 3,300,000, dueDate correctly 30 days after invoiceDate.
+- [x] Intake tiket bisa langsung dilakukan dengan customer dan flow yang sudah ada —
+      confirmed via `POST /v1/tickets/intake` using a seeded customer, asset, and the
+      seeded flow template: returns 201 with `currentNodeId` at Intake.
+- [x] `npm test` tetap 37/37 — confirmed, unchanged, after every change in this task
+      including the UUID-format fix below.
+
+## Deviations found while verifying
+
+- **UUID format bug (caught by the POS checkout test, not by `tsc`).** The first
+  version of `seed/ids.ts` used all-zero middle groups (e.g.
+  `a0000000-0000-0000-0000-000000000001`). Postgres's `uuid` column accepted this
+  fine, and `drizzle-kit push`/seeding succeeded — but several routes validate
+  incoming UUIDs with Zod's strict RFC 4122 pattern (version nibble `1-8`, variant
+  nibble `8/9/a/b`), which an all-zero UUID fails. `POST /v1/pos/invoices` rejected
+  the seeded `branchId`/`inventoryItemId` with a 400 `ZodError`. Fixed by changing
+  every ID's middle groups to `-0000-4000-8000-` (valid v4/variant-8), keeping the
+  first/last groups so IDs stay recognizable. Re-ran `db:reset` twice and all
+  verifications after the fix.
+- **Invoice due-date off-by-one.** `07-transactions.ts` originally computed the
+  seeded invoice's `dueDate` as `now + 30 days` instead of `invoiceDate + 30 days`
+  (invoiceDate was seeded as "yesterday"), landing one day later than a real
+  30-day-term calculation would produce. Fixed to anchor on `invoiceDate`.
 
 ## Perhatian
 

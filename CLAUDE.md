@@ -29,6 +29,13 @@ specification/   → Documentation (source of truth)
 - Backend: Hono (Node.js, TypeScript)
 - ORM: Drizzle — schema in `flowserv-api/src/db/schema.ts`
 - Database: PostgreSQL (local install, use `npx drizzle-kit push` for schema changes)
+  - **Standard schema-change workflow during develop (added 2026-07-21, H0):** run
+    `npm run db:reset` (in `flowserv-api/`) after changing `db/schema/*.ts`. It drops
+    and recreates the `public` schema, runs `db:push`, then runs `db:seed` — a
+    complete, deterministic dataset in seconds, no manual backfill. It refuses to run
+    unless `DATABASE_URL` contains `localhost`. This replaces "be careful with
+    migrations" as long as local data is disposable (confirmed true through Phase 10);
+    re-read `plan/H0-seed-and-reset.md` before Phase 11, where that stops being true.
 - Validation: Zod + drizzle-zod
 - Frontend: SvelteKit
 - UI Components: Tailwind + shadcn-svelte

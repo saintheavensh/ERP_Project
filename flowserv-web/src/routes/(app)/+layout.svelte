@@ -40,6 +40,19 @@
       items.push({ label: 'Settings', path: '/settings' });
     } else if (user?.roleName === 'Technician') {
       items.push({ label: 'My Jobs', path: '/tickets' });
+    } else if (user?.roleName === 'Manager') {
+      items.push({ label: 'Tickets', path: '/tickets' });
+      items.push({ label: 'Inventory & Stock', path: '/inventory' });
+      items.push({ label: 'Point of Sales', path: '/pos' });
+      items.push({
+        label: 'Finance',
+        path: '/finance',
+        subItems: [
+          { label: 'Accounts Payable', path: '/finance/payables' }
+        ]
+      });
+    } else if (user?.roleName === 'Cashier') {
+      items.push({ label: 'Point of Sales', path: '/pos' });
     }
     
     return items;
