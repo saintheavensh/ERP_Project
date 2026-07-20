@@ -1,4 +1,6 @@
-export type PurchaseOrderStatus = 'draft' | 'ordered' | 'partial' | 'received' | 'completed';
+import type { PoStatus } from '../../db/schema/enums';
+
+export type PurchaseOrderStatus = PoStatus;
 
 export type ReceivableLine = { quantity: number; receivedQuantity: number };
 

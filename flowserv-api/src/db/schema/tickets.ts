@@ -18,6 +18,7 @@ import { relations } from 'drizzle-orm';
 
 import { tenants, branches } from './core';
 import { flowTemplates, flowNodes } from './flow';
+import { ticketStatusEnum } from './enums';
 
 
 export const customers = pgTable('customers', {
@@ -48,7 +49,7 @@ export const serviceTickets = pgTable('service_tickets', {
   customerAssetId: uuid('customer_asset_id').notNull().references(() => customerAssets.id),
   flowTemplateId: uuid('flow_template_id').notNull().references(() => flowTemplates.id),
   currentNodeId: uuid('current_node_id').references(() => flowNodes.id),
-  status: varchar('status', { length: 20 }).notNull().default('open'), // open, closed, cancelled
+  status: ticketStatusEnum('status').notNull().default('open'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   closedAt: timestamp('closed_at'),
 }, (table) => ({

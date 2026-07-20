@@ -19,6 +19,7 @@ import { relations } from 'drizzle-orm';
 import { tenants, branches, users } from './core';
 import { serviceTickets } from './tickets';
 import { partBrands } from './product_catalog';
+import { movementTypeEnum, paymentStatusEnum, poStatusEnum, supplierPayMethodEnum } from './enums';
 
 
 export const inventoryCategories = pgTable('inventory_categories', {
@@ -82,7 +83,7 @@ export const stockMovements = pgTable('stock_movements', {
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   stockBatchId: uuid('stock_batch_id').references(() => stockBatches.id), // batch FIFO spesifik yang kepakai — jejak balik ke supplier
-  movementType: varchar('movement_type', { length: 20 }).notNull(), // in, out, reserve, release, adjust, write_off
+  movementType: movementTypeEnum('movement_type').notNull(),
   quantity: integer('quantity').notNull(),
   referenceType: varchar('reference_type', { length: 30 }),
   referenceId: uuid('reference_id'),
@@ -147,10 +148,10 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id),
   invoiceNumber: varchar('invoice_number', { length: 100 }), // Dari nota supplier
-  status: varchar('status', { length: 20 }).notNull().default('unpaid'), // 'unpaid' | 'partial' | 'paid'
+  status: paymentStatusEnum('status').notNull().default('unpaid'),
   totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).notNull(),
   amountPaid: decimal('amount_paid', { precision: 14, scale: 2 }).notNull().default('0'),
-  paymentMethod: varchar('payment_method', { length: 20 }).notNull(), // 'tunai' | 'transfer' | 'tempo'
+  paymentMethod: supplierPayMethodEnum('payment_method').notNull(),
   invoiceDate: timestamp('invoice_date').notNull().defaultNow(),
   dueDate: timestamp('due_date'), // Tanggal jatuh tempo jika tempo
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -164,7 +165,7 @@ export const supplierPayments = pgTable('supplier_payments', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   supplierInvoiceId: uuid('supplier_invoice_id').notNull().references(() => supplierInvoices.id),
   amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
-  paymentMethod: varchar('payment_method', { length: 20 }).notNull(),
+  paymentMethod: supplierPayMethodEnum('payment_method').notNull(),
   referenceNumber: varchar('reference_number', { length: 100 }), // misal no referensi transfer
   paymentDate: timestamp('payment_date').notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),
@@ -178,7 +179,7 @@ export const purchaseOrders = pgTable('purchase_orders', {
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   poNumber: varchar('po_number', { length: 50 }).notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('draft'), // 'draft' | 'ordered' | 'partial' | 'received' | 'completed'
+  status: poStatusEnum('status').notNull().default('draft'),
   expectedDeliveryDate: timestamp('expected_delivery_date'),
   invoiceNumber: varchar('invoice_number', { length: 100 }),
   invoiceDate: timestamp('invoice_date'),

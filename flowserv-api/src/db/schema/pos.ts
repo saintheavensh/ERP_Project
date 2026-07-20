@@ -20,6 +20,7 @@ import { tenants, branches, users } from './core';
 import { serviceTickets } from './tickets';
 import { inventoryItems } from './inventory';
 import { partBrands } from './product_catalog';
+import { invoiceStatusEnum, paymentMethodEnum, paymentStatusEnum } from './enums';
 
 
 export const posInvoices = pgTable('pos_invoices', {
@@ -33,8 +34,9 @@ export const posInvoices = pgTable('pos_invoices', {
   discountAmount: numeric('discount_amount').notNull().default('0'),
   taxAmount: numeric('tax_amount').notNull().default('0'),
   grandTotal: numeric('grand_total').notNull().default('0'),
-  paymentStatus: varchar('payment_status', { length: 20 }).notNull(), // 'unpaid', 'partial', 'paid'
-  paymentMethod: varchar('payment_method', { length: 20 }).notNull(), // 'cash', 'transfer', 'qris', 'split', 'tempo'
+  status: invoiceStatusEnum('status').notNull().default('active'), // document lifecycle — separate from payment
+  paymentStatus: paymentStatusEnum('payment_status').notNull(),
+  paymentMethod: paymentMethodEnum('payment_method').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),
 }, (table) => ({

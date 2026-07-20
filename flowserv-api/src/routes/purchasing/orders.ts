@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
 import { purchaseOrders, purchaseOrderLines, stockBatches, stockMovements, stockLevels, inventoryItems, itemBrandPricing, supplierInvoices, suppliers } from '../../db/schema/index';
+import { poStatusEnum, type PoStatus } from '../../db/schema/enums';
+
+function isPoStatus(value: string): value is PoStatus {
+  return (poStatusEnum.enumValues as readonly string[]).includes(value);
+}
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { successResponse, errorResponse } from '../../lib/response';
@@ -16,7 +21,7 @@ router.get('/orders', async (c) => {
   
   try {
     const filters = [eq(purchaseOrders.tenantId, tenantId)];
-    if (status) {
+    if (status && isPoStatus(status)) {
       filters.push(eq(purchaseOrders.status, status));
     }
     

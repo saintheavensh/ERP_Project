@@ -126,7 +126,7 @@ router.post('/orders/:id/invoice', zValidator('json', invoiceSchema), async (c) 
           dueDate: dueDate,
           totalAmount: actualTotal.toString(),
           amountPaid: '0',
-          status: 'pending',
+          status: 'unpaid',
           paymentMethod: data.paymentMethod
         });
       } else {

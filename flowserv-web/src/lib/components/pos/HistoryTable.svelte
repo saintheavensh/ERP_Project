@@ -38,11 +38,11 @@
             <td class="p-4 text-sm font-bold text-slate-800 text-right">{state.formatRp(inv.grandTotal)}</td>
             <td class="p-4 text-center">
               <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {
+                inv.status === 'voided' ? 'bg-red-100 text-red-800' :
                 inv.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
-                inv.paymentStatus === 'voided' ? 'bg-red-100 text-red-800' :
                 'bg-yellow-100 text-yellow-800'
               }">
-                {inv.paymentStatus === 'paid' ? 'Lunas' : inv.paymentStatus === 'voided' ? 'Batal (Void)' : 'Belum Lunas'}
+                {inv.status === 'voided' ? 'Batal (Void)' : inv.paymentStatus === 'paid' ? 'Lunas' : 'Belum Lunas'}
               </span>
             </td>
             <td class="p-4 text-sm text-slate-500">{inv.creator?.name || 'Sistem'}</td>

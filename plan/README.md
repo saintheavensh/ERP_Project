@@ -226,7 +226,7 @@ Stage 1
 
 Stage 2
 - [x] H1 Delete dead schema — 2026-07-21
-- [ ] H2 Status enums
+- [x] H2 Status enums — 2026-07-21
 - [ ] H3 Timestamps
 - [ ] H4 Constraints
 - [ ] H5 Money & numbering

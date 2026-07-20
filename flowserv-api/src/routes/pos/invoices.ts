@@ -244,12 +244,12 @@ router.delete('/invoices/:id', async (c) => {
         .for('update');
 
       if (!invoice) throw new BusinessError('NOT_FOUND', 'Invoice not found', 404);
-      if (invoice.paymentStatus === 'voided') {
+      if (invoice.status === 'voided') {
         throw new BusinessError('ALREADY_VOIDED', 'Invoice is already voided', 409);
       }
 
       // Second, independent guard: a 'void_pos' movement already existing for
-      // this invoice means it was voided before, even if paymentStatus somehow
+      // this invoice means it was voided before, even if status somehow
       // disagrees — the movement ledger is append-only and the source of truth.
       const existingVoidMovements = await tx.select({ id: stockMovements.id })
         .from(stockMovements)
@@ -334,9 +334,10 @@ router.delete('/invoices/:id', async (c) => {
         }
       }
 
-      // 4. Update Invoice Status to voided
+      // 4. Update Invoice Status to voided — document lifecycle only; paymentStatus
+      // (was this invoice paid before it was voided?) is left untouched.
       await tx.update(posInvoices)
-        .set({ paymentStatus: 'voided' }) // reusing paymentStatus for voided state
+        .set({ status: 'voided' })
         .where(eq(posInvoices.id, invoice.id));
     });
 

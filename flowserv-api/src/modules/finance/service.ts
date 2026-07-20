@@ -1,10 +1,9 @@
 import { db } from '../../db/connection';
 import { supplierInvoices, supplierPayments } from '../../db/schema';
+import type { PaymentStatus } from '../../db/schema/enums';
 import { eq, and, desc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import type { RecordPaymentInput } from './types';
-
-export type PayableInvoiceStatus = 'unpaid' | 'partial' | 'paid';
 
 export type PaymentDecision =
   | { ok: true; newAmountPaid: number; newStatus: 'partial' | 'paid' }
@@ -15,7 +14,7 @@ export type PaymentDecision =
  * invoice's new state should be. This is what the tests exercise.
  */
 export function applyPayment(
-  invoice: { totalAmount: number; amountPaid: number; status: PayableInvoiceStatus },
+  invoice: { totalAmount: number; amountPaid: number; status: PaymentStatus },
   paymentAmount: number
 ): PaymentDecision {
   if (invoice.status === 'paid') {
@@ -70,7 +69,7 @@ export async function recordPayment(
       {
         totalAmount: parseFloat(invoice.totalAmount),
         amountPaid: parseFloat(invoice.amountPaid),
-        status: invoice.status as PayableInvoiceStatus,
+        status: invoice.status,
       },
       input.amount
     );

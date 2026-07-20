@@ -89,7 +89,7 @@
       
       <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
         <div>
-          {#if state.selectedInvoiceDetail.paymentStatus !== 'voided'}
+          {#if state.selectedInvoiceDetail.status !== 'voided'}
             <button onclick={() => state.handleVoid(state.selectedInvoiceDetail.id)} class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-lg transition-colors border border-red-200 mr-2">
               Void (Batal)
             </button>

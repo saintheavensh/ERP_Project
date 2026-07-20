@@ -82,7 +82,7 @@ opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
           branchId: data.branchId,
           inventoryItemId: item.inventoryItemId,
           stockBatchId: batch.id,
-          movementType: 'initial_upload',
+          movementType: 'in', // opname upload = stock entering the system, same as a goods receipt
           quantity: item.quantity
         });
         

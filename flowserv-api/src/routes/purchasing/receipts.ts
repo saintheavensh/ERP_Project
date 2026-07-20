@@ -6,7 +6,7 @@ import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
-import { computeOrderStatus, type PurchaseOrderStatus } from './order-status';
+import { computeOrderStatus } from './order-status';
 import { BusinessError } from '../../lib/errors';
 
 const router = new Hono();
@@ -172,7 +172,7 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
         .from(purchaseOrderLines)
         .where(eq(purchaseOrderLines.purchaseOrderId, orderId));
 
-      const newStatus = computeOrderStatus(allLines, order.status as PurchaseOrderStatus);
+      const newStatus = computeOrderStatus(allLines, order.status);
 
       const [updatedOrder] = await tx.update(purchaseOrders)
         .set({ status: newStatus })
