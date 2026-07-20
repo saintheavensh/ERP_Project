@@ -35,11 +35,17 @@ depends on at the top.
 | 03 | [Flow engine enforcement](tasks/task-03-flow-engine-enforcement.md) | **Medium** | The most severe bug. Needs task 01's tests to land safely. |
 | 04 | [Purchasing receive fixes](tasks/task-04-purchasing-receive-fixes.md) | Medium | Three bugs in one function — fix together, not separately. |
 | 05 | [Data integrity](tasks/task-05-data-integrity.md) | Medium | Row locking, error codes, ticket closure, void guard. |
+| 08 | [Client API URLs](tasks/task-08-client-api-urls.md) | Low | **Before Phase 5** — every new screen copies the hardcoded pattern, so the debt compounds. |
 | 06 | [AP payment endpoint](tasks/task-06-ap-payment-endpoint.md) | Low | The only new feature. Closes Phase 4A.3. |
 | 07 | [Merge and docs](tasks/task-07-merge-and-docs.md) | Low | Get `main` current again; make the checkboxes honest. |
+| 09 | [Seed and roles](tasks/task-09-seed-and-roles.md) | Medium | **Before Phase 4.5B** — RBAC can't be tested while every user is `'no-role'`. Step order matters. |
 
 Tasks 01–03 are the important ones. If you only get through those, the system is
 meaningfully safer than it is today.
+
+> **08 and 09 were added 2026-07-20**, after the audit surfaced them while task 02
+> was being verified. They are numbered by discovery order, not execution order —
+> follow the order in this table, not the filenames.
 
 ---
 
@@ -83,8 +89,10 @@ produced the current state.
 - [x] 03 — Flow engine enforcement (task file deleted)
 - [ ] 04 — Purchasing receive fixes
 - [ ] 05 — Data integrity
+- [ ] 08 — Client API URLs  ← added 2026-07-20
 - [ ] 06 — AP payment endpoint
 - [ ] 07 — Merge and docs
+- [ ] 09 — Seed and roles  ← added 2026-07-20, before Phase 4.5B
 
-When all seven are checked: delete `RECOVERY-PLAN.md`, delete this `plan/` folder,
+When all nine are checked: delete `RECOVERY-PLAN.md`, delete this `plan/` folder,
 and move `PHASES.md` on to Phase 4.

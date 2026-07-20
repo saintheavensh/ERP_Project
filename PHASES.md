@@ -236,6 +236,21 @@ missing.
 - [ ] 3.5C.5 **Tests:** stock level arithmetic across receive → sell → void
 - [ ] 3.5C.6 Verify `npm test` passes
 
+### 3.5E. Deployment Config & Seed Data
+> Added 2026-07-20 after the audit found these while working on 3.5A. Both are
+> prerequisites for later phases rather than defects in current behaviour.
+
+- [ ] 3.5E.1 Replace the 35 hardcoded `localhost:3001` URLs in **client-side** code
+      (20 files under `lib/states/` and `*.svelte`) with an env-backed constant, and
+      commit `.env.example` files. Server-side (`+page.server.ts`) stays as-is until
+      Phase 11. **Do before Phase 5** — every new UI screen copies the current
+      hardcoded pattern. Supports 9.7/9.8.
+- [ ] 3.5E.2 Fix `db/seed.ts`: assign the Super Admin role (no user currently gets
+      *any* role), make the seed idempotent, switch to bcrypt. Then remove the
+      `'no-role'` full-menu fallback in `(app)/+layout.svelte`.
+      **Must be done before 4.5B** — RBAC cannot be tested while every user is
+      `'no-role'`.
+
 ### 3.5D. Branch Hygiene & Docs
 - [ ] 3.5D.1 Merge current work → `main` (resolves the orphaned 1F.5 and 2C.3)
 - [ ] 3.5D.2 Branch fresh from `main` for the next phase
