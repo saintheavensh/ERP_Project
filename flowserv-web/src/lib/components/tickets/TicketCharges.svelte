@@ -68,6 +68,16 @@
                 class="text-slate-400 hover:text-red-600 disabled:opacity-40 p-1" title="Hapus biaya" aria-label="Hapus biaya">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
               </button>
+            {:else if c.sourceType === 'part' && c.status === 'approved'}
+              <button onclick={() => state.consumeCharge(c.id)} disabled={state.chargeLoading}
+                class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white disabled:opacity-40 whitespace-nowrap">
+                Pakai Part
+              </button>
+            {:else if c.sourceType === 'part' && c.status === 'consumed'}
+              <button onclick={() => state.returnCharge(c.id)} disabled={state.chargeLoading}
+                class="text-xs font-medium px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 whitespace-nowrap">
+                Kembalikan
+              </button>
             {:else}
               <span class="w-7"></span>
             {/if}

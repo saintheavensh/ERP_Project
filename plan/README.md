@@ -455,7 +455,69 @@ Stage 3
     full visual DoD bar is wanted.
   - DB reset back to clean seed state after the live run (ticket unassigned again,
     customer name reverted, 0 `pos_invoices`) — confirmed via API before moving on.
-- [ ] H9 Ticket parts consumption
+- [x] H9 Ticket parts consumption — 2026-07-21
+  - Extracted `consumeStock()` into new `modules/inventory/service.ts` (the first
+    file in that module — no `routes.ts`/`types.ts` yet, matching H16's "extract
+    only what's needed"), moved verbatim from `routes/pos/invoices.ts`'s FIFO
+    deduction block. Refactored POS checkout to call it; `npm test` **78/78
+    unchanged** before and after — the proof the extraction was faithful. Also
+    added `returnStock()` alongside it (mirrors the POS void guard: a batch can
+    never hold more than its `quantityReceived`, plus an independent
+    already-returned check) — used only by the new ticket return path, POS void
+    itself was left untouched since it wasn't broken and refactoring it wasn't
+    in scope.
+  - Added `consumeCharge` / `returnCharge` to `modules/tickets/service.ts` and
+    wired `POST /v1/tickets/:id/charges/:chargeId/consume` and `.../return` in
+    `routes/tickets.ts`. `consumeCharge` locks the `ticket_charges` row `FOR
+    UPDATE` before checking status, so a double-tap serializes instead of
+    double-deducting; rejects `sourceType !== 'part'`, `status === 'consumed'`
+    (409 `ALREADY_CONSUMED`), and `status !== 'approved'` (409
+    `CHARGE_NOT_APPROVED`) before touching stock.
+  - `npx tsc --noEmit` clean; `npx svelte-check`: 0 errors, 0 warnings.
+  - **Live API run** (seeded LCD Samsung A10: batches 5@Rp150.000 / 5@Rp165.000 /
+    20@Rp165.000, same brand — 30 units total), then DB reset back to clean seed:
+    - Added a 7-unit part charge to the seeded ticket, consumed while still
+      `estimated` → 409 `CHARGE_NOT_APPROVED`. Approved it via `/quotation`,
+      then consumed → **200**, `unitCost: "154285.71"` (matches the
+      `fifo.test.ts` split-batch case exactly: 5×150.000 + 2×165.000 = 1.080.000
+      / 7). `GET /v1/inventory/:id` confirmed batch 1 at `remaining: 0`
+      (received 5), batch 2 at `remaining: 3` (was 5) — exactly the 5+2 split.
+      `stock_levels.quantityAvailable` dropped 30 → 23. Raw SQL against
+      `stock_movements` showed **exactly 2 rows** for this charge, both
+      `reference_type='ticket_consumption'` with `service_ticket_id` populated
+      — the column H9 exists to finally write.
+    - Consuming the same (now-consumed) charge again → 409 `ALREADY_CONSUMED`.
+    - **Concurrency, not just sequential** (the task's explicit ask): fired two
+      simultaneous `POST .../consume` requests (backgrounded curl + `wait`) at
+      a second, freshly-approved 1-unit charge on the same item. One returned
+      200, the other 409 `ALREADY_CONSUMED`; a raw SQL count of
+      `stock_movements` for that charge's id was **exactly 1**, not 2 — proves
+      the `FOR UPDATE` lock on the charge row serializes the race rather than
+      relying on request ordering.
+    - Added a 1000-unit part charge (far more than the ~22 remaining), approved
+      it, consumed → 422 `INSUFFICIENT_STOCK`; `stock_levels.quantityAvailable`
+      unchanged after the failed attempt, confirming the transaction rolled
+      back cleanly with no partial deduction.
+    - Returned the original split-batch charge → batch 1 restored to its exact
+      original `remaining: 5`; batch 2 restored by exactly the 2 units this
+      charge had drawn from it (not a fresh FIFO re-pick — it went back to
+      **the same batch it came from**, correctly landing at 4 after accounting
+      for the second charge's 1-unit draw from that same batch in between).
+      `quantityAvailable` rose 22 → 29. Charge status flipped back to
+      `approved`, `unitCost`/`stockMovementId` cleared. Returning it a second
+      time → 409 `NOT_CONSUMED` (status is no longer `consumed`).
+    - `GET /v1/inventory/reconciliation` → `{ isClean: true, drift: [] }` after
+      every step above, including after the failed 422 attempt.
+  - **Click-path**: Playwright is still not installed in `flowserv-web` (same
+    gap recorded in H7/H8). Substituted with an SSR fetch of `/tickets/:id`
+    using a real `flowserv_token` login cookie: 200, the charges section
+    rendered with **2** "Pakai Part" buttons (the two charges left in
+    `approved`) and **1** "Kembalikan" button (the one left `consumed`) —
+    reflecting the exact backend state from the run above, proving the new
+    `TicketCharges.svelte` buttons and `ticket.detail.svelte.ts`
+    `consumeCharge`/`returnCharge` methods are wired correctly end-to-end.
+  - DB reset back to clean seed state after the live run — confirmed via a
+    fresh `npm run db:reset` before moving on.
 - [ ] H10 Stock reservation
 
 Stage 4

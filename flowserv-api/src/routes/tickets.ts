@@ -9,7 +9,7 @@ import { successResponse, errorResponse } from '../lib/response';
 import { FlowEngine } from '../services/flow-engine';
 import { BusinessError } from '../lib/errors';
 import { createChargeInput, updateChargeInput, assignTechnicianInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician } from '../modules/tickets/service';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -332,6 +332,40 @@ ticketsRouter.delete('/:id/charges/:chargeId', async (c) => {
     }
     console.error('Failed to delete charge:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete charge', undefined, 500);
+  }
+});
+
+// H9 — physically deduct an approved part charge from FIFO stock
+ticketsRouter.post('/:id/charges/:chargeId/consume', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const chargeId = c.req.param('chargeId');
+  try {
+    const result = await consumeCharge(tenantId, ticketId, chargeId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to consume charge:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to consume charge', undefined, 500);
+  }
+});
+
+// H9 — undo a consumption: restore stock, flip the charge back to 'approved'
+ticketsRouter.post('/:id/charges/:chargeId/return', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const chargeId = c.req.param('chargeId');
+  try {
+    const result = await returnCharge(tenantId, ticketId, chargeId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to return charge:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to return charge', undefined, 500);
   }
 });
 

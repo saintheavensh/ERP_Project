@@ -92,6 +92,35 @@ export class TicketDetailState {
     finally { this.chargeLoading = false; }
   }
 
+  // H9 — physically deduct/restore an approved part charge from FIFO stock
+  async consumeCharge(id: string) {
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/charges/${id}/consume`, {
+        method: 'POST', headers: this.chargeHeaders()
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal memakai sparepart';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
+  async returnCharge(id: string) {
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/charges/${id}/return`, {
+        method: 'POST', headers: this.chargeHeaders()
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal mengembalikan sparepart';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
   async requestApproval() {
     this.chargeLoading = true;
     this.errorMsg = '';

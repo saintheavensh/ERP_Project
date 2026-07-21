@@ -4,6 +4,7 @@ import type { ChargeStatus } from '../../db/schema/enums';
 import { eq, and, asc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
+import { consumeStock, returnStock } from '../inventory/service';
 import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput } from './types';
 
 // ============================================================================
@@ -384,6 +385,118 @@ export async function assignTechnician(
     });
 
     return { ...updated, assignedTechnicianName: technician.name };
+  });
+}
+
+/**
+ * H9 — physically deduct a part charge from FIFO stock. Only an 'approved' charge
+ * may be consumed (you cannot take stock for something the customer hasn't accepted
+ * yet). The charge row is locked FOR UPDATE for the whole transaction, and the
+ * status check happens after the lock is acquired — so two concurrent "Use part"
+ * taps serialize, and whichever one runs second sees status='consumed' and is
+ * rejected with 409 before it can call consumeStock a second time.
+ */
+export async function consumeCharge(tenantId: string, ticketId: string, chargeId: string) {
+  return db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select({ branchId: serviceTickets.branchId })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+
+    const [charge] = await tx
+      .select()
+      .from(ticketCharges)
+      .where(
+        and(
+          eq(ticketCharges.id, chargeId),
+          eq(ticketCharges.ticketId, ticketId),
+          eq(ticketCharges.tenantId, tenantId)
+        )
+      )
+      .for('update');
+    if (!charge) {
+      throw new BusinessError('NOT_FOUND', 'Charge not found', 404);
+    }
+    if (charge.sourceType !== 'part') {
+      throw new BusinessError('NOT_A_PART_CHARGE', 'Only a part charge can be consumed from stock', 409);
+    }
+    if (charge.status === 'consumed') {
+      throw new BusinessError('ALREADY_CONSUMED', 'This charge has already been consumed', 409);
+    }
+    if (charge.status !== 'approved') {
+      throw new BusinessError('CHARGE_NOT_APPROVED', 'Only an approved charge can be consumed', 409);
+    }
+
+    const result = await consumeStock(tx, {
+      tenantId,
+      branchId: ticket.branchId,
+      inventoryItemId: charge.inventoryItemId!,
+      partBrandId: charge.partBrandId,
+      quantity: charge.quantity,
+      referenceType: 'ticket_consumption',
+      referenceId: charge.id,
+      serviceTicketId: ticketId,
+    });
+
+    const [updated] = await tx
+      .update(ticketCharges)
+      .set({
+        status: 'consumed',
+        unitCost: toMoneyString(Number(result.unitCost)),
+        stockMovementId: result.movementIds[0] ?? null,
+      })
+      .where(eq(ticketCharges.id, chargeId))
+      .returning();
+
+    return updated;
+  });
+}
+
+/**
+ * H9 — undo a consumption: a part that was fitted then removed. Restores the
+ * exact batches it came from (via the stock_movements trail left by consumeStock,
+ * not a fresh FIFO pick) and flips the charge back to 'approved'. Mirrors the POS
+ * void guard (3.5B.5): restored quantity may never exceed a batch's
+ * quantityReceived, and a charge can only be returned once.
+ */
+export async function returnCharge(tenantId: string, ticketId: string, chargeId: string) {
+  return db.transaction(async (tx) => {
+    const [charge] = await tx
+      .select()
+      .from(ticketCharges)
+      .where(
+        and(
+          eq(ticketCharges.id, chargeId),
+          eq(ticketCharges.ticketId, ticketId),
+          eq(ticketCharges.tenantId, tenantId)
+        )
+      )
+      .for('update');
+    if (!charge) {
+      throw new BusinessError('NOT_FOUND', 'Charge not found', 404);
+    }
+    if (charge.status !== 'consumed') {
+      throw new BusinessError('NOT_CONSUMED', 'Only a consumed charge can be returned', 409);
+    }
+
+    await returnStock(tx, {
+      tenantId,
+      consumedReferenceType: 'ticket_consumption',
+      consumedReferenceId: charge.id,
+      returnReferenceType: 'ticket_return',
+      serviceTicketId: ticketId,
+    });
+
+    const [updated] = await tx
+      .update(ticketCharges)
+      .set({ status: 'approved', unitCost: null, stockMovementId: null })
+      .where(eq(ticketCharges.id, chargeId))
+      .returning();
+
+    return updated;
   });
 }
 

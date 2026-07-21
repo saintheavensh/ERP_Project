@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
 import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers } from '../../db/schema/index';
-import { eq, and, sql, asc, gt, desc, inArray } from 'drizzle-orm';
+import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { BusinessError } from '../../lib/errors';
-import { pickFifoBatches, calculateConsumedUnitCost } from '../../lib/fifo';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { posCheckoutSchema } from './types';
+import { consumeStock } from '../../modules/inventory/service';
 
 const router = new Hono();
 
@@ -165,46 +165,20 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
           continue;
         }
 
-        // FIFO Stock Deduction
-        // FOR UPDATE locks these rows for the rest of this transaction — without
-        // it, two concurrent checkouts can both read the same quantityRemaining
-        // and both succeed, overselling the last unit.
-        const batchFilters = [
-          eq(stockBatches.tenantId, tenantId),
-          eq(stockBatches.branchId, data.branchId),
-          eq(stockBatches.inventoryItemId, item.inventoryItemId),
-          gt(stockBatches.quantityRemaining, 0)
-        ];
+        // FIFO Stock Deduction — shared with ticket part consumption (H9) via
+        // consumeStock(), so there is one FIFO deduction path and one set of tests.
+        const consumed = await consumeStock(tx, {
+          tenantId,
+          branchId: data.branchId,
+          inventoryItemId: item.inventoryItemId,
+          partBrandId: item.partBrandId || null,
+          quantity: item.quantity,
+          referenceType: 'pos_sale',
+          referenceId: newInvoice.id,
+        });
 
-        if (item.partBrandId) {
-          batchFilters.push(eq(stockBatches.partBrandId, item.partBrandId));
-        } else {
-          // If no brand is specified, we might want to deduct from batches that also have no brand,
-          // or just any batch. Usually if they select generic, they deduct generic.
-          batchFilters.push(sql`${stockBatches.partBrandId} IS NULL`);
-        }
-
-        const availableBatches = await tx.select()
-          .from(stockBatches)
-          .where(and(...batchFilters))
-          .orderBy(asc(stockBatches.receivedAt))
-          .for('update');
-
-        const { deductions, remainingUnfulfilled } = pickFifoBatches(availableBatches, item.quantity);
-
-        if (remainingUnfulfilled > 0) {
-          throw new BusinessError(
-            'INSUFFICIENT_STOCK',
-            `Stok tidak cukup untuk item ${item.inventoryItemId}`,
-            422
-          );
-        }
-
-        // unitCost captured now, at sale time — a historical fact about which
-        // batches this specific sale drew from (H6).
-        const unitCost = calculateConsumedUnitCost(deductions, availableBatches);
-
-        // Buat Invoice Line
+        // Buat Invoice Line — unitCost captured now, at sale time, a historical
+        // fact about which batches this specific sale drew from (H6).
         await tx.insert(posInvoiceLines).values({
           tenantId,
           posInvoiceId: newInvoice.id,
@@ -215,56 +189,8 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
           quantity: item.quantity,
           unitPrice: toMoneyString(item.unitPrice),
           subtotal: toMoneyString(lineSubtotal),
-          unitCost: toMoneyString(Number(unitCost)),
+          unitCost: toMoneyString(Number(consumed.unitCost)),
         });
-
-        // Terapkan setiap potongan batch (FIFO) yang sudah diputuskan di atas
-        for (const deduction of deductions) {
-          const batch = availableBatches.find(b => b.id === deduction.batchId)!;
-
-          await tx.update(stockBatches)
-            .set({ quantityRemaining: batch.quantityRemaining - deduction.quantity })
-            .where(eq(stockBatches.id, batch.id));
-
-          // Catat Stock Movement untuk potongan batch ini
-          await tx.insert(stockMovements).values({
-            tenantId,
-            branchId: data.branchId,
-            inventoryItemId: item.inventoryItemId,
-            stockBatchId: batch.id, // Referensi ke batch mana yang kepakai
-            movementType: 'out',
-            quantity: -deduction.quantity,
-            referenceType: 'pos_sale',
-            referenceId: newInvoice.id
-          });
-        }
-
-        // 5. Update Master Stock Level (Global per branch)
-        // Dapatkan stok level saat ini, atau buat kalau belum ada (seharusnya ada)
-        const stockLevel = await tx.query.stockLevels.findFirst({
-          where: and(
-            eq(stockLevels.tenantId, tenantId),
-            eq(stockLevels.inventoryItemId, item.inventoryItemId),
-            eq(stockLevels.branchId, data.branchId)
-          )
-        });
-
-        if (stockLevel) {
-          await tx.update(stockLevels)
-            .set({ quantityAvailable: stockLevel.quantityAvailable - item.quantity })
-            .where(eq(stockLevels.id, stockLevel.id));
-        } else {
-          // The FIFO deduction above already succeeded against real batches,
-          // so physical stock genuinely exists — a missing stockLevels row here
-          // means the level cache is out of sync with the batches, not that
-          // stock is unavailable. Fail loudly rather than inventing a
-          // negative-quantity row that would corrupt future stock reads.
-          throw new BusinessError(
-            'STOCK_LEVEL_MISSING',
-            `No stock level record found for item ${item.inventoryItemId} at this branch — batches exist but the level cache does not`,
-            422
-          );
-        }
       }
 
       return newInvoice;
