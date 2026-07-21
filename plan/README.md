@@ -766,7 +766,192 @@ Stage 4
     `MiddlewareHandler` instead — `npx tsc --noEmit` went from 24 errors to 0
     with that one change, confirming it was the root cause, not 24 separate
     problems.
-- [ ] H13 API hardening
+- [x] H13 API hardening — 2026-07-21
+  - **Part 1, audit log:** `middleware/audit.ts` — runs `await next()` first,
+    then records only if `c.res.status < 400`, so a mutation that threw or
+    rolled back never gets logged as having happened. `action` is always an
+    explicit `<entity>.<verb>` string passed per route (e.g.
+    `ticket.consume_charge`), not derived generically — matches the vocabulary
+    already in the schema comments. `changes` is never a raw body dump: each
+    of the 37 call sites passes its own explicit `bodyFields`/`responseFields`
+    allowlist. IP address via `@hono/node-server/conninfo`'s `getConnInfo`,
+    falling back to `x-forwarded-for`. Wired inline (same pattern as
+    `requirePermission`) into all 37 mutating handlers across the 16 route
+    files H12 already catalogued — customers(3), tickets(10), categories(1),
+    suppliers(5), brands(2), finance(1), inventory items(2)/compatibility(1)/
+    pricing(1)/receipts(1), opname(1), purchasing invoices(1)/orders(3)/
+    receipts(1), pos drafts(2)/invoices(2).
+  - New `GET /v1/audit-logs` (`routes/audit-logs.ts`), gated by a new
+    `audit.view` permission added to the catalog but **deliberately not
+    granted to any seeded role** — only the Super Admin bypass can reach it,
+    which is what "admin-only" means here (mirrors how `ticket.diagnose`
+    already relies on grant absence rather than a role check).
+  - **Part 2, cursor pagination:** `lib/pagination.ts` — `encodeCursor`/
+    `decodeCursor` (base64 JSON), `parseLimit` (bounded to `MAX_PAGE_SIZE`
+    200), `cursorCondition` + `orderByCursor` (the `(createdAt, id)` pair from
+    the task file), `buildPage` (pure, takes the `limit+1` rows the route
+    fetched and splits page/has_more/next_cursor). Applied to `GET /v1/tickets`,
+    `GET /v1/pos/invoices` (was a hardcoded `limit: 100`), `GET /v1/inventory`
+    (had no limit at all), and the new `GET /v1/audit-logs`. `inventory_items`
+    had no `created_at` column at all — added one (H13-scoped, not a
+    speculative addition; the task names "inventory" as a pagination target).
+    **Not paginated:** a "stock movements" list endpoint doesn't exist
+    anywhere in the codebase (grepped `routes/` — confirmed) — the task names
+    it as a target but there is nothing to paginate; not built here as that
+    would be a new feature, not hardening one.
+  - **Found the exact bug the task file warned about, live, not just in a
+    unit test:** two `inventory_items` rows seeded in the same `INSERT`
+    share the identical **microsecond-precision** `created_at` (Postgres
+    `timestamptz` resolution). The cursor, built from a JS `Date`, can only
+    carry millisecond precision — comparing `date_trunc`-free
+    `eq(createdAtCol, cursorDate)` against the true microsecond value
+    silently failed, and the second row vanished from page 2 (confirmed via
+    a raw SQL probe: `eq_check: false` against a value that printed as
+    identical). Fixed by truncating **both** the `ORDER BY` and the cursor
+    `WHERE` comparison to `date_trunc('milliseconds', ...)` consistently
+    (`truncatedToMillis` in `lib/pagination.ts`), so the fetch order and the
+    cursor comparison are defined over exactly the same values. Hit a second,
+    related bug while fixing the first: interpolating a raw JS `Date` into a
+    `sql\`\`` template (rather than through a typed column comparator) made
+    the driver serialize it via `Date.toString()` —
+    `"Wed Jul 22 2026 04:06:42 GMT+0700 (Western Indonesia Time)"` — which
+    Postgres rejected with `time zone "gmt+0700" not recognized`; fixed by
+    interpolating `cursorDate.toISOString()` instead. Both bugs are covered
+    by new regression tests in `lib/__tests__/pagination.test.ts` using
+    `PgDialect().sqlToQuery()` (renders real SQL text with no DB connection)
+    asserting `date_trunc('milliseconds'` appears in both the `ORDER BY` and
+    both branches of the cursor condition.
+  - **Part 3, idempotency:** new `idempotency_keys` table
+    (`db/schema/idempotency.ts`, composite PK `(tenant_id, key)`, exactly the
+    shape in the task file) + `lib/idempotency.ts`
+    (`findIdempotentResponse`/`recordIdempotentResponse`/
+    `isIdempotencyKeyConflict`/`replayIdempotentResponse`). The mechanism: a
+    cheap pre-check outside any transaction (skip re-executing entirely on an
+    exact repeat); the real response envelope built via a new
+    `buildSuccessEnvelope`/`getRequestId` (`lib/response.ts`) and recorded as
+    the **last write** inside the same business transaction, so a rollback
+    anywhere earlier in that transaction discards the key too. A genuine
+    concurrent race (two requests, same key, truly simultaneous) hits the
+    `(tenant_id, key)` unique constraint on whichever transaction commits
+    second — that throw aborts its whole transaction (rolling back its
+    business writes automatically), caught via `isIdempotencyKeyConflict` and
+    replayed from the winner's now-committed row instead of surfacing a 500.
+    `isIdempotencyKeyConflict` had to account for Drizzle (via the `postgres`
+    driver) wrapping the raw error in `DrizzleQueryError` with the real
+    Postgres fields one level down on `.cause`, using `postgres`'s field
+    names (`table_name`/`constraint_name`) rather than `pg`'s
+    (`table`/`constraint`) — found live during the concurrent-race test
+    (first attempt surfaced a 500 instead of replaying), fixed, and covered
+    by new unit tests for the wrapped shape.
+  - Applied to all 4 named endpoints: `POST /v1/pos/invoices` (the
+    transaction already lived in the route, easiest case),
+    `POST /v1/tickets/:id/transition` (`FlowEngine.executeTransition` gained
+    optional `idempotency`/`requestId` params, recorded inside its own
+    transaction), `POST /v1/tickets/:id/charges/:chargeId/consume`
+    (`consumeCharge` in `modules/tickets/service.ts`, same pattern), and
+    `POST /v1/finance/payables/:id/payments` (`recordPayment` in
+    `modules/finance/service.ts`, same pattern — the OVERPAYMENT/ALREADY_PAID
+    throws happen before the record write, so those failures don't burn the
+    key either).
+  - **A replayed response is not a new mutation** — logging it in the audit
+    trail would claim the action happened twice. `replayIdempotentResponse`
+    sets an `X-Idempotent-Replay` response header; `middleware/audit.ts`
+    checks for it and skips logging. Found by noticing `ticket.consume_charge`
+    had 2 audit rows for what was actually one consumption (the replay had
+    gone through the full handler chain, including the audit middleware,
+    before this fix) — confirmed fixed live afterward (new consume + replay →
+    exactly 1 audit row).
+  - **Frontend** (`Idempotency-Key` minted once per action, reused across
+    retries — never regenerated on retry, per the task's explicit warning):
+    `pos.checkout.svelte.ts` mints on `openCheckout()` (modal open);
+    `payables.svelte.ts` mints on `openPayModal()`; `ticket.detail.svelte.ts`
+    mints in a new `selectTransition()` method wired to the transition
+    `<select>`'s `onchange` (replacing a plain `bind:value` — picking a
+    target stage IS "starting a new action"), and a per-charge-id
+    `Map<string,string>` for `consumeCharge` (minted on first attempt for
+    that charge id, deleted on success so a later return→re-consume of the
+    *same* charge id mints a genuinely new key instead of replaying a
+    no-longer-applicable response).
+  - Cursor pagination on `GET /v1/inventory` changes its contract (bounded
+    page instead of the full catalog) — but the POS product grid, the
+    inventory catalog page, the opname item picker, and the purchasing "new
+    PO" item picker all need the *complete* list. Rather than leave that
+    silently regressed, added `flowserv-web/src/lib/api/pagination.ts`
+    (`fetchAllPages`) and switched those 4 SSR loaders to walk every page —
+    preserves today's "give me the whole catalog" behavior through the new
+    paginated contract. `GET /v1/tickets` and `GET /v1/pos/invoices` were
+    left as first-page-only in their existing list-view pages
+    (`tickets/+page.server.ts`, `pos/history/+page.server.ts`) — those are
+    ordinary bounded browse screens, not full-catalog dependents, and no
+    "Load more" UI was added (out of scope for this task; the 150-ticket
+    verification below exercises the API directly, not that UI).
+  - `npm test`: **122/122 passing** (was 104 after H12; 18 new this task —
+    11 in `pagination.test.ts` including the two precision-bug regression
+    tests, 7 in `idempotency.test.ts`). `npx tsc --noEmit`
+    clean. `npx svelte-check`: 0 errors, 0 warnings (690 files) — required
+    an explicit `fetchAllPages<any>(...)` type argument at each of the 4 SSR
+    call sites; without it, TS's "evolving `let x = []`" inference broke on
+    the generic's `unknown[]` default.
+  - **Live verification, RBAC_MODE=enforce** (temporarily added to `.env` for
+    this run only, then reverted — the running default is `report`, same as
+    every prior task's environment): Cashier and Manager tokens both get 403
+    `PERMISSION_DENIED` naming `audit.view` against `GET /v1/audit-logs`;
+    Super Admin gets 200, despite zero explicit grants (bypass, not grant —
+    same proof pattern H12 used).
+  - **Live verification, audit + password safety:** dumped the full
+    `audit_logs` table via the API after exercising ~8 different mutation
+    types (150 ticket creates, transitions, charge add/consume, checkout,
+    payment, supplier create) — grepped the JSON for `password`/
+    `passwordHash`: absent, confirming auth routes are correctly never
+    wired with `auditMiddleware`.
+  - **Live verification, pagination — the actual checklist items:**
+    created 150 tickets via the real intake endpoint (151 total with the
+    seeded one), walked `GET /v1/tickets?limit=20&cursor=...` to completion:
+    8 pages (7×20+11), 151 unique ids, zero duplicates, matches creation
+    order exactly. Then forced two tickets to share an identical `created_at`
+    via direct SQL (the realistic version of "two records sharing a
+    createdAt") and re-walked — still 151 unique, still zero duplicates,
+    confirming the id-tiebreak (and, after the fix above, the
+    precision-truncation) actually works against real Postgres, not just the
+    pure-function test. Malformed cursor → 400 `INVALID_CURSOR` on both
+    `/v1/inventory` and `/v1/tickets`.
+  - **Live verification, idempotency — all 4 named endpoints:**
+    - Checkout: same key twice (a 2-unit part line) → identical invoice id
+      and `request_id` on both responses, stock dropped by exactly 2 (not
+      4), `GET /v1/inventory/reconciliation` clean throughout. Different
+      keys → two distinct invoices/invoice numbers. A failed attempt
+      (5 units requested against 1 available → 422 `INSUFFICIENT_STOCK`)
+      followed by a retry with the *same* key and a valid quantity → 201,
+      succeeded (key wasn't burned by the rolled-back attempt). **True
+      concurrent race** (two simultaneous curl requests, same key,
+      backgrounded + `wait`): both returned 201 with the identical invoice
+      id (one real 201, one replay-after-catching-the-unique-violation) and
+      exactly one invoice row existed afterward — this is the case that
+      caught the `DrizzleQueryError`/`.cause` bug above.
+    - Ticket transition: same key twice → identical `request_id`/`data`,
+      ticket stage history stayed at 2 entries (intake + the one real
+      transition), not 3. Failed attempt (invalid transition → 409
+      `TRANSITION_NOT_ALLOWED`) then retry with the same key and a valid
+      target → succeeded.
+    - Charge consume: same key twice → identical response, exactly one
+      `ticket_consumption` stock movement, `reconciliation` clean
+      afterward (not `ALREADY_CONSUMED` on the replay, which is what would
+      have happened without idempotency short-circuiting before the
+      handler's own business logic).
+    - Payables payment: same key twice → identical response,
+      `amountPaid` stayed at the single payment's amount and exactly one
+      `supplierPayments` row existed (not double-charged).
+  - DB reset to clean seed state (`npm run db:reset`) after every live round
+    — final state confirmed via a fresh reset before finishing; `.env`
+    restored to its original contents (the temporary `RBAC_MODE=enforce`
+    line removed); both ad-hoc dev-server instances stopped.
+  - **Not done this session (consistent with the gap recorded since H7):**
+    an interactive browser click-through proving the frontend actually sends
+    `Idempotency-Key` and reuses it across a real double-click. Playwright is
+    still not installed in `flowserv-web`. Substituted with code review of
+    all 4 call sites plus the backend-level proof above (which is what
+    actually matters for correctness); the frontend code paths were not
+    exercised end-to-end in a browser.
 
 Stage 5
 - [ ] H14 Payments

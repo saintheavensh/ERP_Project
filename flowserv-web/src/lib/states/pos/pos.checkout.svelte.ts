@@ -15,6 +15,10 @@ export class PosCheckoutState {
   selectedCustomerId = $state('');
   customerNameInput = $state('');
   showCustomerDropdown = $state(false);
+  // H13 — generated once when the checkout modal opens, not per fetch. A
+  // retry (network drop, double click on "Bayar") reuses this same key so
+  // the backend can recognize it as the same action, not a new sale.
+  idempotencyKey = $state('');
 
   constructor(data: any, productsState: PosProductsState, cartState: PosCartState, commonState: PosCommonState) {
     this.data = data;
@@ -55,6 +59,9 @@ export class PosCheckoutState {
   openCheckout() {
     if (this.cartState.cart.length === 0) return;
     this.commonState.errorMsg = '';
+    // New action → new key. A retry within this same checkout attempt
+    // (see processCheckout) must reuse it instead of generating a fresh one.
+    this.idempotencyKey = crypto.randomUUID();
     this.showCheckoutModal = true;
   }
 
@@ -100,7 +107,8 @@ export class PosCheckoutState {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.data.token}`
+          'Authorization': `Bearer ${this.data.token}`,
+          'Idempotency-Key': this.idempotencyKey
         },
         body: JSON.stringify(payload)
       });

@@ -63,6 +63,9 @@ app.route('/v1/settings', settingsRouter);
 import { financeRouter } from './routes/finance';
 app.route('/v1/finance', financeRouter);
 
+import { auditLogsRouter } from './routes/audit-logs';
+app.route('/v1/audit-logs', auditLogsRouter);
+
 // H11 — subscribe the finance ledger to the event bus once, at startup.
 import { subscribeLedger } from './modules/finance/ledger';
 subscribeLedger();

@@ -4,6 +4,8 @@ import type { PaymentStatus } from '../../db/schema/enums';
 import { eq, and, desc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { emitEvent, AppEvent } from '../../services/event-bus';
+import { buildSuccessEnvelope } from '../../lib/response';
+import { recordIdempotentResponse, type IdempotencyRef } from '../../lib/idempotency';
 import type { RecordPaymentInput } from './types';
 
 export type PaymentDecision =
@@ -53,7 +55,9 @@ export async function recordPayment(
   tenantId: string,
   invoiceId: string,
   input: RecordPaymentInput,
-  userId: string
+  userId: string,
+  idempotency?: IdempotencyRef,
+  requestId?: string
 ) {
   const result = await db.transaction(async (tx) => {
     const [invoice] = await tx.select().from(supplierInvoices)
@@ -98,7 +102,14 @@ export async function recordPayment(
       .where(eq(supplierInvoices.id, invoiceId))
       .returning();
 
-    return { payment, invoice: updatedInvoice };
+    const responseBody = { payment, invoice: updatedInvoice };
+
+    // H13 — recorded as the last write inside this same transaction, so a
+    // rollback anywhere above (including the OVERPAYMENT/ALREADY_PAID throws
+    // earlier in this function) discards the key too.
+    await recordIdempotentResponse(tx, tenantId, idempotency, 201, buildSuccessEnvelope(responseBody, undefined, requestId));
+
+    return responseBody;
   });
 
   // H11 — post-commit, best-effort. See ledger.ts subscribeLedger for why a

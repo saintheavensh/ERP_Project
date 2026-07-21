@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { fetchAllPages } from '$lib/api/pagination';
 
 export const load = async ({ locals }) => {
   const token = locals.token;
@@ -6,15 +7,9 @@ export const load = async ({ locals }) => {
 
   let inventoryItems = [];
   let partBrands = [];
-  
+
   try {
-    const invRes = await fetch('http://localhost:3001/v1/inventory?uninitialized=true', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (invRes.ok) {
-      const invResult = await invRes.json();
-      inventoryItems = invResult.data || [];
-    }
+    inventoryItems = await fetchAllPages<any>('http://localhost:3001/v1/inventory', token, { uninitialized: 'true' });
 
     const brandRes = await fetch('http://localhost:3001/v1/brands', {
       headers: { 'Authorization': `Bearer ${token}` }

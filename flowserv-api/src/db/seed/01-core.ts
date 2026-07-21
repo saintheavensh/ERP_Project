@@ -42,6 +42,10 @@ const PERMISSIONS = [
   { id: IDS.permSupplierManage, code: 'supplier.manage', description: 'Create/edit/delete suppliers and their brand links' },
   { id: IDS.permPurchasingManageOrders, code: 'purchasing.manage_orders', description: 'Create, update status, or delete a purchase order' },
   { id: IDS.permPurchasingManageInvoices, code: 'purchasing.manage_invoices', description: 'Create a supplier invoice (costing) from a purchase order' },
+
+  // H13 — admin-only. Deliberately NOT added to any role's grant list below,
+  // so only the Super Admin bypass can reach it — "admin-only" per the task.
+  { id: IDS.permAuditView, code: 'audit.view', description: 'View the cross-module audit log' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both

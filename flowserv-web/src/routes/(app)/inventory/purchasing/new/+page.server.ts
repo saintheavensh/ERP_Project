@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { fetchAllPages } from '$lib/api/pagination';
 
 export const load = async ({ locals }) => {
   const token = locals.token;
@@ -8,18 +9,18 @@ export const load = async ({ locals }) => {
   let branches = [];
   let inventoryItems = [];
   let categories = [];
-  
+
   try {
-    const [supRes, branchRes, itemsRes, catRes] = await Promise.all([
+    const [supRes, branchRes, itemsResult, catRes] = await Promise.all([
       fetch('http://localhost:3001/v1/suppliers', { headers: { 'Authorization': `Bearer ${token}` } }),
       fetch('http://localhost:3001/v1/branches', { headers: { 'Authorization': `Bearer ${token}` } }),
-      fetch('http://localhost:3001/v1/inventory?limit=500', { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchAllPages<any>('http://localhost:3001/v1/inventory', token),
       fetch('http://localhost:3001/v1/categories', { headers: { 'Authorization': `Bearer ${token}` } })
     ]);
-    
+
     if (supRes.ok) suppliers = (await supRes.json()).data || [];
     if (branchRes.ok) branches = (await branchRes.json()).data || [];
-    if (itemsRes.ok) inventoryItems = (await itemsRes.json()).data || [];
+    inventoryItems = itemsResult;
     if (catRes.ok) categories = (await catRes.json()).data || [];
   } catch (err) {
     console.error('Failed to load form data', err);

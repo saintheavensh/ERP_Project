@@ -6,7 +6,10 @@ import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ti
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { successResponse, errorResponse } from '../lib/response';
+import { auditMiddleware } from '../middleware/audit';
+import { successResponse, errorResponse, getRequestId } from '../lib/response';
+import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../lib/pagination';
+import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 import { FlowEngine } from '../services/flow-engine';
 import { BusinessError } from '../lib/errors';
 import { createChargeInput, updateChargeInput, assignTechnicianInput } from '../modules/tickets/types';
@@ -29,7 +32,16 @@ ticketsRouter.get('/', async (c) => {
     filters.push(eq(serviceTickets.assignedTechnicianId, assignedToId));
   }
 
-  const results = await db
+  // H13 — cursor pagination. Previously an unbounded, un-paginated list.
+  const limit = parseLimit(c.req.query('limit'));
+  const cursorParam = c.req.query('cursor');
+  if (cursorParam) {
+    const cursor = decodeCursor(cursorParam);
+    if (!cursor) return errorResponse(c, 'INVALID_CURSOR', 'Malformed cursor', undefined, 400);
+    filters.push(cursorCondition(serviceTickets.createdAt, serviceTickets.id, cursor));
+  }
+
+  const rows = await db
     .select({
       id: serviceTickets.id,
       status: serviceTickets.status,
@@ -50,9 +62,12 @@ ticketsRouter.get('/', async (c) => {
     .leftJoin(flowNodes, eq(serviceTickets.currentNodeId, flowNodes.id))
     .leftJoin(users, eq(serviceTickets.assignedTechnicianId, users.id))
     .where(and(...filters))
-    .orderBy(desc(serviceTickets.createdAt));
+    .orderBy(...orderByCursor(serviceTickets.createdAt, serviceTickets.id))
+    .limit(limit + 1);
 
-  return successResponse(c, results);
+  const { page, hasMore, nextCursor } = buildPage(rows, limit);
+
+  return successResponse(c, page, { has_more: hasMore, next_cursor: nextCursor });
 });
 
 // Get single ticket details
@@ -119,7 +134,7 @@ const intakeSchema = z.object({
   branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
 });
 
-ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('json', intakeSchema), async (c) => {
+ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('json', intakeSchema), auditMiddleware({ action: 'ticket.create', entityType: 'service_ticket', bodyFields: ['flowTemplateId', 'branchId', 'customerId', 'assetId', 'assetType'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -210,15 +225,24 @@ const transitionSchema = z.object({
 // No requirePermission here on purpose: FlowEngine.executeTransition already gates
 // on the *target node's* requiredPermissionId (services/flow-engine.ts), which varies
 // per node — a route-level static permission code can't express that. See H12.
-ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), async (c) => {
+const TRANSITION_ENDPOINT = 'POST /v1/tickets/:id/transition';
+
+ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), auditMiddleware({ action: 'ticket.transition', entityType: 'service_ticket', entityIdParam: 'id', bodyFields: ['targetNodeId', 'notes'] }), async (c) => {
   const { tenantId, userId, roleId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const { targetNodeId, notes } = c.req.valid('json');
-  
+
+  // H13 — idempotency pre-check, before touching the ticket at all.
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (idempotencyKey) {
+    const replay = await findIdempotentResponse(tenantId, TRANSITION_ENDPOINT, idempotencyKey);
+    if (replay) return replayIdempotentResponse(c, replay);
+  }
+
   // Get ticket
   const t = await db.select().from(serviceTickets).where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
   if (t.length === 0) return errorResponse(c, 'NOT_FOUND', 'Ticket not found', [], 404);
-  
+
   const ticket = t[0];
   if (!ticket.currentNodeId) return errorResponse(c, 'INVALID_STATE', 'Ticket has no current node', [], 400);
 
@@ -231,7 +255,9 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
       targetNodeId,
       roleId,
       userId,
-      notes
+      notes,
+      idempotencyKey ? { key: idempotencyKey, endpoint: TRANSITION_ENDPOINT } : undefined,
+      getRequestId(c)
     );
 
     if (!result.valid) {
@@ -242,6 +268,12 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
 
     return successResponse(c, { success: true });
   } catch (err: any) {
+    // H13 — a losing race on the idempotency key aborts executeTransition's
+    // transaction; replay the winner's committed response instead of a 500.
+    if (idempotencyKey && isIdempotencyKeyConflict(err)) {
+      const replay = await findIdempotentResponse(tenantId, TRANSITION_ENDPOINT, idempotencyKey);
+      if (replay) return replayIdempotentResponse(c, replay);
+    }
     return errorResponse(c, 'TRANSITION_FAILED', err.message, [], 500);
   }
 });
@@ -250,7 +282,7 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
 // H8 — Technician assignment. Logic lives in modules/tickets/service.ts.
 // ============================================================================
 
-ticketsRouter.post('/:id/assign', requirePermission('ticket.assign_technician'), zValidator('json', assignTechnicianInput), async (c) => {
+ticketsRouter.post('/:id/assign', requirePermission('ticket.assign_technician'), zValidator('json', assignTechnicianInput), auditMiddleware({ action: 'ticket.assign_technician', entityType: 'service_ticket', entityIdParam: 'id', bodyFields: ['technicianId'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const input = c.req.valid('json');
@@ -288,7 +320,7 @@ ticketsRouter.get('/:id/charges', async (c) => {
 });
 
 // Add an estimated charge
-ticketsRouter.post('/:id/charges', requirePermission('ticket.manage_charges'), zValidator('json', createChargeInput), async (c) => {
+ticketsRouter.post('/:id/charges', requirePermission('ticket.manage_charges'), zValidator('json', createChargeInput), auditMiddleware({ action: 'ticket.add_charge', entityType: 'ticket_charge', bodyFields: ['sourceType', 'description', 'quantity', 'unitPrice', 'inventoryItemId'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const input = c.req.valid('json');
@@ -305,7 +337,7 @@ ticketsRouter.post('/:id/charges', requirePermission('ticket.manage_charges'), z
 });
 
 // Edit a charge (only while estimated)
-ticketsRouter.patch('/:id/charges/:chargeId', requirePermission('ticket.manage_charges'), zValidator('json', updateChargeInput), async (c) => {
+ticketsRouter.patch('/:id/charges/:chargeId', requirePermission('ticket.manage_charges'), zValidator('json', updateChargeInput), auditMiddleware({ action: 'ticket.update_charge', entityType: 'ticket_charge', entityIdParam: 'chargeId', bodyFields: ['description', 'quantity', 'unitPrice'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -323,7 +355,7 @@ ticketsRouter.patch('/:id/charges/:chargeId', requirePermission('ticket.manage_c
 });
 
 // Delete a charge (only while estimated)
-ticketsRouter.delete('/:id/charges/:chargeId', requirePermission('ticket.manage_charges'), async (c) => {
+ticketsRouter.delete('/:id/charges/:chargeId', requirePermission('ticket.manage_charges'), auditMiddleware({ action: 'ticket.delete_charge', entityType: 'ticket_charge', entityIdParam: 'chargeId' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -340,14 +372,33 @@ ticketsRouter.delete('/:id/charges/:chargeId', requirePermission('ticket.manage_
 });
 
 // H9 — physically deduct an approved part charge from FIFO stock
-ticketsRouter.post('/:id/charges/:chargeId/consume', requirePermission('ticket.manage_charges'), async (c) => {
+const CONSUME_CHARGE_ENDPOINT = 'POST /v1/tickets/:id/charges/:chargeId/consume';
+
+ticketsRouter.post('/:id/charges/:chargeId/consume', requirePermission('ticket.manage_charges'), auditMiddleware({ action: 'ticket.consume_charge', entityType: 'ticket_charge', entityIdParam: 'chargeId' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
+
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (idempotencyKey) {
+    const replay = await findIdempotentResponse(tenantId, CONSUME_CHARGE_ENDPOINT, idempotencyKey);
+    if (replay) return replayIdempotentResponse(c, replay);
+  }
+
   try {
-    const result = await consumeCharge(tenantId, ticketId, chargeId);
+    const result = await consumeCharge(
+      tenantId,
+      ticketId,
+      chargeId,
+      idempotencyKey ? { key: idempotencyKey, endpoint: CONSUME_CHARGE_ENDPOINT } : undefined,
+      getRequestId(c)
+    );
     return successResponse(c, result);
   } catch (err) {
+    if (idempotencyKey && isIdempotencyKeyConflict(err)) {
+      const replay = await findIdempotentResponse(tenantId, CONSUME_CHARGE_ENDPOINT, idempotencyKey);
+      if (replay) return replayIdempotentResponse(c, replay);
+    }
     if (err instanceof BusinessError) {
       return errorResponse(c, err.code, err.message, err.details, err.statusCode);
     }
@@ -357,7 +408,7 @@ ticketsRouter.post('/:id/charges/:chargeId/consume', requirePermission('ticket.m
 });
 
 // H9 — undo a consumption: restore stock, flip the charge back to 'approved'
-ticketsRouter.post('/:id/charges/:chargeId/return', requirePermission('ticket.manage_charges'), async (c) => {
+ticketsRouter.post('/:id/charges/:chargeId/return', requirePermission('ticket.manage_charges'), auditMiddleware({ action: 'ticket.return_charge', entityType: 'ticket_charge', entityIdParam: 'chargeId' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -374,7 +425,7 @@ ticketsRouter.post('/:id/charges/:chargeId/return', requirePermission('ticket.ma
 });
 
 // H10 — cancel an approved charge before it's consumed, releasing its stock reservation
-ticketsRouter.post('/:id/charges/:chargeId/cancel', requirePermission('ticket.manage_charges'), async (c) => {
+ticketsRouter.post('/:id/charges/:chargeId/cancel', requirePermission('ticket.manage_charges'), auditMiddleware({ action: 'ticket.cancel_charge', entityType: 'ticket_charge', entityIdParam: 'chargeId' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -391,7 +442,7 @@ ticketsRouter.post('/:id/charges/:chargeId/cancel', requirePermission('ticket.ma
 });
 
 // Freeze estimates into a quote → writes approval_requests.amount
-ticketsRouter.post('/:id/quotation', requirePermission('ticket.approve_quote'), async (c) => {
+ticketsRouter.post('/:id/quotation', requirePermission('ticket.approve_quote'), auditMiddleware({ action: 'ticket.generate_quotation', entityType: 'service_ticket', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   try {

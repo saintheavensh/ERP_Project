@@ -4,7 +4,9 @@ import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, 
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
+import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
+import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../../lib/pagination';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
@@ -20,7 +22,16 @@ router.get('/', async (c) => {
     if (uninitialized === 'true') {
       filters.push(eq(inventoryItems.isStockInitialized, false));
     }
-    
+
+    // H13 — cursor pagination. Previously an unbounded, un-paginated list.
+    const limit = parseLimit(c.req.query('limit'));
+    const cursorParam = c.req.query('cursor');
+    if (cursorParam) {
+      const cursor = decodeCursor(cursorParam);
+      if (!cursor) return errorResponse(c, 'INVALID_CURSOR', 'Malformed cursor', undefined, 400);
+      filters.push(cursorCondition(inventoryItems.createdAt, inventoryItems.id, cursor));
+    }
+
     const items = await db.query.inventoryItems.findMany({
       where: and(...filters),
       with: {
@@ -35,11 +46,14 @@ router.get('/', async (c) => {
         },
         partBrand: true
       },
-      orderBy: [desc(inventoryItems.sku)]
+      orderBy: orderByCursor(inventoryItems.createdAt, inventoryItems.id),
+      limit: limit + 1,
     });
-    
+
+    const { page, hasMore, nextCursor } = buildPage(items, limit);
+
     // Transform output to calculate total stock
-    const result = items.map(item => {
+    const result = page.map(item => {
       const totalAvailable = item.stockLevels.reduce((sum, level) => sum + level.quantityAvailable, 0);
       const totalReserved = item.stockLevels.reduce((sum, level) => sum + level.quantityReserved, 0);
       
@@ -64,7 +78,7 @@ router.get('/', async (c) => {
       };
     });
       
-    return successResponse(c, result);
+    return successResponse(c, result, { has_more: hasMore, next_cursor: nextCursor });
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch inventory', [err.message]);
   }
@@ -81,7 +95,7 @@ const createItemSchema = z.object({
   reorderPoint: z.number().default(0)
 });
 
-router.post('/', requirePermission('inventory.manage_items'), zValidator('json', createItemSchema), async (c) => {
+router.post('/', requirePermission('inventory.manage_items'), zValidator('json', createItemSchema), auditMiddleware({ action: 'inventory_item.create', entityType: 'inventory_item', bodyFields: ['sku', 'universalCode', 'name', 'categoryId', 'sellingPrice'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -232,7 +246,7 @@ router.get('/:id', async (c) => {
 });
 
 // DELETE /v1/inventory/:id
-router.delete('/:id', requirePermission('inventory.manage_items'), async (c) => {
+router.delete('/:id', requirePermission('inventory.manage_items'), auditMiddleware({ action: 'inventory_item.delete', entityType: 'inventory_item', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const inventoryItemId = c.req.param('id');
   

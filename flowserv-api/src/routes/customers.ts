@@ -6,6 +6,7 @@ import { customers, customerAssets } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 
 const customersRouter = new Hono();
@@ -48,7 +49,7 @@ customersRouter.get('/:id', async (c) => {
 });
 
 // Create customer
-customersRouter.post('/', requirePermission('customer.manage'), zValidator('json', createCustomerSchema), async (c) => {
+customersRouter.post('/', requirePermission('customer.manage'), zValidator('json', createCustomerSchema), auditMiddleware({ action: 'customer.create', entityType: 'customer', bodyFields: ['name', 'phone', 'email'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -69,7 +70,7 @@ const editCustomerSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
 });
 
-customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('json', editCustomerSchema), async (c) => {
+customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('json', editCustomerSchema), auditMiddleware({ action: 'customer.update', entityType: 'customer', entityIdParam: 'id', bodyFields: ['name', 'phone', 'email'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const customerId = c.req.param('id');
   const data = c.req.valid('json');
@@ -119,7 +120,7 @@ customersRouter.get('/:id/assets', async (c) => {
 });
 
 // Register new asset for customer
-customersRouter.post('/:id/assets', requirePermission('customer.manage'), zValidator('json', createAssetSchema), async (c) => {
+customersRouter.post('/:id/assets', requirePermission('customer.manage'), zValidator('json', createAssetSchema), auditMiddleware({ action: 'customer.add_asset', entityType: 'customer_asset', bodyFields: ['assetType', 'brand', 'model', 'serialNumber'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const customerId = c.req.param('id');
   const data = c.req.valid('json');

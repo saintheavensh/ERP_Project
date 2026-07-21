@@ -2,6 +2,8 @@ import { db } from '../db/connection';
 import { flowTransitions, flowNodes, flowTemplates, rolePermissions, serviceTickets, ticketStageHistory } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { emitEvent, AppEvent } from './event-bus';
+import { buildSuccessEnvelope } from '../lib/response';
+import { recordIdempotentResponse, type IdempotencyRef } from '../lib/idempotency';
 
 /**
  * All the facts the decision needs, already fetched.
@@ -147,7 +149,9 @@ export class FlowEngine {
     targetNodeId: string,
     roleId: string,
     userId: string,
-    notes?: string | null
+    notes?: string | null,
+    idempotency?: IdempotencyRef,
+    requestId?: string
   ): Promise<TransitionResult> {
     const result = await this.validateTransition(
       tenantId, ticketFlowTemplateId, currentNodeId, targetNodeId, roleId
@@ -180,6 +184,16 @@ export class FlowEngine {
         actorId: userId,
         notes: notes || null,
       });
+
+      // H13 — recorded as the last write inside this same transaction, so a
+      // rollback anywhere above discards the key too.
+      await recordIdempotentResponse(
+        tx,
+        tenantId,
+        idempotency,
+        200,
+        buildSuccessEnvelope({ success: true }, undefined, requestId)
+      );
     });
 
     // Emit event for other modules (e.g. Phase 4.5 ledger posting)

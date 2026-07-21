@@ -12,6 +12,9 @@ export class PayablesState {
   payReferenceNumber = $state('');
   paySubmitting = $state(false);
   payError = $state('');
+  // H13 — minted when the modal opens (a new action), reused across retries
+  // of submitPayment for this same modal session.
+  payIdempotencyKey = $state('');
 
   constructor(data: any) {
     this.data = data;
@@ -31,6 +34,7 @@ export class PayablesState {
     this.payMethod = 'cash';
     this.payReferenceNumber = '';
     this.payError = '';
+    this.payIdempotencyKey = crypto.randomUUID();
   }
 
   closePayModal() {
@@ -47,7 +51,8 @@ export class PayablesState {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.data.token}`
+          'Authorization': `Bearer ${this.data.token}`,
+          'Idempotency-Key': this.payIdempotencyKey
         },
         body: JSON.stringify({
           amount: this.payAmount,

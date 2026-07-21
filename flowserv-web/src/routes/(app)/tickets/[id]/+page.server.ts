@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { fetchAllPages } from '$lib/api/pagination';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -29,17 +30,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
       // H7 — charges (parts/labor/fees + totals + margin) and the inventory list used
       // to pick a part when adding a charge. Fetched in parallel.
-      const [chargesRes, itemsRes] = await Promise.all([
+      const [chargesRes, inventoryItems] = await Promise.all([
         fetch(`http://localhost:3001/v1/tickets/${ticketId}/charges`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch(`http://localhost:3001/v1/inventory`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetchAllPages(`http://localhost:3001/v1/inventory`, token)
       ]);
 
       const chargesData = chargesRes.ok ? (await chargesRes.json()).data : { charges: [], totals: { estimated: 0, approved: 0, consumed: 0 }, margin: { revenue: 0, cost: 0, margin: 0 } };
-      const inventoryItems = itemsRes.ok ? (await itemsRes.json()).data : [];
 
       return { token, data: ticketData, template: templateData, charges: chargesData, inventoryItems };
     }

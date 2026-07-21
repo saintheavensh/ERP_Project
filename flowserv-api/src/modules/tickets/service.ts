@@ -6,6 +6,8 @@ import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { consumeStock, returnStock, reserveStock, releaseReservation } from '../inventory/service';
 import { emitEvent, AppEvent } from '../../services/event-bus';
+import { buildSuccessEnvelope } from '../../lib/response';
+import { recordIdempotentResponse, type IdempotencyRef } from '../../lib/idempotency';
 
 // H10 — every reserve/release movement for a ticket charge shares this
 // referenceType, distinguished by movementType; referenceId is always the charge id.
@@ -432,7 +434,13 @@ export async function assignTechnician(
  * taps serialize, and whichever one runs second sees status='consumed' and is
  * rejected with 409 before it can call consumeStock a second time.
  */
-export async function consumeCharge(tenantId: string, ticketId: string, chargeId: string) {
+export async function consumeCharge(
+  tenantId: string,
+  ticketId: string,
+  chargeId: string,
+  idempotency?: IdempotencyRef,
+  requestId?: string
+) {
   const result = await db.transaction(async (tx) => {
     const [ticket] = await tx
       .select({ branchId: serviceTickets.branchId })
@@ -499,6 +507,10 @@ export async function consumeCharge(tenantId: string, ticketId: string, chargeId
       })
       .where(eq(ticketCharges.id, chargeId))
       .returning();
+
+    // H13 — recorded as the last write inside this same transaction, so a
+    // rollback anywhere above discards the key too.
+    await recordIdempotentResponse(tx, tenantId, idempotency, 200, buildSuccessEnvelope(updated, undefined, requestId));
 
     return { updated, branchId: ticket.branchId };
   });

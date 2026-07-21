@@ -49,6 +49,8 @@ export const IDS = {
   permSupplierManage: 'd1000000-0000-4000-8000-000000000018',
   permPurchasingManageOrders: 'd1000000-0000-4000-8000-000000000019',
   permPurchasingManageInvoices: 'd1000000-0000-4000-8000-000000000020',
+  // H13 — admin-only audit log viewer.
+  permAuditView: 'd1000000-0000-4000-8000-000000000021',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',

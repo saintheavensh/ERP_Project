@@ -3,11 +3,14 @@ import { db } from '../../db/connection';
 import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers } from '../../db/schema/index';
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
-import { successResponse, errorResponse } from '../../lib/response';
+import { successResponse, errorResponse, getRequestId, buildSuccessEnvelope } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
+import { auditMiddleware } from '../../middleware/audit';
+import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../../lib/pagination';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
+import { findIdempotentResponse, recordIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../../lib/idempotency';
 import { posCheckoutSchema } from './types';
 import { consumeStock } from '../../modules/inventory/service';
 import { emitEvent, AppEvent } from '../../services/event-bus';
@@ -20,24 +23,36 @@ router.get('/invoices', async (c) => {
   const { tenantId } = getAuthContext(c);
 
   const branchId = c.req.query('branchId');
-  
+
   const filters = [eq(posInvoices.tenantId, tenantId)];
   if (branchId) {
     filters.push(eq(posInvoices.branchId, branchId));
   }
 
-  const invoices = await db.query.posInvoices.findMany({
+  // H13 — cursor pagination. Previously a hardcoded limit: 100 with no way
+  // to see or fetch anything past it.
+  const limit = parseLimit(c.req.query('limit'));
+  const cursorParam = c.req.query('cursor');
+  if (cursorParam) {
+    const cursor = decodeCursor(cursorParam);
+    if (!cursor) return errorResponse(c, 'INVALID_CURSOR', 'Malformed cursor', undefined, 400);
+    filters.push(cursorCondition(posInvoices.createdAt, posInvoices.id, cursor));
+  }
+
+  const rows = await db.query.posInvoices.findMany({
     where: and(...filters),
-    orderBy: [desc(posInvoices.createdAt)],
+    orderBy: orderByCursor(posInvoices.createdAt, posInvoices.id),
     with: {
       creator: {
         columns: { name: true }
       }
     },
-    limit: 100,
+    limit: limit + 1,
   });
 
-  return successResponse(c, invoices);
+  const { page, hasMore, nextCursor } = buildPage(rows, limit);
+
+  return successResponse(c, page, { has_more: hasMore, next_cursor: nextCursor });
 });
 
 // GET /v1/pos/invoices/:id - Get specific invoice
@@ -65,9 +80,21 @@ router.get('/invoices/:id', async (c) => {
 });
 
 // POST /v1/pos/invoices - Checkout
-router.post('/invoices', requirePermission('pos.process_payment'), zValidator('json', posCheckoutSchema), async (c) => {
+const CHECKOUT_ENDPOINT = 'POST /v1/pos/invoices';
+
+router.post('/invoices', requirePermission('pos.process_payment'), zValidator('json', posCheckoutSchema), auditMiddleware({ action: 'pos_invoice.create', entityType: 'pos_invoice', bodyFields: ['branchId', 'paymentMethod', 'discountAmount', 'customerId'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
+
+  // H13 — idempotency. A retried checkout (dropped LAN connection, double
+  // tap) must produce exactly one invoice, not two. Checked before any
+  // business logic runs — an exact repeat skips straight to replaying the
+  // stored response.
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (idempotencyKey) {
+    const replay = await findIdempotentResponse(tenantId, CHECKOUT_ENDPOINT, idempotencyKey);
+    if (replay) return replayIdempotentResponse(c, replay);
+  }
 
   // Business rule (tempo requires a real customer link) is enforced by
   // posCheckoutSchema's .refine() and, as a second guard, the
@@ -203,19 +230,40 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
         linesForLedger.push({ sourceType: 'part', quantity: item.quantity, unitCost: consumed.unitCost });
       }
 
-      return newInvoice;
+      // H13 — record the response as the LAST write, inside this same
+      // transaction: if anything above throws, this insert rolls back too,
+      // so a failed checkout never burns the client's idempotency key.
+      const responseEnvelope = buildSuccessEnvelope(newInvoice, undefined, getRequestId(c));
+      await recordIdempotentResponse(
+        tx,
+        tenantId,
+        idempotencyKey ? { key: idempotencyKey, endpoint: CHECKOUT_ENDPOINT } : undefined,
+        201,
+        responseEnvelope
+      );
+
+      return { newInvoice, responseEnvelope };
     });
 
     // H11 — post-commit, best-effort. Ledger posting failures are caught and
     // logged inside the handler itself; they must never surface as a 500 on
     // an otherwise-successful checkout.
     emitEvent(AppEvent.POS_SALE_COMPLETED, {
-      invoice: { id: result.id, tenantId, branchId: data.branchId, grandTotal },
+      invoice: { id: result.newInvoice.id, tenantId, branchId: data.branchId, grandTotal },
       lines: linesForLedger,
     });
 
-    return successResponse(c, result, undefined, 201);
+    return c.json(result.responseEnvelope, 201);
   } catch (error) {
+    // H13 — two concurrent requests racing on the same idempotency key: the
+    // loser's insert above hits the (tenant_id, key) unique constraint,
+    // which aborts its whole transaction (rolling back its business writes
+    // too) and lands here. Replay the winner's now-committed response
+    // instead of surfacing a 500.
+    if (idempotencyKey && isIdempotencyKeyConflict(error)) {
+      const replay = await findIdempotentResponse(tenantId, CHECKOUT_ENDPOINT, idempotencyKey);
+      if (replay) return replayIdempotentResponse(c, replay);
+    }
     if (error instanceof BusinessError) {
       return errorResponse(c, error.code, error.message, error.details, error.statusCode);
     }
@@ -225,7 +273,7 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
 });
 
 // DELETE /v1/pos/invoices/:id (Void)
-router.delete('/invoices/:id', requirePermission('pos.void_transaction'), async (c) => {
+router.delete('/invoices/:id', requirePermission('pos.void_transaction'), auditMiddleware({ action: 'pos_invoice.void', entityType: 'pos_invoice', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 

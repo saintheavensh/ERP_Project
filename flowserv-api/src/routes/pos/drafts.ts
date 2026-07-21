@@ -7,6 +7,7 @@ import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
+import { auditMiddleware } from '../../middleware/audit';
 
 const router = new Hono();
 
@@ -33,7 +34,7 @@ router.get('/drafts', async (c) => {
 });
 
 // POST /v1/pos/drafts
-router.post('/drafts', requirePermission('pos.process_payment'), zValidator('json', draftSchema), async (c) => {
+router.post('/drafts', requirePermission('pos.process_payment'), zValidator('json', draftSchema), auditMiddleware({ action: 'pos_draft.create', entityType: 'pos_draft', bodyFields: ['branchId', 'name'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
 
@@ -48,7 +49,7 @@ router.post('/drafts', requirePermission('pos.process_payment'), zValidator('jso
 });
 
 // DELETE /v1/pos/drafts/:id
-router.delete('/drafts/:id', requirePermission('pos.process_payment'), async (c) => {
+router.delete('/drafts/:id', requirePermission('pos.process_payment'), auditMiddleware({ action: 'pos_draft.delete', entityType: 'pos_draft', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 

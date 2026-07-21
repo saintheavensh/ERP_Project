@@ -4,6 +4,7 @@ import { inventoryCategories } from '../db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -29,7 +30,7 @@ const createCategorySchema = z.object({
   description: z.string().optional()
 });
 
-categoriesRouter.post('/', requirePermission('catalog.manage'), zValidator('json', createCategorySchema), async (c) => {
+categoriesRouter.post('/', requirePermission('catalog.manage'), zValidator('json', createCategorySchema), auditMiddleware({ action: 'category.create', entityType: 'inventory_category', bodyFields: ['name', 'description'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   try {

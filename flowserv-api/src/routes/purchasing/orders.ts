@@ -9,6 +9,7 @@ function isPoStatus(value: string): value is PoStatus {
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
+import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -87,7 +88,7 @@ const createOrderSchema = z.object({
   })).min(1)
 });
 
-router.post('/orders', requirePermission('purchasing.manage_orders'), zValidator('json', createOrderSchema), async (c) => {
+router.post('/orders', requirePermission('purchasing.manage_orders'), zValidator('json', createOrderSchema), auditMiddleware({ action: 'purchase_order.create', entityType: 'purchase_order', bodyFields: ['branchId', 'supplierId', 'lines'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -131,7 +132,7 @@ const updateStatusSchema = z.object({
   status: z.enum(['draft', 'ordered', 'received', 'completed'])
 });
 
-router.put('/orders/:id/status', requirePermission('purchasing.manage_orders'), zValidator('json', updateStatusSchema), async (c) => {
+router.put('/orders/:id/status', requirePermission('purchasing.manage_orders'), zValidator('json', updateStatusSchema), auditMiddleware({ action: 'purchase_order.update_status', entityType: 'purchase_order', entityIdParam: 'id', bodyFields: ['status'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const orderId = c.req.param('id');
   const { status } = c.req.valid('json');
@@ -151,7 +152,7 @@ router.put('/orders/:id/status', requirePermission('purchasing.manage_orders'), 
 });
 
 // DELETE /v1/purchasing/orders/:id
-router.delete('/orders/:id', requirePermission('purchasing.manage_orders'), async (c) => {
+router.delete('/orders/:id', requirePermission('purchasing.manage_orders'), auditMiddleware({ action: 'purchase_order.delete', entityType: 'purchase_order', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const orderId = c.req.param('id');
   

@@ -4,6 +4,7 @@ import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, 
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
+import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -15,7 +16,7 @@ const updateBrandPriceSchema = z.object({
   sellingPrice: z.number().min(0)
 });
 
-router.put('/:id/brands/:brandId', requirePermission('inventory.manage_items'), zValidator('json', updateBrandPriceSchema), async (c) => {
+router.put('/:id/brands/:brandId', requirePermission('inventory.manage_items'), zValidator('json', updateBrandPriceSchema), auditMiddleware({ action: 'inventory_item.update_brand_price', entityType: 'inventory_item', entityIdParam: 'id', bodyFields: ['sellingPrice'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const itemId = c.req.param('id');
   const brandId = c.req.param('brandId');

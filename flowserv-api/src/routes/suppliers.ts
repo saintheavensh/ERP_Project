@@ -4,6 +4,7 @@ import { suppliers, supplierBrands } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -64,7 +65,7 @@ const linkBrandSchema = z.object({
   brandId: z.string().uuid()
 });
 
-suppliersRouter.post('/:id/brands', requirePermission('supplier.manage'), zValidator('json', linkBrandSchema), async (c) => {
+suppliersRouter.post('/:id/brands', requirePermission('supplier.manage'), zValidator('json', linkBrandSchema), auditMiddleware({ action: 'supplier.link_brand', entityType: 'supplier', entityIdParam: 'id', bodyFields: ['brandId'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   const { brandId } = c.req.valid('json');
@@ -88,7 +89,7 @@ suppliersRouter.post('/:id/brands', requirePermission('supplier.manage'), zValid
 });
 
 // DELETE /v1/suppliers/:id/brands/:brandId
-suppliersRouter.delete('/:id/brands/:brandId', requirePermission('supplier.manage'), async (c) => {
+suppliersRouter.delete('/:id/brands/:brandId', requirePermission('supplier.manage'), auditMiddleware({ action: 'supplier.unlink_brand', entityType: 'supplier', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   const brandId = c.req.param('brandId');
@@ -120,7 +121,7 @@ const supplierSchema = z.object({
   returnWarrantyNotes: z.string().optional()
 });
 
-suppliersRouter.post('/', requirePermission('supplier.manage'), zValidator('json', supplierSchema), async (c) => {
+suppliersRouter.post('/', requirePermission('supplier.manage'), zValidator('json', supplierSchema), auditMiddleware({ action: 'supplier.create', entityType: 'supplier', bodyFields: ['name', 'type', 'paymentTermDays'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -139,7 +140,7 @@ suppliersRouter.post('/', requirePermission('supplier.manage'), zValidator('json
 });
 
 // PUT /v1/suppliers/:id
-suppliersRouter.put('/:id', requirePermission('supplier.manage'), zValidator('json', supplierSchema), async (c) => {
+suppliersRouter.put('/:id', requirePermission('supplier.manage'), zValidator('json', supplierSchema), auditMiddleware({ action: 'supplier.update', entityType: 'supplier', entityIdParam: 'id', bodyFields: ['name', 'type', 'paymentTermDays'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   const data = c.req.valid('json');
@@ -161,7 +162,7 @@ suppliersRouter.put('/:id', requirePermission('supplier.manage'), zValidator('js
 });
 
 // DELETE /v1/suppliers/:id
-suppliersRouter.delete('/:id', requirePermission('supplier.manage'), async (c) => {
+suppliersRouter.delete('/:id', requirePermission('supplier.manage'), auditMiddleware({ action: 'supplier.delete', entityType: 'supplier', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   

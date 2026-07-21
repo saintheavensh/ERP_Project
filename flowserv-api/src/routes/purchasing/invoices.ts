@@ -4,6 +4,7 @@ import { purchaseOrders, purchaseOrderLines, stockBatches, stockMovements, stock
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
+import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -25,7 +26,7 @@ const invoiceSchema = z.object({
   }))
 });
 
-router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices'), zValidator('json', invoiceSchema), async (c) => {
+router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices'), zValidator('json', invoiceSchema), auditMiddleware({ action: 'purchase_order.invoice', entityType: 'purchase_order', entityIdParam: 'id', bodyFields: ['invoiceNumber', 'invoiceDate', 'paymentMethod'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const orderId = c.req.param('id');
   const data = c.req.valid('json');

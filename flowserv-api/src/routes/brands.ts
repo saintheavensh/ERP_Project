@@ -4,6 +4,7 @@ import { partBrands } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -33,7 +34,7 @@ const brandSchema = z.object({
   qualityGrade: z.string().min(1, 'Quality grade is required')
 });
 
-brandsRouter.post('/', requirePermission('catalog.manage'), zValidator('json', brandSchema), async (c) => {
+brandsRouter.post('/', requirePermission('catalog.manage'), zValidator('json', brandSchema), auditMiddleware({ action: 'brand.create', entityType: 'part_brand', bodyFields: ['name', 'qualityGrade'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -52,7 +53,7 @@ brandsRouter.post('/', requirePermission('catalog.manage'), zValidator('json', b
 });
 
 // DELETE /v1/brands/:id
-brandsRouter.delete('/:id', requirePermission('catalog.manage'), async (c) => {
+brandsRouter.delete('/:id', requirePermission('catalog.manage'), auditMiddleware({ action: 'brand.delete', entityType: 'part_brand', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const brandId = c.req.param('id');
   

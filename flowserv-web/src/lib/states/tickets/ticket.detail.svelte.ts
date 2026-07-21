@@ -12,6 +12,10 @@ export class TicketDetailState {
   // Transition form
   selectedTransition = $state('');
   transitionNotes = $state('');
+  // H13 — generated when a target stage is picked (a new action), reused
+  // across retries of THIS action (see executeTransition), cleared once the
+  // transition succeeds so the next action gets a fresh key.
+  transitionIdempotencyKey = $state('');
 
   // Customer Edit
   showEditWarning = $state(false);
@@ -92,16 +96,29 @@ export class TicketDetailState {
     finally { this.chargeLoading = false; }
   }
 
+  // H13 — one key per charge id, minted on the first attempt and reused by a
+  // retry of that SAME attempt. Cleared on success so a later consume of the
+  // same charge id (return → re-consume) mints a genuinely new key instead of
+  // replaying the earlier, no-longer-applicable response.
+  private consumeIdempotencyKeys = new Map<string, string>();
+
   // H9 — physically deduct/restore an approved part charge from FIFO stock
   async consumeCharge(id: string) {
     this.chargeLoading = true;
     this.errorMsg = '';
+    if (!this.consumeIdempotencyKeys.has(id)) {
+      this.consumeIdempotencyKeys.set(id, crypto.randomUUID());
+    }
     try {
       const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/charges/${id}/consume`, {
-        method: 'POST', headers: this.chargeHeaders()
+        method: 'POST',
+        headers: { ...this.chargeHeaders(), 'Idempotency-Key': this.consumeIdempotencyKeys.get(id)! }
       });
       const result = await res.json();
-      if (res.ok) await invalidateAll();
+      if (res.ok) {
+        this.consumeIdempotencyKeys.delete(id);
+        await invalidateAll();
+      }
       else this.errorMsg = result.error?.message || 'Gagal memakai sparepart';
     } catch { this.errorMsg = 'Network error'; }
     finally { this.chargeLoading = false; }
@@ -160,28 +177,37 @@ export class TicketDetailState {
       });
   }
 
+  // H13 — sets the target AND mints a fresh idempotency key: picking a
+  // transition is "starting a new action". Executing (possibly retried) reuses it.
+  selectTransition(nodeId: string) {
+    this.selectedTransition = nodeId;
+    this.transitionIdempotencyKey = nodeId ? crypto.randomUUID() : '';
+  }
+
   async executeTransition() {
     if (!this.selectedTransition) return;
     this.loading = true;
     this.errorMsg = '';
-    
+
     try {
       const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/transition`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.token}`
+          'Authorization': `Bearer ${this.token}`,
+          'Idempotency-Key': this.transitionIdempotencyKey || crypto.randomUUID()
         },
         body: JSON.stringify({
           targetNodeId: this.selectedTransition,
           notes: this.transitionNotes
         })
       });
-      
+
       const result = await res.json();
       if (res.ok) {
         this.selectedTransition = '';
         this.transitionNotes = '';
+        this.transitionIdempotencyKey = '';
         await invalidateAll();
       } else {
         this.errorMsg = result.error?.message || 'Transition failed. You might not have the required role.';

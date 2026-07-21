@@ -50,6 +50,9 @@ export const inventoryItems = pgTable('inventory_items', {
   isStockInitialized: boolean('is_stock_initialized').notNull().default(false),
   unresolvedCompatibility: jsonb('unresolved_compatibility').default('[]'), // array of strings for unparsed models
   unitOfMeasure: varchar('unit_of_measure', { length: 20 }).notNull().default('pcs'),
+  // H13 — cursor pagination needs a (createdAt, id) tiebreaker; the list
+  // endpoint previously ordered by sku only, with no created-order concept.
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantSkuUnique: unique('inventory_items_tenant_sku_unique').on(table.tenantId, table.sku),
   tenantIdx: index('inventory_items_tenant_idx').on(table.tenantId),

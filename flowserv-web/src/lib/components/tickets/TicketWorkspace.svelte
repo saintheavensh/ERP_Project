@@ -72,7 +72,7 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1" for="next">Select Next Step / Decision</label>
-            <select id="next" bind:value={state.selectedTransition} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <select id="next" value={state.selectedTransition} onchange={(e) => state.selectTransition(e.currentTarget.value)} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
               <option value="">-- Select Action --</option>
               {#each state.availableTransitions as t}
                 <option value={t.toNodeId}>{t.name} &rarr; {t.targetNodeName}</option>

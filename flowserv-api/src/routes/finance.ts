@@ -5,11 +5,13 @@ import { eq, desc, and, ne, sql } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
-import { successResponse, errorResponse } from '../lib/response';
+import { auditMiddleware } from '../middleware/audit';
+import { successResponse, errorResponse, getRequestId } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { recordPaymentInput } from '../modules/finance/types';
 import { recordPayment, getPayableDetail } from '../modules/finance/service';
 import { reconcileSaleLedger } from '../lib/ledger-reconciliation';
+import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 
 const financeRouter = new Hono();
 
@@ -56,15 +58,34 @@ financeRouter.get('/payables/:id', async (c) => {
 });
 
 // POST /v1/finance/payables/:id/payments — record a full or partial payment
-financeRouter.post('/payables/:id/payments', requirePermission('finance.record_payment'), zValidator('json', recordPaymentInput), async (c) => {
+const RECORD_PAYMENT_ENDPOINT = 'POST /v1/finance/payables/:id/payments';
+
+financeRouter.post('/payables/:id/payments', requirePermission('finance.record_payment'), zValidator('json', recordPaymentInput), auditMiddleware({ action: 'payable.record_payment', entityType: 'supplier_invoice', entityIdParam: 'id', bodyFields: ['amount', 'paymentMethod', 'referenceNumber'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const id = c.req.param('id');
   const input = c.req.valid('json');
 
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (idempotencyKey) {
+    const replay = await findIdempotentResponse(tenantId, RECORD_PAYMENT_ENDPOINT, idempotencyKey);
+    if (replay) return replayIdempotentResponse(c, replay);
+  }
+
   try {
-    const result = await recordPayment(tenantId, id, input, userId);
+    const result = await recordPayment(
+      tenantId,
+      id,
+      input,
+      userId,
+      idempotencyKey ? { key: idempotencyKey, endpoint: RECORD_PAYMENT_ENDPOINT } : undefined,
+      getRequestId(c)
+    );
     return successResponse(c, result, undefined, 201);
   } catch (err) {
+    if (idempotencyKey && isIdempotencyKeyConflict(err)) {
+      const replay = await findIdempotentResponse(tenantId, RECORD_PAYMENT_ENDPOINT, idempotencyKey);
+      if (replay) return replayIdempotentResponse(c, replay);
+    }
     if (err instanceof BusinessError) {
       return errorResponse(c, err.code, err.message, err.details, err.statusCode);
     }

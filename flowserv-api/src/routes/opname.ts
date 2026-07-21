@@ -4,6 +4,7 @@ import { stockBatches, stockMovements, stockLevels, suppliers, inventoryItems } 
 import { eq, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
+import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -26,7 +27,7 @@ const opnameSchema = z.object({
 });
 
 // POST /v1/opname
-opnameRouter.post('/', requirePermission('inventory.adjust_stock'), zValidator('json', opnameSchema), async (c) => {
+opnameRouter.post('/', requirePermission('inventory.adjust_stock'), zValidator('json', opnameSchema), auditMiddleware({ action: 'stock.adjust', entityType: 'stock_opname', bodyFields: ['branchId', 'items', 'skippedItemIds'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
