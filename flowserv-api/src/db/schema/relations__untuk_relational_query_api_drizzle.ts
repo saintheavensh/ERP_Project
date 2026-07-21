@@ -19,6 +19,7 @@ import { relations } from 'drizzle-orm';
 import { tenants, branches, users, roles, rolePermissions, userRoleAssignments } from './core';
 import { flowTemplates, flowNodes, flowTransitions } from './flow';
 import { customers, customerAssets, serviceTickets, ticketStageHistory, approvalRequests } from './tickets';
+import { ticketCharges } from './ticket-charges';
 import { inventoryCategories, inventoryItems, itemBrandPricing, stockLevels, stockMovements, stockBatches, suppliers, supplierBrands, supplierInvoices, supplierPayments, purchaseOrders, purchaseOrderLines } from './inventory';
 import { deviceBrands, deviceModels, productCompatibility, partBrands, productSuppliers } from './product_catalog';
 import { paymentMethods } from './payment_methods__settings_';
@@ -106,6 +107,16 @@ export const serviceTicketsRelations = relations(serviceTickets, ({ one, many })
   stageHistory: many(ticketStageHistory),
   approvalRequests: many(approvalRequests),
   stockMovements: many(stockMovements),
+  charges: many(ticketCharges),
+}));
+
+export const ticketChargesRelations = relations(ticketCharges, ({ one }) => ({
+  tenant: one(tenants, { fields: [ticketCharges.tenantId], references: [tenants.id] }),
+  ticket: one(serviceTickets, { fields: [ticketCharges.ticketId], references: [serviceTickets.id] }),
+  inventoryItem: one(inventoryItems, { fields: [ticketCharges.inventoryItemId], references: [inventoryItems.id] }),
+  partBrand: one(partBrands, { fields: [ticketCharges.partBrandId], references: [partBrands.id] }),
+  stockMovement: one(stockMovements, { fields: [ticketCharges.stockMovementId], references: [stockMovements.id] }),
+  createdByUser: one(users, { fields: [ticketCharges.createdBy], references: [users.id] }),
 }));
 
 export const inventoryItemsRelations = relations(inventoryItems, ({ one, many }) => ({

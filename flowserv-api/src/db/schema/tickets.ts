@@ -49,6 +49,10 @@ export const serviceTickets = pgTable('service_tickets', {
   flowTemplateId: uuid('flow_template_id').notNull().references(() => flowTemplates.id),
   currentNodeId: uuid('current_node_id').references(() => flowNodes.id),
   status: ticketStatusEnum('status').notNull().default('open'),
+  // H7 — denormalized totals for list views that must not aggregate ticket_charges.
+  // Kept in sync by the tickets service inside the same transaction as every charge write.
+  estimatedTotal: money('estimated_total').notNull().default('0'),
+  approvedTotal: money('approved_total'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({

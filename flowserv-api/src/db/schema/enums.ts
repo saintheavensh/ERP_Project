@@ -8,6 +8,10 @@ export const invoiceStatusEnum   = pgEnum('invoice_status',   ['active', 'voided
 export const poStatusEnum        = pgEnum('po_status',        ['draft', 'ordered', 'partial', 'received', 'completed']);
 export const movementTypeEnum    = pgEnum('movement_type',    ['in', 'out', 'reserve', 'release', 'adjust', 'write_off']);
 export const ticketStatusEnum    = pgEnum('ticket_status',    ['open', 'closed', 'cancelled']);
+// Ticket charge lifecycle (H7): estimated → approved (customer accepts quote) →
+// consumed (part physically taken from stock, set in H9). 'cancelled' = job abandoned
+// or part not needed. Only 'estimated' charges are editable.
+export const chargeStatusEnum    = pgEnum('charge_status',    ['estimated', 'approved', 'consumed', 'cancelled']);
 export const paymentMethodEnum   = pgEnum('payment_method',   ['cash', 'transfer', 'qris', 'split', 'tempo']);
 
 // H2 assumed this vocabulary was Indonesian ('tunai'/'transfer'/'tempo'), based on a
@@ -25,5 +29,6 @@ export type InvoiceStatus        = (typeof invoiceStatusEnum.enumValues)[number]
 export type PoStatus             = (typeof poStatusEnum.enumValues)[number];
 export type MovementType         = (typeof movementTypeEnum.enumValues)[number];
 export type TicketStatus         = (typeof ticketStatusEnum.enumValues)[number];
+export type ChargeStatus         = (typeof chargeStatusEnum.enumValues)[number];
 export type PaymentMethod        = (typeof paymentMethodEnum.enumValues)[number];
 export type SupplierPaymentMethod = (typeof supplierPayMethodEnum.enumValues)[number];

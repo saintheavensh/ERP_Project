@@ -7,6 +7,9 @@ import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
 import { FlowEngine } from '../services/flow-engine';
+import { BusinessError } from '../lib/errors';
+import { createChargeInput, updateChargeInput } from '../modules/tickets/types';
+import { addCharge, updateCharge, deleteCharge, listCharges } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -223,6 +226,79 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
     return successResponse(c, { success: true });
   } catch (err: any) {
     return errorResponse(c, 'TRANSITION_FAILED', err.message, [], 500);
+  }
+});
+
+// ============================================================================
+// H7 — Ticket charges (parts, labor, fees). Logic lives in modules/tickets/service.ts;
+// these handlers stay thin and translate BusinessError → the standard error envelope.
+// ============================================================================
+
+// List a ticket's charges with computed totals + margin
+ticketsRouter.get('/:id/charges', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  try {
+    const result = await listCharges(tenantId, ticketId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to list charges:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to list charges', undefined, 500);
+  }
+});
+
+// Add an estimated charge
+ticketsRouter.post('/:id/charges', zValidator('json', createChargeInput), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const input = c.req.valid('json');
+  try {
+    const charge = await addCharge(tenantId, ticketId, input, userId);
+    return successResponse(c, charge, undefined, 201);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to add charge:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to add charge', undefined, 500);
+  }
+});
+
+// Edit a charge (only while estimated)
+ticketsRouter.patch('/:id/charges/:chargeId', zValidator('json', updateChargeInput), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const chargeId = c.req.param('chargeId');
+  const input = c.req.valid('json');
+  try {
+    const charge = await updateCharge(tenantId, ticketId, chargeId, input);
+    return successResponse(c, charge);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to update charge:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update charge', undefined, 500);
+  }
+});
+
+// Delete a charge (only while estimated)
+ticketsRouter.delete('/:id/charges/:chargeId', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const chargeId = c.req.param('chargeId');
+  try {
+    const result = await deleteCharge(tenantId, ticketId, chargeId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to delete charge:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete charge', undefined, 500);
   }
 });
 

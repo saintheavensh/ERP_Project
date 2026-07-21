@@ -4,6 +4,7 @@ export * from './flow';
 export * from './tickets';
 export * from './inventory';
 export * from './product_catalog';
+export * from './ticket-charges';
 export * from './finance';
 export * from './payment_methods__settings_';
 export * from './audit_log';
