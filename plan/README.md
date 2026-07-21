@@ -259,7 +259,37 @@ Stage 2
     (qty 0) for every branch of the tenant; confirmed 2 rows for 2 branches, then
     confirmed the delete path cleans them up.
   - `npm test`: 42/42 passing (was 37 — 5 new tests in `lib/__tests__/reconciliation.test.ts`).
-- [ ] H5 Money & numbering
+- [x] H5 Money & numbering — 2026-07-21
+  - Added `money()` helper (`src/db/schema/columns.ts`, `decimal(14,2)`) and routed
+    every monetary column through it, including the two real defects: `pos_invoices`
+    (`subtotal`/`discount_amount`/`tax_amount`/`grand_total`) was unbounded `numeric`,
+    and `pos_invoice_lines` (`unit_price`/`subtotal`) was `decimal(12,2)`. All pre-existing
+    `decimal(14,2)` money columns across `finance.ts`, `inventory.ts`, `product_catalog.ts`,
+    `tickets.ts` also now go through the same helper so this can't drift again.
+    `target_margin` (a percentage, not money) deliberately left as plain `decimal(5,2)`.
+    Live-verified via `information_schema.columns` after `db:reset`: every money column
+    reports precision 14, scale 2. DB held 0 `pos_invoices` rows going in, so there was
+    no existing data to lose.
+  - Replaced the random 4-digit invoice suffix with a per-tenant, per-day counter:
+    new `invoice_sequences` table (composite PK `tenant_id, date_key`), allocated via
+    `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` inside the checkout transaction.
+    Changed `pos_invoices`' unique constraint from a global `invoiceNumber.unique()`
+    to `unique(tenant_id, invoice_number)`.
+  - Added `lib/money.ts` (`roundMoney`, `toMoneyString`) and used it everywhere
+    `pos/invoices.ts` writes a computed total, so float rounding has one place to
+    change later (per the task's own note: not urgent for whole-rupiah amounts today,
+    but H6's percentage-based margin/tax will need it).
+  - Live-verified end-to-end against the running dev server: 3 sequential checkouts
+    produced `INV-20260721-0001/0002/0003`; a simulated new `date_key` (via the exact
+    `INSERT...ON CONFLICT` statement the route uses) restarted at `1` independent of
+    the real day's counter — the actual clock can't be moved forward mid-session, so
+    the day-rollover check was proven at this mechanism level rather than by waiting
+    a day. Fired 10 concurrent checkouts twice (20 total, `curl ... & / wait`): all 20
+    succeeded, 20 distinct invoice numbers, 0 duplicates (`GROUP BY invoice_number
+    HAVING count(*) > 1` → 0 rows), no 500s.
+  - `npm test`: 49/49 passing (was 42 — 7 new tests in `lib/__tests__/money.test.ts`).
+  - DB reset back to clean seed state after the live checkout tests so no test
+    invoices were left behind.
 
 Stage 3
 - [ ] H6 Labor billing

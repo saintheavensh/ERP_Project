@@ -4,7 +4,6 @@ import {
   text,
   varchar,
   integer,
-  decimal,
   timestamp,
   boolean,
   jsonb,
@@ -12,12 +11,12 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  numeric,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 import { tenants } from './core';
 import { inventoryItems, suppliers } from './inventory';
+import { money } from './columns';
 
 // PENTING — dua konsep "merk" yang berbeda, jangan tertukar:
 // - deviceBrands/deviceModels = merk & tipe HP (Oppo A3s, Realme 3, dst) → menentukan KOMPATIBILITAS
@@ -71,7 +70,7 @@ export const productSuppliers = pgTable('product_suppliers', {
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   isPrimary: boolean('is_primary').notNull().default(false),
-  lastPrice: decimal('last_price', { precision: 14, scale: 2 }),
+  lastPrice: money('last_price'),
 }, (table) => ({
   itemSupplierUnique: unique('product_suppliers_item_supplier_unique').on(table.inventoryItemId, table.supplierId),
 }));

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
-import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts } from '../../db/schema/index';
+import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences } from '../../db/schema/index';
 import { eq, and, sql, asc, gt, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -8,6 +8,7 @@ import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { BusinessError } from '../../lib/errors';
 import { pickFifoBatches } from '../../lib/fifo';
+import { roundMoney, toMoneyString } from '../../lib/money';
 
 const router = new Hono();
 
@@ -88,20 +89,29 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
   // Hitung total
   let subtotal = 0;
   for (const item of data.items) {
-    subtotal += (item.unitPrice * item.quantity);
+    subtotal = roundMoney(subtotal + item.unitPrice * item.quantity);
   }
 
-  const grandTotal = subtotal - data.discountAmount;
+  const grandTotal = roundMoney(subtotal - data.discountAmount);
   const paymentStatus = data.paymentMethod === 'tempo' ? 'unpaid' : 'paid';
 
   try {
     // Jalankan seluruh proses checkout dalam satu database transaction
     const result = await db.transaction(async (tx) => {
-      
-      // 1. Generate Invoice Number
+
+      // 1. Allocate the next sequence number for this tenant and day. Runs
+      // inside the checkout transaction — INSERT ... ON CONFLICT DO UPDATE ...
+      // RETURNING is atomic, so two concurrent checkouts can never receive the
+      // same number without extra row locking.
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const randomSuffix = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-      const invoiceNumber = `INV-${dateStr}-${randomSuffix}`;
+      const [{ last_number: lastNumber }] = await tx.execute<{ last_number: number }>(sql`
+        INSERT INTO invoice_sequences (tenant_id, date_key, last_number)
+        VALUES (${tenantId}, ${dateStr}, 1)
+        ON CONFLICT (tenant_id, date_key)
+        DO UPDATE SET last_number = invoice_sequences.last_number + 1
+        RETURNING last_number
+      `);
+      const invoiceNumber = `INV-${dateStr}-${String(lastNumber).padStart(4, '0')}`;
 
       // 2. Buat Invoice Header
       const [newInvoice] = await tx.insert(posInvoices).values({
@@ -110,10 +120,10 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
         invoiceNumber,
         customerName: data.customerName || 'Pelanggan Umum',
         serviceTicketId: data.serviceTicketId,
-        subtotal: subtotal.toString(),
-        discountAmount: data.discountAmount.toString(),
+        subtotal: toMoneyString(subtotal),
+        discountAmount: toMoneyString(data.discountAmount),
         taxAmount: '0',
-        grandTotal: grandTotal.toString(),
+        grandTotal: toMoneyString(grandTotal),
         paymentStatus,
         paymentMethod: data.paymentMethod,
         createdBy: userId,
@@ -121,16 +131,16 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
 
       // 3. Proses tiap item di keranjang
       for (const item of data.items) {
-        const lineSubtotal = item.unitPrice * item.quantity;
-        
+        const lineSubtotal = roundMoney(item.unitPrice * item.quantity);
+
         // Buat Invoice Line
         await tx.insert(posInvoiceLines).values({
           posInvoiceId: newInvoice.id,
           inventoryItemId: item.inventoryItemId,
           partBrandId: item.partBrandId || null,
           quantity: item.quantity,
-          unitPrice: item.unitPrice.toString(),
-          subtotal: lineSubtotal.toString(),
+          unitPrice: toMoneyString(item.unitPrice),
+          subtotal: toMoneyString(lineSubtotal),
         });
 
         // 4. FIFO Stock Deduction

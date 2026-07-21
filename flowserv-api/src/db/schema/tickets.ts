@@ -4,7 +4,6 @@ import {
   text,
   varchar,
   integer,
-  decimal,
   timestamp,
   boolean,
   jsonb,
@@ -12,13 +11,13 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  numeric,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 import { tenants, branches } from './core';
 import { flowTemplates, flowNodes } from './flow';
 import { ticketStatusEnum } from './enums';
+import { money } from './columns';
 
 
 export const customers = pgTable('customers', {
@@ -73,7 +72,7 @@ export const approvalRequests = pgTable('approval_requests', {
   requestedAt: timestamp('requested_at', { withTimezone: true }).notNull().defaultNow(),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
   status: varchar('status', { length: 20 }).notNull().default('pending'),
-  amount: decimal('amount', { precision: 14, scale: 2 }),
+  amount: money('amount'),
   magicToken: text('magic_token').unique(), // dipakai untuk link approval customer
 });
 

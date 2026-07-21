@@ -108,14 +108,47 @@ extra locking.
 
 ## Verification
 
-- [ ] Every money column is `numeric(14,2)` in `information_schema.columns`
-- [ ] No existing money value changed (compare the 5 invoice totals before and after)
-- [ ] `invoice_sequences` exists; `pos_invoices` unique constraint is `(tenant_id, invoice_number)`
-- [ ] Three sequential checkouts produce `INV-YYYYMMDD-0001`, `-0002`, `-0003`
-- [ ] A checkout on a new day restarts at `-0001`
-- [ ] **Concurrency check:** fire 10 simultaneous checkouts (`curl` in a loop with `&`);
-      all 10 succeed with 10 distinct numbers and no 500s
-- [ ] `npm test` passing, plus a unit test for `roundMoney`
+- [x] Every money column is `numeric(14,2)` in `information_schema.columns` — verified
+      via live query against `information_schema.columns` after `db:reset`: every
+      money column (`pos_invoices.{subtotal,discount_amount,tax_amount,grand_total}`,
+      `pos_invoice_lines.{unit_price,subtotal}`, plus all pre-existing
+      `decimal(14,2)` columns now routed through the shared `money()` helper in
+      `src/db/schema/columns.ts`) reports `numeric_precision=14, numeric_scale=2`.
+      The only other `numeric` columns left are `target_margin` (5,2) on
+      `inventory_categories`/`inventory_items` — a percentage, not money, correctly
+      untouched.
+- [x] No existing money value changed — the DB held **0** `pos_invoices` rows before
+      this task (confirmed via `SELECT count(*)`), so there was nothing to compare;
+      the `scale(subtotal) > 2` guard query from this file's own instructions also
+      returned 0 rows pre-change. Nothing to migrate, nothing lost.
+- [x] `invoice_sequences` exists; `pos_invoices` unique constraint is
+      `(tenant_id, invoice_number)` — verified via `\d pos_invoices` and
+      `\d invoice_sequences`: `pos_invoices_tenant_invoice_number_unique` is a
+      `UNIQUE (tenant_id, invoice_number)` constraint (the old global
+      `.unique()` on `invoiceNumber` alone is gone), and `invoice_sequences` has
+      composite PK `(tenant_id, date_key)`.
+- [x] Three sequential checkouts produce `INV-YYYYMMDD-0001`, `-0002`, `-0003` —
+      live `curl` checkout against the running dev server produced
+      `INV-20260721-0001`, `-0002`, `-0003` in order (subtotal/grandTotal also
+      confirmed rounding `50000.555` → `"50000.56"` via `roundMoney`/`toMoneyString`).
+- [x] A checkout on a new day restarts at `-0001` — the real clock can't be moved
+      forward mid-session, so this was proven at the mechanism level instead:
+      ran the exact `INSERT ... ON CONFLICT (tenant_id, date_key) DO UPDATE ...
+      RETURNING last_number` statement the route uses, for a `date_key` that had
+      never been seen (`20260722`), while the real day's counter sat at 23 — it
+      returned `1`, independent of the current day's count, because the
+      composite primary key scopes the counter per `(tenant, day)`. Row removed
+      afterward so it doesn't pollute seed state.
+- [x] **Concurrency check:** fired 10 simultaneous checkouts (`curl ... &` loop,
+      `wait`) against the running dev server, twice — 20 total. All 20 succeeded
+      with 20 distinct, gapless invoice numbers (`INV-20260721-0004` through
+      `-0023`), no 500s, and `SELECT invoice_number, count(*) ... GROUP BY ...
+      HAVING count(*) > 1` returned 0 rows. Reset the DB afterward
+      (`npm run db:reset`) to return to clean seed state before finishing.
+- [x] `npm test` passing, plus a unit test for `roundMoney` — 49/49 passing (was
+      42; +7 in `src/lib/__tests__/money.test.ts` covering both `roundMoney` and
+      `toMoneyString`, including the exact `1666666.666666` example from this
+      file's own Part 1).
 
 ## Watch out
 

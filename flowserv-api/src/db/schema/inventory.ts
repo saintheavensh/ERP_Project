@@ -12,7 +12,6 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  numeric,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -20,6 +19,7 @@ import { tenants, branches, users } from './core';
 import { serviceTickets } from './tickets';
 import { partBrands } from './product_catalog';
 import { movementTypeEnum, paymentStatusEnum, poStatusEnum, supplierPayMethodEnum } from './enums';
+import { money } from './columns';
 
 
 export const inventoryCategories = pgTable('inventory_categories', {
@@ -42,8 +42,8 @@ export const inventoryItems = pgTable('inventory_items', {
   name: text('name').notNull(),
   categoryId: uuid('category_id').references(() => inventoryCategories.id),
   partBrandId: uuid('part_brand_id').references(() => partBrands.id), // merk sparepart (bukan merk HP) — lihat PRODUCT CATALOG di bawah
-  unitCostAvg: decimal('unit_cost_avg', { precision: 14, scale: 2 }).notNull().default('0'), // nilai referensi/cache untuk tampilan cepat — COGS aktual dihitung dari stock_batches (FIFO)
-  sellingPrice: decimal('selling_price', { precision: 14, scale: 2 }).notNull().default('0'), // Harga jual dasar produk (jika tidak ada merk spesifik)
+  unitCostAvg: money('unit_cost_avg').notNull().default('0'), // nilai referensi/cache untuk tampilan cepat — COGS aktual dihitung dari stock_batches (FIFO)
+  sellingPrice: money('selling_price').notNull().default('0'), // Harga jual dasar produk (jika tidak ada merk spesifik)
   reorderPoint: integer('reorder_point').notNull().default(0),
   marginStrategy: varchar('margin_strategy', { length: 20 }), // overrides category setting
   targetMargin: decimal('target_margin', { precision: 5, scale: 2 }), // overrides category setting
@@ -60,7 +60,7 @@ export const itemBrandPricing = pgTable('item_brand_pricing', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   partBrandId: uuid('part_brand_id').notNull().references(() => partBrands.id),
-  sellingPrice: decimal('selling_price', { precision: 14, scale: 2 }).notNull().default('0'),
+  sellingPrice: money('selling_price').notNull().default('0'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   itemBrandUnique: unique('item_brand_pricing_unique').on(table.inventoryItemId, table.partBrandId),
@@ -109,7 +109,7 @@ export const stockBatches = pgTable('stock_batches', {
   partBrandId: uuid('part_brand_id').references(() => partBrands.id),
   supplierId: uuid('supplier_id').notNull().references(() => suppliers.id),
   purchaseOrderLineId: uuid('purchase_order_line_id').references(() => purchaseOrderLines.id),
-  unitCost: decimal('unit_cost', { precision: 14, scale: 2 }).notNull(), // harga beli asli batch ini, bukan rata-rata
+  unitCost: money('unit_cost').notNull(), // harga beli asli batch ini, bukan rata-rata
   quantityReceived: integer('quantity_received').notNull(),
   quantityRemaining: integer('quantity_remaining').notNull(),
   receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
@@ -151,8 +151,8 @@ export const supplierInvoices = pgTable('supplier_invoices', {
   purchaseOrderId: uuid('purchase_order_id').references(() => purchaseOrders.id),
   invoiceNumber: varchar('invoice_number', { length: 100 }), // Dari nota supplier
   status: paymentStatusEnum('status').notNull().default('unpaid'),
-  totalAmount: decimal('total_amount', { precision: 14, scale: 2 }).notNull(),
-  amountPaid: decimal('amount_paid', { precision: 14, scale: 2 }).notNull().default('0'),
+  totalAmount: money('total_amount').notNull(),
+  amountPaid: money('amount_paid').notNull().default('0'),
   paymentMethod: supplierPayMethodEnum('payment_method').notNull(),
   invoiceDate: timestamp('invoice_date', { withTimezone: true }).notNull().defaultNow(),
   dueDate: timestamp('due_date', { withTimezone: true }), // Tanggal jatuh tempo jika tempo
@@ -166,7 +166,7 @@ export const supplierPayments = pgTable('supplier_payments', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   supplierInvoiceId: uuid('supplier_invoice_id').notNull().references(() => supplierInvoices.id),
-  amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  amount: money('amount').notNull(),
   paymentMethod: supplierPayMethodEnum('payment_method').notNull(),
   referenceNumber: varchar('reference_number', { length: 100 }), // misal no referensi transfer
   paymentDate: timestamp('payment_date', { withTimezone: true }).notNull().defaultNow(),
@@ -186,8 +186,8 @@ export const purchaseOrders = pgTable('purchase_orders', {
   invoiceNumber: varchar('invoice_number', { length: 100 }),
   invoiceDate: timestamp('invoice_date', { withTimezone: true }),
   invoiceDueDate: timestamp('invoice_due_date', { withTimezone: true }),
-  estimatedTotal: decimal('estimated_total', { precision: 14, scale: 2 }).notNull().default('0'),
-  actualTotal: decimal('actual_total', { precision: 14, scale: 2 }),
+  estimatedTotal: money('estimated_total').notNull().default('0'),
+  actualTotal: money('actual_total'),
   createdBy: uuid('created_by'), // -> users.id (for tracking who made the PO)
   approvedBy: uuid('approved_by'), // -> users.id (for tracking who approved)
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -202,8 +202,8 @@ export const purchaseOrderLines = pgTable('purchase_order_lines', {
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   quantity: integer('quantity').notNull(),
   receivedQuantity: integer('received_quantity').notNull().default(0),
-  unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(), // estimated
-  actualUnitPrice: decimal('actual_unit_price', { precision: 14, scale: 2 }), // final from invoice
+  unitPrice: money('unit_price').notNull(), // estimated
+  actualUnitPrice: money('actual_unit_price'), // final from invoice
 }, (table) => ({
   tenantIdx: index('purchase_order_lines_tenant_idx').on(table.tenantId),
 }));

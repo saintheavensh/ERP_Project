@@ -4,7 +4,6 @@ import {
   text,
   varchar,
   integer,
-  decimal,
   timestamp,
   boolean,
   jsonb,
@@ -12,11 +11,11 @@ import {
   index,
   uniqueIndex,
   primaryKey,
-  numeric,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 import { tenants, branches } from './core';
+import { money } from './columns';
 
 
 export const financeLedgerEntries = pgTable('finance_ledger_entries', {
@@ -24,7 +23,7 @@ export const financeLedgerEntries = pgTable('finance_ledger_entries', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   entryType: varchar('entry_type', { length: 20 }).notNull(), // "cogs" | "revenue" | "adjustment" | "loss"
-  amount: decimal('amount', { precision: 14, scale: 2 }).notNull(),
+  amount: money('amount').notNull(),
   referenceType: varchar('reference_type', { length: 30 }),
   referenceId: uuid('reference_id'),
   postedAt: timestamp('posted_at', { withTimezone: true }).notNull().defaultNow(),
