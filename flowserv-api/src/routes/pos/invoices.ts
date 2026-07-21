@@ -9,6 +9,8 @@ import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { posCheckoutSchema } from './types';
 import { consumeStock } from '../../modules/inventory/service';
+import { emitEvent, AppEvent } from '../../services/event-bus';
+import type { SaleLineForLedger } from '../../modules/finance/ledger';
 
 const router = new Hono();
 
@@ -93,6 +95,11 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
   const grandTotal = roundMoney(subtotal - data.discountAmount);
   const paymentStatus = data.paymentMethod === 'tempo' ? 'unpaid' : 'paid';
 
+  // Populated inside the transaction below, read after it commits — the
+  // ledger event (H11) must fire post-commit, never from inside the
+  // transaction, so a ledger failure can't roll back a completed sale.
+  const linesForLedger: SaleLineForLedger[] = [];
+
   try {
     // Jalankan seluruh proses checkout dalam satu database transaction
     const result = await db.transaction(async (tx) => {
@@ -162,6 +169,7 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
             subtotal: toMoneyString(lineSubtotal),
             unitCost: null,
           });
+          linesForLedger.push({ sourceType: item.sourceType, quantity: item.quantity, unitCost: null });
           continue;
         }
 
@@ -191,9 +199,18 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
           subtotal: toMoneyString(lineSubtotal),
           unitCost: toMoneyString(Number(consumed.unitCost)),
         });
+        linesForLedger.push({ sourceType: 'part', quantity: item.quantity, unitCost: consumed.unitCost });
       }
 
       return newInvoice;
+    });
+
+    // H11 — post-commit, best-effort. Ledger posting failures are caught and
+    // logged inside the handler itself; they must never surface as a 500 on
+    // an otherwise-successful checkout.
+    emitEvent(AppEvent.POS_SALE_COMPLETED, {
+      invoice: { id: result.id, tenantId, branchId: data.branchId, grandTotal },
+      lines: linesForLedger,
     });
 
     return successResponse(c, result, undefined, 201);
@@ -318,6 +335,24 @@ router.delete('/invoices/:id', async (c) => {
         .set({ status: 'voided' })
         .where(eq(posInvoices.id, invoice.id));
     });
+
+    // H11 — post-commit. Lines are immutable once written, so re-reading them
+    // here (rather than threading them out of the transaction) is safe and
+    // keeps the transaction body unchanged.
+    const [voidedInvoice] = await db.select().from(posInvoices)
+      .where(and(eq(posInvoices.id, id), eq(posInvoices.tenantId, tenantId)));
+    const voidedLines = await db.select({
+      sourceType: posInvoiceLines.sourceType,
+      quantity: posInvoiceLines.quantity,
+      unitCost: posInvoiceLines.unitCost,
+    }).from(posInvoiceLines).where(eq(posInvoiceLines.posInvoiceId, id));
+
+    if (voidedInvoice) {
+      emitEvent(AppEvent.POS_SALE_VOIDED, {
+        invoice: { id: voidedInvoice.id, tenantId, branchId: voidedInvoice.branchId, grandTotal: voidedInvoice.grandTotal },
+        lines: voidedLines,
+      });
+    }
 
     return successResponse(c, { voided: true });
   } catch (error) {

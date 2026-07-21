@@ -34,7 +34,8 @@
         label: 'Finance', 
         path: '/finance',
         subItems: [
-          { label: 'Accounts Payable', path: '/finance/payables' }
+          { label: 'Accounts Payable', path: '/finance/payables' },
+          { label: 'Ledger', path: '/finance/ledger' }
         ]
       });
       items.push({ label: 'Settings', path: '/settings' });
@@ -48,7 +49,8 @@
         label: 'Finance',
         path: '/finance',
         subItems: [
-          { label: 'Accounts Payable', path: '/finance/payables' }
+          { label: 'Accounts Payable', path: '/finance/payables' },
+          { label: 'Ledger', path: '/finance/ledger' }
         ]
       });
     } else if (user?.roleName === 'Cashier') {

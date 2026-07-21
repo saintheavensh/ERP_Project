@@ -617,7 +617,106 @@ Stage 3
     servers stopped.
 
 Stage 4
-- [ ] H11 Finance ledger
+- [x] H11 Finance ledger — 2026-07-21
+  - `services/event-bus.ts` gained 5 new `AppEvent` values
+    (`POS_SALE_COMPLETED`/`POS_SALE_VOIDED`/`TICKET_PART_CONSUMED`/
+    `SUPPLIER_INVOICE_CREATED`/`SUPPLIER_PAYMENT_RECORDED`) and an `onEvent` alias
+    for `eventBus.on`. Every emit site fires **after** its owning transaction
+    commits (matching the existing `TICKET_STAGE_CHANGED` pattern in
+    `flow-engine.ts`) — a ledger failure can never roll back a completed sale,
+    consumption, or payment. Emit sites: `routes/pos/invoices.ts` (checkout +
+    void), `modules/tickets/service.ts` (`consumeCharge`),
+    `routes/purchasing/invoices.ts` (invoice creation — emits both
+    `SUPPLIER_INVOICE_CREATED` and, for cash/transfer, an immediate
+    `SUPPLIER_PAYMENT_RECORDED` so it nets to zero rather than leaving a phantom
+    AP balance), `modules/finance/service.ts` (`recordPayment` — replaced the
+    `// TODO: ledger posting` comment left by 3.5B.6).
+  - New `modules/finance/ledger.ts`: 5 pure builder functions
+    (`buildSaleEntries`, `buildVoidReversalEntries`, `buildTicketCogsEntry`,
+    `buildApInvoiceEntry`, `buildApSettlementEntry` — no database, 15 tests) plus
+    `subscribeLedger()` which wires them to the event bus and writes
+    `finance_ledger_entries`. Each handler catches and logs its own errors — a
+    subscriber throwing must never propagate back into the route that emitted
+    the event. AP movements are posted as `entryType: 'adjustment'`, not a new
+    type — deliberately not building a chart-of-accounts liability account here
+    (task's own "Watch out"); `supplier_invoices`/`supplier_payments` remain the
+    real source of truth for AP balance.
+  - Voided sales reverse on the **same** `referenceType`/`referenceId` as the
+    original (not a distinct `'void_pos'` reference), so summing by
+    `referenceId` alone proves an invoice nets to zero — this is exactly what
+    `/reconcile` checks.
+  - New `lib/ledger-reconciliation.ts` (`reconcileSaleLedger`, pure, 5 tests,
+    mirrors H4's `lib/reconciliation.ts` pattern) backs
+    `GET /v1/finance/ledger/reconcile`: compares posted revenue per invoice
+    against `grandTotal` (or 0 if voided) and flags any gap. Also
+    `GET /v1/finance/ledger` (plain list, DAS-004 Simple Mode).
+  - `src/db/backfill-ledger.ts` (new `npm run db:backfill-ledger`): reconstructs
+    entries for any `pos_invoice` with no posted revenue entry yet. Deliberately
+    computes COGS by joining `stock_movements → stock_batches.unit_cost` for
+    that invoice's own consumption, **not** `pos_invoice_lines.unit_cost` —
+    historical lines can predate H6's per-line cost capture, while
+    `unit_cost` on a batch is never mutated after creation (only
+    `quantity_remaining` changes), so the join is exact. Idempotent: skipped on
+    a pre-existing `entryType='revenue'` row for that `referenceId`.
+  - Considered and rejected extracting a `modules/purchasing/service.ts` for the
+    single `SUPPLIER_INVOICE_CREATED` emit (floated during planning) — purchasing
+    already has a precedent for a pure decision function living directly under
+    `routes/purchasing/` (`order-status.ts`), and H16's "only extract when
+    already touching that module for a feature" argues against a structural
+    move just to emit one event. Kept the emit inline, matching how
+    `flow-engine.ts` and `pos/invoices.ts` already do it.
+  - `npm test`: **100/100 passing** (was 85 — 15 new: 10 in
+    `modules/finance/__tests__/ledger.test.ts`, 5 in
+    `lib/__tests__/ledger-reconciliation.test.ts`). `npx tsc --noEmit` clean;
+    `npx svelte-check`: 0 errors, 0 warnings (689 files).
+  - **Live API run** (recorded, then DB reset to clean seed):
+    - POS checkout of a mixed sale (6× a part split across two batches —
+      5@Rp150.000 + 1@Rp165.000 — plus 1 labor line, grandTotal Rp1.370.000) →
+      ledger posted `revenue: 1.370.000` and `cogs: 915.000` (= 5×150.000 +
+      1×165.000, the exact blended cost, not a re-averaged one).
+      `/reconcile` → `{ isClean: true, gaps: [] }`.
+    - Voided that invoice → reversal entries `-1.370.000`/`-915.000` posted on
+      the *same* `referenceId`; summing all four entries for that invoice = 0
+      exactly. `/reconcile` still clean (voided invoice's expected revenue is
+      0, and posted net is 0).
+    - Approved and consumed a 1-unit ticket part charge (Baterai iPhone X,
+      cost Rp200.000) → ledger posted `cogs: 200.000`,
+      `referenceType: 'ticket_consumption'`, no revenue entry (by design — see
+      task file).
+    - Recorded a Rp1.000.000 partial payment against the seeded unpaid
+      supplier invoice (Rp3.300.000 total) → ledger posted
+      `adjustment: -1.000.000` against that invoice's `referenceId`.
+    - Received goods + invoiced a fresh PO as `tempo` (Rp2.000.000) → ledger
+      posted `adjustment: +2.000.000` — confirms `SUPPLIER_INVOICE_CREATED`
+      independently of the payment path already covered above.
+    - **Backfill, against real historical data, not just the live path**:
+      inserted a synthetic pre-H11-style invoice directly via SQL (3 units,
+      cost 175.000/unit, `pos_invoice_lines.unit_cost` left `NULL` to simulate
+      a pre-H6 row, no ledger entries) and ran `npm run db:backfill-ledger`
+      twice. First run: `1 invoices posted, 1 already had entries` (the live
+      invoice above was correctly skipped). Second run: `0 invoices posted, 2
+      already had entries` — proves idempotency against real data, not just
+      the unit test. Posted `revenue: 525.000` / `cogs: 525.000`, correctly
+      reconstructed from `stock_movements → stock_batches` despite the null
+      line `unit_cost`. `/reconcile` stayed clean throughout. Deleted the
+      synthetic fixture afterward (it was raw-SQL test data, not a real
+      exercise of the app, unlike the live-API steps above).
+    - **Frontend**: new `/finance/ledger` page (`+page.server.ts` fetches both
+      `/ledger` and `/ledger/reconcile` server-side; `LedgerTable.svelte` shows
+      a warning banner only when `!isClean`), added to the sidebar under
+      Finance for Super Admin/Manager. Logged in via a real POST to the
+      SvelteKit login form action (not simulated), saved the `flowserv_token`
+      cookie, and SSR-fetched `/finance/ledger` with it: 200, `<title>Finance
+      Ledger | FlowServ</title>`, table headers present, the nav link present,
+      all 7 posted entries rendered with correct `Rp`-formatted amounts and
+      reference types (4 pos sale, 2 supplier invoice, 1 ticket consumption),
+      and — correctly — no reconcile warning banner while clean. Playwright is
+      still not installed in `flowserv-web` (same gap recorded since H7), so
+      this SSR-with-real-cookie check substitutes for a literal click-through,
+      consistent with how H7–H10 closed this same gap.
+  - DB reset back to clean seed state after every live-testing round — final
+    state confirmed (`0` `finance_ledger_entries`, `0` `pos_invoices`) before
+    finishing, both dev servers stopped.
 - [ ] H12 RBAC
 - [ ] H13 API hardening
 

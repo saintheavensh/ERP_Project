@@ -63,6 +63,10 @@ app.route('/v1/settings', settingsRouter);
 import { financeRouter } from './routes/finance';
 app.route('/v1/finance', financeRouter);
 
+// H11 — subscribe the finance ledger to the event bus once, at startup.
+import { subscribeLedger } from './modules/finance/ledger';
+subscribeLedger();
+
 // Health Check Endpoint
 app.get('/v1/health', async (c) => {
   let dbStatus = 'disconnected';

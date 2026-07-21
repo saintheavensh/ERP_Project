@@ -3,6 +3,7 @@ import { supplierInvoices, supplierPayments } from '../../db/schema';
 import type { PaymentStatus } from '../../db/schema/enums';
 import { eq, and, desc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
+import { emitEvent, AppEvent } from '../../services/event-bus';
 import type { RecordPaymentInput } from './types';
 
 export type PaymentDecision =
@@ -54,7 +55,7 @@ export async function recordPayment(
   input: RecordPaymentInput,
   userId: string
 ) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [invoice] = await tx.select().from(supplierInvoices)
       .where(and(eq(supplierInvoices.id, invoiceId), eq(supplierInvoices.tenantId, tenantId)))
       .for('update');
@@ -97,11 +98,19 @@ export async function recordPayment(
       .where(eq(supplierInvoices.id, invoiceId))
       .returning();
 
-    // TODO: ledger posting (Phase 4.5A) — post an AP-reduction entry to
-    // financeLedgerEntries once double-entry accounting is wired up.
-
     return { payment, invoice: updatedInvoice };
   });
+
+  // H11 — post-commit, best-effort. See ledger.ts subscribeLedger for why a
+  // posting failure here can never surface back to the caller.
+  emitEvent(AppEvent.SUPPLIER_PAYMENT_RECORDED, {
+    tenantId,
+    branchId: result.invoice.branchId,
+    invoiceId: result.invoice.id,
+    amount: result.payment.amount,
+  });
+
+  return result;
 }
 
 /** Invoice detail with its supplier, PO, and full payment history. */

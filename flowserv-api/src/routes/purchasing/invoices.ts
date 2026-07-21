@@ -7,6 +7,7 @@ import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { calculateWac } from '../../lib/wac';
+import { emitEvent, AppEvent } from '../../services/event-bus';
 
 const router = new Hono();
 
@@ -107,16 +108,17 @@ router.post('/orders/:id/invoice', zValidator('json', invoiceSchema), async (c) 
         .returning();
         
       // Create Accounts Payable (Supplier Invoice) record if payment is tempo
+      let supplierInvoice;
       if (data.paymentMethod === 'tempo') {
         const [supplier] = await tx.select().from(suppliers).where(eq(suppliers.id, order.supplierId));
-        
+
         let dueDate = data.invoiceDueDate ? new Date(data.invoiceDueDate) : null;
         if (!dueDate && supplier && supplier.paymentTermDays) {
           dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + supplier.paymentTermDays);
         }
 
-        await tx.insert(supplierInvoices).values({
+        [supplierInvoice] = await tx.insert(supplierInvoices).values({
           tenantId,
           branchId: order.branchId,
           supplierId: order.supplierId,
@@ -128,10 +130,10 @@ router.post('/orders/:id/invoice', zValidator('json', invoiceSchema), async (c) 
           amountPaid: '0',
           status: 'unpaid',
           paymentMethod: data.paymentMethod
-        });
+        }).returning();
       } else {
         // If cash/transfer, create invoice but mark as paid
-        await tx.insert(supplierInvoices).values({
+        [supplierInvoice] = await tx.insert(supplierInvoices).values({
           tenantId,
           branchId: order.branchId,
           supplierId: order.supplierId,
@@ -143,13 +145,31 @@ router.post('/orders/:id/invoice', zValidator('json', invoiceSchema), async (c) 
           amountPaid: actualTotal.toString(),
           status: 'paid',
           paymentMethod: data.paymentMethod
-        });
+        }).returning();
       }
-        
-      return updatedOrder;
+
+      return { updatedOrder, supplierInvoice };
     });
-    
-    return successResponse(c, result);
+
+    // H11 — post-commit, best-effort. A cash/transfer invoice is created
+    // already 'paid' — it still increases-then-immediately-settles AP in the
+    // ledger, which is correct: the shop DID owe the supplier for a moment.
+    emitEvent(AppEvent.SUPPLIER_INVOICE_CREATED, {
+      tenantId,
+      branchId: result.supplierInvoice.branchId,
+      invoiceId: result.supplierInvoice.id,
+      totalAmount: result.supplierInvoice.totalAmount,
+    });
+    if (result.supplierInvoice.status === 'paid') {
+      emitEvent(AppEvent.SUPPLIER_PAYMENT_RECORDED, {
+        tenantId,
+        branchId: result.supplierInvoice.branchId,
+        invoiceId: result.supplierInvoice.id,
+        amount: result.supplierInvoice.totalAmount,
+      });
+    }
+
+    return successResponse(c, result.updatedOrder);
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to process invoice', [err.message]);
   }

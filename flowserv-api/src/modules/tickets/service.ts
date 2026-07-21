@@ -5,6 +5,7 @@ import { eq, and, asc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { consumeStock, returnStock, reserveStock, releaseReservation } from '../inventory/service';
+import { emitEvent, AppEvent } from '../../services/event-bus';
 
 // H10 — every reserve/release movement for a ticket charge shares this
 // referenceType, distinguished by movementType; referenceId is always the charge id.
@@ -432,7 +433,7 @@ export async function assignTechnician(
  * rejected with 409 before it can call consumeStock a second time.
  */
 export async function consumeCharge(tenantId: string, ticketId: string, chargeId: string) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [ticket] = await tx
       .select({ branchId: serviceTickets.branchId })
       .from(serviceTickets)
@@ -499,8 +500,20 @@ export async function consumeCharge(tenantId: string, ticketId: string, chargeId
       .where(eq(ticketCharges.id, chargeId))
       .returning();
 
-    return updated;
+    return { updated, branchId: ticket.branchId };
   });
+
+  // H11 — post-commit, best-effort. See ledger.ts subscribeLedger for why a
+  // posting failure here can never surface back to the caller.
+  emitEvent(AppEvent.TICKET_PART_CONSUMED, {
+    tenantId,
+    branchId: result.branchId,
+    chargeId: result.updated.id,
+    unitCost: result.updated.unitCost ?? 0,
+    quantity: result.updated.quantity,
+  });
+
+  return result.updated;
 }
 
 /**

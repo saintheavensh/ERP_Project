@@ -382,14 +382,31 @@ missing.
 > downstream — dashboards, reports, the customer portal — depends on them.
 
 ### 4.5A. Finance Ledger (FIN-007, FIN-010)
-- [ ] 4.5A.1 BE: Post COGS + revenue to `financeLedgerEntries` on POS checkout
+> **Completed 2026-07-21 as [H11](plan/H11-finance-ledger.md)** — see `plan/README.md`
+> Stage 4 for the full writeup (event wiring, live API run, backfill against a
+> synthetic historical invoice, frontend SSR verification). Posted via the
+> existing event bus (`services/event-bus.ts`), not inline in route handlers —
+> `POS_SALE_COMPLETED`/`POS_SALE_VOIDED`/`TICKET_PART_CONSUMED`/
+> `SUPPLIER_INVOICE_CREATED`/`SUPPLIER_PAYMENT_RECORDED`, each emitted after its
+> owning transaction commits.
+- [x] 4.5A.1 BE: Post COGS + revenue to `financeLedgerEntries` on POS checkout
       (the FIFO code already computes the cost — currently discarded)
-- [ ] 4.5A.2 BE: Post reversal entries on invoice void
-- [ ] 4.5A.3 BE: Post AP entries on supplier invoice creation and payment
-- [ ] 4.5A.4 GAP-06: delete the dead `posTransactions` / `invoiceLines` schema, or migrate
-      onto it — do not leave two competing POS models
-- [ ] 4.5A.5 **Tests:** ledger accuracy — COGS matches consumed batch cost, entries balance
-- [ ] 4.5A.6 FE: simple ledger view (Simple Mode per DAS-004)
+- [x] 4.5A.2 BE: Post reversal entries on invoice void
+- [x] 4.5A.3 BE: Post AP entries on supplier invoice creation and payment —
+      posted as `entryType: 'adjustment'`, not a new type; `supplierInvoices`/
+      `supplierPayments` remain the real source of truth for AP balance (no
+      chart-of-accounts liability account built here, per the task's own
+      "resist scope creep" instruction).
+- [x] 4.5A.4 GAP-06: delete the dead `posTransactions` / `invoiceLines` schema, or migrate
+      onto it — do not leave two competing POS models. Resolved by
+      [H1](plan/H1-delete-dead-schema.md), not H11 — verified during H11 that
+      neither table exists in `db/schema/pos.ts` anymore, only `posInvoices`/
+      `posInvoiceLines`.
+- [x] 4.5A.5 **Tests:** ledger accuracy — COGS matches consumed batch cost, entries balance.
+      `npm test`: 100/100 passing (15 new: `modules/finance/__tests__/ledger.test.ts`,
+      `lib/__tests__/ledger-reconciliation.test.ts`).
+- [x] 4.5A.6 FE: simple ledger view (Simple Mode per DAS-004) — new
+      `/finance/ledger` page, SSR-verified with a real login cookie.
 
 ### 4.5B. RBAC Enforcement (PLT-003)
 - [ ] 4.5B.1 BE: Create `middleware/rbac.ts` with `requirePermission('...')`

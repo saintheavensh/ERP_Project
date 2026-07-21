@@ -10,11 +10,23 @@ export enum AppEvent {
   TICKET_STAGE_CHANGED = 'ticket.stage.changed',
   TICKET_CREATED = 'ticket.created',
   PART_CONSUMED = 'inventory.part.consumed',
-  PAYMENT_RECEIVED = 'finance.payment.received'
+  PAYMENT_RECEIVED = 'finance.payment.received',
+  // H11 — finance ledger posting triggers. Emitted after their owning
+  // transaction commits (never from inside it) so a ledger failure can never
+  // roll back a completed sale, consumption, or payment.
+  POS_SALE_COMPLETED = 'pos.sale.completed',
+  POS_SALE_VOIDED = 'pos.sale.voided',
+  TICKET_PART_CONSUMED = 'ticket.part.consumed',
+  SUPPLIER_INVOICE_CREATED = 'supplier.invoice.created',
+  SUPPLIER_PAYMENT_RECORDED = 'supplier.payment.recorded',
 }
 
 export function emitEvent(event: AppEvent, payload: unknown) {
   eventBus.emit(event, payload);
+}
+
+export function onEvent<T = unknown>(event: AppEvent, handler: (payload: T) => void) {
+  eventBus.on(event, handler);
 }
 
 // Example usage:
