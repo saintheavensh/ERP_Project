@@ -26,8 +26,22 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         const tmplJson = await tmplRes.json();
         templateData = tmplJson.data;
       }
-      
-      return { token, data: ticketData, template: templateData };
+
+      // H7 — charges (parts/labor/fees + totals + margin) and the inventory list used
+      // to pick a part when adding a charge. Fetched in parallel.
+      const [chargesRes, itemsRes] = await Promise.all([
+        fetch(`http://localhost:3001/v1/tickets/${ticketId}/charges`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch(`http://localhost:3001/v1/inventory`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
+
+      const chargesData = chargesRes.ok ? (await chargesRes.json()).data : { charges: [], totals: { estimated: 0, approved: 0, consumed: 0 }, margin: { revenue: 0, cost: 0, margin: 0 } };
+      const inventoryItems = itemsRes.ok ? (await itemsRes.json()).data : [];
+
+      return { token, data: ticketData, template: templateData, charges: chargesData, inventoryItems };
     }
   } catch (err) {
     console.error('Failed to load ticket details', err);

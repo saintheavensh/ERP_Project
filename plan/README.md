@@ -351,7 +351,47 @@ Stage 3
     with backfilled descriptions" checkbox — live-checked before starting, the
     database currently has 0 `pos_invoices`/`pos_invoice_lines` rows (H5 reset
     the DB after its own live-checkout tests), so there was nothing to backfill.
-- [ ] H7 Ticket charges
+- [x] H7 Ticket charges — 2026-07-21
+  - New `ticket_charges` table (parts/labor/fees; `estimated → approved → consumed →
+    cancelled` lifecycle) + denormalized `estimated_total`/`approved_total` on
+    `service_tickets` + `charge_status` enum. Put in its **own leaf schema file**
+    (`ticket-charges.ts`) rather than `tickets.ts` — the table references inventory tables
+    and `inventory.ts` already imports `tickets.ts`, so co-locating would make the schema
+    import graph circular. Verified via `information_schema`: money columns are
+    `numeric(14,2)`, `estimated_total` `NOT NULL default 0`.
+  - **Conservative scope (see [H7-ticket-charges-impl.md](./H7-ticket-charges-impl.md)):**
+    intake/transition/get in `routes/tickets.ts` left untouched; all new logic lives in
+    `modules/tickets/{service,types}.ts` — the first tickets-module extraction (H16). Pure
+    functions `calculateTicketTotals` / `canModifyCharge` / `calculateTicketMargin` sit
+    beside tenant-scoped, transactional CRUD that **recomputes the denormalized totals from
+    the rows inside the same transaction** (never a delta), so the cache can't drift —
+    the R6/H4-style trap.
+  - Endpoints (added to the existing tickets router): `GET/POST/PATCH/DELETE
+    /v1/tickets/:id/charges` and `POST /v1/tickets/:id/quotation`. Only `estimated` charges
+    are editable (409 `CHARGE_LOCKED`); stock is never touched here — that is H9.
+  - `npm test`: **71 passing** (was 61 — 10 new in `modules/tickets/__tests__/service.test.ts`,
+    incl. the zero-cost labor margin, a negative margin, and cancelled-charge exclusion).
+    `npx tsc --noEmit` clean; `npx svelte-check` 0 errors/0 warnings.
+  - **Live API run** (recorded, then DB reset to clean seed): part charge defaulted
+    `unitPrice` from the item's selling price and stayed editable; labor charge wrote
+    `unitCost=null`/`inventoryItemId=null` (no stock touched); `GET` totals correct and the
+    denormalized `estimated_total` matched `SUM(charges)` across add/edit/delete; editing/
+    deleting a non-estimated charge → 409 `CHARGE_LOCKED`; `POST /quotation` on an empty
+    ticket → 422 `NO_CHARGES_TO_QUOTE`, and on a real one → **wrote `approval_requests.amount
+    = 540000`** (the column that nothing previously produced — the whole point of H7), flipped
+    both charges to `approved`, and set `estimated_total→0` / `approved_total→540000`.
+  - **Frontend:** new `TicketCharges.svelte` (charge list with source/status badges, running
+    total, margin line, add-part/add-labor form, "Minta Persetujuan") rendered inside
+    `TicketWorkspace.svelte`; `ticket.detail.svelte.ts` gained `addCharge`/`deleteCharge`/
+    `requestApproval`; `[id]/+page.server.ts` now loads charges + inventory. **SSR-verified**
+    with a real `flowserv_token` cookie: the ticket page returns 200 and renders the charges
+    section, the approval button, and live charge/approved data.
+  - **Not done this session:** an interactive browser click-path (Playwright is not installed
+    in `flowserv-web`). Every button's backend is proven by the API run above and the page
+    SSR-renders with real data, but the literal click-through was not walked — a manual walk
+    (or installing Playwright) is the remaining confirmation if the full DoD bar is wanted.
+  - Half A (schema + CRUD + totals + tests) was committed separately before Half B, per the
+    plan's split.
 - [ ] H8 Technician & customer
 - [ ] H9 Ticket parts consumption
 - [ ] H10 Stock reservation

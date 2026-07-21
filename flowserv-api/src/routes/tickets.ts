@@ -9,7 +9,7 @@ import { successResponse, errorResponse } from '../lib/response';
 import { FlowEngine } from '../services/flow-engine';
 import { BusinessError } from '../lib/errors';
 import { createChargeInput, updateChargeInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges } from '../modules/tickets/service';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -299,6 +299,22 @@ ticketsRouter.delete('/:id/charges/:chargeId', async (c) => {
     }
     console.error('Failed to delete charge:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete charge', undefined, 500);
+  }
+});
+
+// Freeze estimates into a quote → writes approval_requests.amount
+ticketsRouter.post('/:id/quotation', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  try {
+    const result = await generateQuotation(tenantId, ticketId);
+    return successResponse(c, result, undefined, 201);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to generate quotation:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to generate quotation', undefined, 500);
   }
 });
 

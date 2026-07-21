@@ -1,5 +1,5 @@
 import { db } from '../../db/connection';
-import { serviceTickets, ticketCharges, inventoryItems } from '../../db/schema';
+import { serviceTickets, ticketCharges, inventoryItems, approvalRequests } from '../../db/schema';
 import type { ChargeStatus } from '../../db/schema/enums';
 import { eq, and, asc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
@@ -225,6 +225,80 @@ export async function deleteCharge(tenantId: string, ticketId: string, chargeId:
     await tx.delete(ticketCharges).where(eq(ticketCharges.id, chargeId));
     await recomputeAndPersistTotals(tx, tenantId, ticketId);
     return { id: chargeId, deleted: true };
+  });
+}
+
+/**
+ * Freeze the current estimate into a quote: flip every 'estimated' charge to 'approved',
+ * update the ticket's totals, and write an approval_requests row whose `amount` is the
+ * sum being quoted — the number that column has always waited for and nothing produced.
+ */
+export async function generateQuotation(tenantId: string, ticketId: string) {
+  return db.transaction(async (tx) => {
+    await assertTicketExists(tx, tenantId, ticketId);
+
+    const estimated = await tx
+      .select({ quantity: ticketCharges.quantity, unitPrice: ticketCharges.unitPrice })
+      .from(ticketCharges)
+      .where(
+        and(
+          eq(ticketCharges.ticketId, ticketId),
+          eq(ticketCharges.tenantId, tenantId),
+          eq(ticketCharges.status, 'estimated')
+        )
+      );
+
+    if (estimated.length === 0) {
+      throw new BusinessError('NO_CHARGES_TO_QUOTE', 'There are no estimated charges to quote', 422);
+    }
+
+    const quotedAmount = roundMoney(
+      estimated.reduce((s, r) => s + r.quantity * parseFloat(r.unitPrice), 0)
+    );
+
+    // estimated → approved (the customer is being asked to accept this set)
+    await tx
+      .update(ticketCharges)
+      .set({ status: 'approved' })
+      .where(
+        and(
+          eq(ticketCharges.ticketId, ticketId),
+          eq(ticketCharges.tenantId, tenantId),
+          eq(ticketCharges.status, 'estimated')
+        )
+      );
+
+    // Recompute both totals from the post-flip rows: estimated drops (usually to 0),
+    // approved rises to the cumulative approved sum.
+    const rows = await tx
+      .select({
+        status: ticketCharges.status,
+        quantity: ticketCharges.quantity,
+        unitPrice: ticketCharges.unitPrice,
+        unitCost: ticketCharges.unitCost,
+      })
+      .from(ticketCharges)
+      .where(and(eq(ticketCharges.ticketId, ticketId), eq(ticketCharges.tenantId, tenantId)));
+    const totals = calculateTicketTotals(rows.map(toCalcRow));
+
+    await tx
+      .update(serviceTickets)
+      .set({
+        estimatedTotal: toMoneyString(totals.estimated),
+        approvedTotal: toMoneyString(totals.approved),
+      })
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+
+    const [approvalRequest] = await tx
+      .insert(approvalRequests)
+      .values({
+        ticketId,
+        amount: toMoneyString(quotedAmount),
+        status: 'pending',
+      })
+      .returning();
+
+    return { approvalRequest, quotedAmount, approvedTotal: totals.approved };
   });
 }
 

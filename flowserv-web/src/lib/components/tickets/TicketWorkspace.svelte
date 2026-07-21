@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
+  import TicketCharges from './TicketCharges.svelte';
 
   let { state } = $props<{ state: TicketDetailState }>();
 </script>
@@ -46,6 +47,9 @@
       <p class="text-slate-600 text-sm mt-1 font-mono">SN: {state.asset?.serialNumber || 'N/A'}</p>
     </div>
   </div>
+
+  <!-- H7 — Charges (parts / labor / fees), running total, request approval -->
+  <TicketCharges {state} />
 
   <!-- Action Forms (Phase 3 Hardcoded dynamic forms) -->
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

@@ -30,6 +30,82 @@ export class TicketDetailState {
   get currentNode() { return this.data.data?.node; }
   get template() { return this.data.template; }
 
+  // H7 — Charges
+  chargeForm = $state<{ sourceType: 'part' | 'labor' | 'fee'; inventoryItemId: string; description: string; quantity: number; unitPrice: string }>({
+    sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: ''
+  });
+  chargeLoading = $state(false);
+
+  get charges() { return this.data.charges?.charges || []; }
+  get chargeTotals() { return this.data.charges?.totals || { estimated: 0, approved: 0, consumed: 0 }; }
+  get chargeMargin() { return this.data.charges?.margin || { revenue: 0, cost: 0, margin: 0 }; }
+  get inventoryItems() { return this.data.inventoryItems || []; }
+  // A quote has already been requested once the ticket carries an approved total.
+  get isQuoted() { return this.ticket?.approvedTotal != null; }
+
+  resetChargeForm() {
+    this.chargeForm = { sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: '' };
+  }
+
+  private chargeHeaders() {
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` };
+  }
+
+  async addCharge() {
+    const f = this.chargeForm;
+    const payload: any = { sourceType: f.sourceType, quantity: Number(f.quantity) };
+    if (f.sourceType === 'part') {
+      if (!f.inventoryItemId) { this.errorMsg = 'Pilih sparepart terlebih dahulu'; return; }
+      payload.inventoryItemId = f.inventoryItemId;
+      if (f.description) payload.description = f.description;
+      if (f.unitPrice !== '') payload.unitPrice = Number(f.unitPrice); // else backend defaults from selling price
+    } else {
+      if (!f.description) { this.errorMsg = 'Isi deskripsi jasa/biaya'; return; }
+      payload.description = f.description;
+      payload.unitPrice = Number(f.unitPrice || 0);
+    }
+
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/charges`, {
+        method: 'POST', headers: this.chargeHeaders(), body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (res.ok) { this.resetChargeForm(); await invalidateAll(); }
+      else this.errorMsg = result.error?.message || 'Gagal menambah biaya';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
+  async deleteCharge(id: string) {
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/charges/${id}`, {
+        method: 'DELETE', headers: this.chargeHeaders()
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal menghapus biaya';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
+  async requestApproval() {
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/quotation`, {
+        method: 'POST', headers: this.chargeHeaders()
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal meminta persetujuan';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
   get availableTransitions() {
     if (!this.template || !this.currentNode) return [];
     return this.template.transitions

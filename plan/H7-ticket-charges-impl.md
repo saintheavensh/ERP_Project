@@ -173,13 +173,17 @@ SVC-006/007, SBL-001 now unblocked) and the **Progress** section of
 
 ## Verification (from the H7 plan — this is the Definition of Done)
 
-- [ ] Add 2 parts + 1 labor charge; `GET` returns all three with a correct total
-- [ ] `estimatedTotal` on the ticket matches the sum of its estimated charges
-- [ ] `POST /quotation` writes the correct `amount` into `approval_requests`
-- [ ] An `approved` charge cannot be edited or deleted (409)
-- [ ] `calculateTicketMargin` correct incl. a zero-cost labor line — unit tested, no DB
-- [ ] Click-path walked: add a part + labor, request approval, see the quoted total
-- [ ] `npm test` passing with new tests for all three pure functions
+Completed 2026-07-21 — full evidence in [README.md](./README.md) → Progress → H7.
+
+- [x] Add 2 parts + 1 labor charge; `GET` returns all three with a correct total
+- [x] `estimatedTotal` on the ticket matches the sum of its estimated charges (live-verified across add/edit/delete)
+- [x] `POST /quotation` writes the correct `amount` (540000) into `approval_requests`
+- [x] An `approved` charge cannot be edited or deleted (409 `CHARGE_LOCKED`)
+- [x] `calculateTicketMargin` correct incl. a zero-cost labor line — unit tested, no DB
+- [~] Click-path: **not** walked interactively (Playwright not installed) — instead the page
+      was SSR-rendered with a real cookie (200, charges section + live data present) and every
+      button's API was proven directly. Manual browser walk is the remaining confirmation.
+- [x] `npm test` passing (71) with new tests for all three pure functions
 
 ## Watch out
 
