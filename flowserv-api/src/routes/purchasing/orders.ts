@@ -51,6 +51,7 @@ router.get('/orders/:id', async (c) => {
         supplier: true,
         supplierInvoices: true,
         purchaseOrderLines: {
+          where: eq(purchaseOrderLines.tenantId, tenantId),
           with: {
             inventoryItem: {
               with: {
@@ -106,6 +107,7 @@ router.post('/orders', zValidator('json', createOrderSchema), async (c) => {
       }).returning();
       
       const lineValues = data.lines.map(line => ({
+        tenantId,
         purchaseOrderId: order.id,
         inventoryItemId: line.inventoryItemId,
         quantity: line.quantity,
@@ -168,7 +170,7 @@ router.delete('/orders/:id', async (c) => {
       
       // 2. Find lines
       const lines = await tx.query.purchaseOrderLines.findMany({
-        where: eq(purchaseOrderLines.purchaseOrderId, orderId)
+        where: and(eq(purchaseOrderLines.purchaseOrderId, orderId), eq(purchaseOrderLines.tenantId, tenantId))
       });
       
       const lineIds = lines.map(l => l.id);
@@ -196,9 +198,9 @@ router.delete('/orders/:id', async (c) => {
              
              // decrement stock level
              await tx.execute(sql`
-               UPDATE stock_levels 
+               UPDATE stock_levels
                SET quantity_available = quantity_available - ${batch.quantityReceived}
-               WHERE inventory_item_id = ${batch.inventoryItemId} AND branch_id = ${batch.branchId}
+               WHERE inventory_item_id = ${batch.inventoryItemId} AND branch_id = ${batch.branchId} AND tenant_id = ${tenantId}
              `);
            }
            
@@ -208,7 +210,7 @@ router.delete('/orders/:id', async (c) => {
       }
       
       // Delete lines
-      await tx.delete(purchaseOrderLines).where(eq(purchaseOrderLines.purchaseOrderId, orderId));
+      await tx.delete(purchaseOrderLines).where(and(eq(purchaseOrderLines.purchaseOrderId, orderId), eq(purchaseOrderLines.tenantId, tenantId)));
       
       // Delete order
       await tx.delete(purchaseOrders).where(eq(purchaseOrders.id, orderId));

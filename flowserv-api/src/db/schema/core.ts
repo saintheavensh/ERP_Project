@@ -57,7 +57,7 @@ export const roles = pgTable('roles', {
   name: text('name').notNull(),
   isCustom: boolean('is_custom').notNull().default(false),
 }, (table) => ({
-  // tenantNameUnique: unique('roles_tenant_name_unique').on(table.tenantId, table.name),
+  tenantNameUnique: unique('roles_tenant_name_unique').on(table.tenantId, table.name),
   tenantIdx: index('roles_tenant_idx').on(table.tenantId),
 }));
 

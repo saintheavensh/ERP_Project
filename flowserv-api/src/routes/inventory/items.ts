@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
-import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing } from '../../db/schema/index';
+import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing, branches } from '../../db/schema/index';
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { successResponse, errorResponse } from '../../lib/response';
@@ -24,7 +24,7 @@ router.get('/', async (c) => {
       where: and(...filters),
       with: {
         category: true,
-        stockLevels: true,
+        stockLevels: { where: eq(stockLevels.tenantId, tenantId) },
         stockBatches: true,
         compatibility: { columns: { deviceModelId: true } },
         brandPricing: {
@@ -102,6 +102,24 @@ router.post('/', zValidator('json', createItemSchema), async (c) => {
           unresolvedCompatibility: []
         })
         .returning();
+
+      // A stock_levels row is the only thing POS checkout trusts for
+      // "is there stock" — create it for every branch up front (at 0) so a
+      // brand-new item is never sellable-but-missing-its-cache-row (H4 Part 3).
+      const tenantBranches = await tx.query.branches.findMany({
+        where: eq(branches.tenantId, tenantId)
+      });
+      if (tenantBranches.length > 0) {
+        await tx.insert(stockLevels).values(
+          tenantBranches.map(branch => ({
+            tenantId,
+            inventoryItemId: item.id,
+            branchId: branch.id,
+            quantityAvailable: 0,
+            quantityReserved: 0
+          }))
+        );
+      }
 
       // 2. Parse compatibility
       const allBrands = await tx.query.deviceBrands.findMany({
@@ -221,7 +239,10 @@ router.delete('/:id', async (c) => {
     await db.transaction(async (tx) => {
       // 1. Check if item is used in any Purchase Orders
       const poLines = await tx.query.purchaseOrderLines.findFirst({
-        where: eq(purchaseOrderLines.inventoryItemId, inventoryItemId)
+        where: and(
+          eq(purchaseOrderLines.inventoryItemId, inventoryItemId),
+          eq(purchaseOrderLines.tenantId, tenantId)
+        )
       });
       if (poLines) {
         throw new Error('Cannot delete item because it is referenced in a Purchase Order. Delete the PO first.');
@@ -240,7 +261,10 @@ router.delete('/:id', async (c) => {
       await tx.delete(stockBatches).where(eq(stockBatches.inventoryItemId, inventoryItemId));
       
       // 6. Delete stock levels (even if quantity is 0, the row exists)
-      await tx.delete(stockLevels).where(eq(stockLevels.inventoryItemId, inventoryItemId));
+      await tx.delete(stockLevels).where(and(
+        eq(stockLevels.inventoryItemId, inventoryItemId),
+        eq(stockLevels.tenantId, tenantId)
+      ));
       
       // 7. Delete the item itself
       await tx.delete(inventoryItems).where(

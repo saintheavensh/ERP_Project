@@ -63,7 +63,8 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
           .from(purchaseOrderLines)
           .where(and(
             eq(purchaseOrderLines.id, lineInput.lineId),
-            eq(purchaseOrderLines.purchaseOrderId, orderId)
+            eq(purchaseOrderLines.purchaseOrderId, orderId),
+            eq(purchaseOrderLines.tenantId, tenantId)
           ))
           .for('update');
 
@@ -89,7 +90,7 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
 
         const [line] = await tx.update(purchaseOrderLines)
           .set({ receivedQuantity: newReceivedTotal })
-          .where(eq(purchaseOrderLines.id, existingLine.id))
+          .where(and(eq(purchaseOrderLines.id, existingLine.id), eq(purchaseOrderLines.tenantId, tenantId)))
           .returning();
 
         // If splits are provided, insert multiple batches
@@ -147,17 +148,19 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
         // reason as the line above — concurrent receipts must not lose an update.
         const existingLevels = await tx.select().from(stockLevels).where(
           and(
+            eq(stockLevels.tenantId, tenantId),
             eq(stockLevels.inventoryItemId, line.inventoryItemId),
             eq(stockLevels.branchId, order.branchId)
           )
         ).for('update');
-        
+
         if (existingLevels.length > 0) {
           await tx.update(stockLevels)
             .set({ quantityAvailable: existingLevels[0].quantityAvailable + lineTotalReceived })
             .where(eq(stockLevels.id, existingLevels[0].id));
         } else {
           await tx.insert(stockLevels).values({
+            tenantId,
             inventoryItemId: line.inventoryItemId,
             branchId: order.branchId,
             quantityAvailable: lineTotalReceived,
@@ -165,12 +168,12 @@ router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) 
           });
         }
       }
-      
+
       // Re-read all lines so the status reflects the true accumulated total,
       // not just what arrived in this delivery.
       const allLines = await tx.select()
         .from(purchaseOrderLines)
-        .where(eq(purchaseOrderLines.purchaseOrderId, orderId));
+        .where(and(eq(purchaseOrderLines.purchaseOrderId, orderId), eq(purchaseOrderLines.tenantId, tenantId)));
 
       const newStatus = computeOrderStatus(allLines, order.status);
 

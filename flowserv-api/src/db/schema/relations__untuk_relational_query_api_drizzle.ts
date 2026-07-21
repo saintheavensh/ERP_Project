@@ -164,6 +164,7 @@ export const productSuppliersRelations = relations(productSuppliers, ({ one }) =
 }));
 
 export const stockLevelsRelations = relations(stockLevels, ({ one }) => ({
+  tenant: one(tenants, { fields: [stockLevels.tenantId], references: [tenants.id] }),
   inventoryItem: one(inventoryItems, { fields: [stockLevels.inventoryItemId], references: [inventoryItems.id] }),
   branch: one(branches, { fields: [stockLevels.branchId], references: [branches.id] }),
 }));
@@ -181,6 +182,7 @@ export const purchaseOrdersRelations = relations(purchaseOrders, ({ one, many })
 }));
 
 export const purchaseOrderLinesRelations = relations(purchaseOrderLines, ({ one, many }) => ({
+  tenant: one(tenants, { fields: [purchaseOrderLines.tenantId], references: [tenants.id] }),
   purchaseOrder: one(purchaseOrders, { fields: [purchaseOrderLines.purchaseOrderId], references: [purchaseOrders.id] }),
   inventoryItem: one(inventoryItems, { fields: [purchaseOrderLines.inventoryItemId], references: [inventoryItems.id] }),
   stockBatches: many(stockBatches),

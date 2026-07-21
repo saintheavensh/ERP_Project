@@ -193,6 +193,7 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
         // Dapatkan stok level saat ini, atau buat kalau belum ada (seharusnya ada)
         const stockLevel = await tx.query.stockLevels.findFirst({
           where: and(
+            eq(stockLevels.tenantId, tenantId),
             eq(stockLevels.inventoryItemId, item.inventoryItemId),
             eq(stockLevels.branchId, data.branchId)
           )
@@ -322,6 +323,7 @@ router.delete('/invoices/:id', async (c) => {
         const qtyToRestore = itemRestores[itemId];
         const [stockLevel] = await tx.select().from(stockLevels)
           .where(and(
+            eq(stockLevels.tenantId, tenantId),
             eq(stockLevels.inventoryItemId, itemId),
             eq(stockLevels.branchId, invoice.branchId)
           ))

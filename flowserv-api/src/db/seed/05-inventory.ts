@@ -106,7 +106,7 @@ export async function seedInventory(tx: SeedTx): Promise<void> {
   // Sebelum ini PO tersebut berstatus 'completed' dengan receivedQuantity 20
   // tapi tidak pernah menambah stok sama sekali — angkanya bohong.
   await tx.insert(stockLevels).values([
-    { id: IDS.levelLcd, inventoryItemId: IDS.itemLcdMultiBatch, branchId: IDS.branchPusat, quantityAvailable: 30, quantityReserved: 0 },
-    { id: IDS.levelStokSatu, inventoryItemId: IDS.itemStokSatu, branchId: IDS.branchPusat, quantityAvailable: 1, quantityReserved: 0 },
+    { id: IDS.levelLcd, tenantId: IDS.tenantMain, inventoryItemId: IDS.itemLcdMultiBatch, branchId: IDS.branchPusat, quantityAvailable: 30, quantityReserved: 0 },
+    { id: IDS.levelStokSatu, tenantId: IDS.tenantMain, inventoryItemId: IDS.itemStokSatu, branchId: IDS.branchPusat, quantityAvailable: 1, quantityReserved: 0 },
   ]).onConflictDoNothing();
 }

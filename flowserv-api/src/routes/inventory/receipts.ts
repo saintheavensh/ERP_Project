@@ -53,6 +53,7 @@ router.post('/:id/receive', zValidator('json', receiveStockSchema), async (c) =>
       // of the two increments — same pattern as the PO receive path.
       const existingLevels = await tx.select().from(stockLevels).where(
         and(
+          eq(stockLevels.tenantId, tenantId),
           eq(stockLevels.inventoryItemId, inventoryItemId),
           eq(stockLevels.branchId, data.branchId)
         )
@@ -66,6 +67,7 @@ router.post('/:id/receive', zValidator('json', receiveStockSchema), async (c) =>
       } else {
         // Insert new
         await tx.insert(stockLevels).values({
+          tenantId,
           inventoryItemId,
           branchId: data.branchId,
           quantityAvailable: data.quantity,

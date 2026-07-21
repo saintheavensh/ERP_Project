@@ -240,7 +240,25 @@ Stage 2
 - [x] H1 Delete dead schema — 2026-07-21
 - [x] H2 Status enums — 2026-07-21
 - [x] H3 Timestamps → `timestamptz` — 2026-07-21
-- [ ] H4 Constraints
+- [x] H4 Constraints — 2026-07-21
+  - All three unique constraints re-enabled (`roles` tenant+name, `inventory_items`
+    tenant+sku, `stock_levels` tenant+item+branch) — live-verified each rejects a
+    duplicate insert with a `duplicate key value violates unique constraint` error.
+  - `tenant_id` added `NOT NULL` to `stock_levels` and `purchase_order_lines`, fully
+    backfilled via `db:reset` (disposable-data path, no manual SQL backfill needed).
+  - Every direct query touching those two tables now filters on `tenantId` (11 call
+    sites across `purchasing/orders.ts`, `purchasing/receipts.ts`, `opname.ts`,
+    `pos/invoices.ts`, `inventory/receipts.ts`, `inventory/items.ts`) — grep-verified,
+    each `.where()` and relational `with: { where }` traced by hand.
+  - Decision: kept `stock_levels` as a cache (Option A), made honest via the unique
+    constraint, auto-create-on-item-creation, and a new reconciliation endpoint.
+    Written up in `PHASES.md` → Architecture Debt.
+  - `GET /v1/inventory/reconciliation` (new, backed by pure `lib/reconciliation.ts`)
+    — live-verified `isClean: true`, `drift: []` against the full seeded dataset.
+  - Live-verified: creating a new inventory item auto-creates a `stock_levels` row
+    (qty 0) for every branch of the tenant; confirmed 2 rows for 2 branches, then
+    confirmed the delete path cleans them up.
+  - `npm test`: 42/42 passing (was 37 — 5 new tests in `lib/__tests__/reconciliation.test.ts`).
 - [ ] H5 Money & numbering
 
 Stage 3

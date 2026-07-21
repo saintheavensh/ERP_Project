@@ -35,6 +35,7 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
 
   await tx.insert(purchaseOrderLines).values({
     id: IDS.poOrderedLine,
+    tenantId: IDS.tenantMain,
     purchaseOrderId: IDS.poOrdered,
     inventoryItemId: IDS.itemStokSatu,
     quantity: 10,
@@ -60,6 +61,7 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
 
   await tx.insert(purchaseOrderLines).values({
     id: IDS.poCompletedLine,
+    tenantId: IDS.tenantMain,
     purchaseOrderId: IDS.poCompleted,
     inventoryItemId: IDS.itemLcdMultiBatch,
     quantity: 20,

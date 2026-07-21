@@ -90,6 +90,7 @@ opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
         // uploads for the same item/branch don't lose one of the two increments.
         const [existingLevel] = await tx.select().from(stockLevels).where(
           and(
+            eq(stockLevels.tenantId, tenantId),
             eq(stockLevels.inventoryItemId, item.inventoryItemId),
             eq(stockLevels.branchId, data.branchId)
           )
@@ -101,6 +102,7 @@ opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
             .where(eq(stockLevels.id, existingLevel.id));
         } else {
           await tx.insert(stockLevels).values({
+            tenantId,
             inventoryItemId: item.inventoryItemId,
             branchId: data.branchId,
             quantityAvailable: item.quantity,

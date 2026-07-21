@@ -566,6 +566,28 @@ Other known debt, to be addressed as modules are touched:
   `relations__untuk_relational_query_api_drizzle.ts`
 - Comments and error strings mix Indonesian and English — pick one for user-facing text
 
+**Decision (2026-07-21, H4): `stock_levels` is deliberately a cache, not the source of
+truth.** The source of truth for physical stock is `SUM(stock_batches.quantity_remaining)`.
+`stock_levels.quantityAvailable` is a denormalized read cache kept in sync by every route
+that touches stock, and it is the only place `quantityReserved` can live — that value
+cannot be derived from batches, and H10 (stock reservation) needs it. Option B (drop the
+cache, derive everything from a view over `stock_batches`) was considered and rejected for
+that reason. What makes the cache safe now, that it was not before H4:
+- `stock_levels` carries a `(tenant_id, inventory_item_id, branch_id)` unique constraint —
+  a duplicate row (the failure mode that let `findFirst` silently return the wrong one) is
+  now rejected by the database, not just prevented by row locking.
+- Creating an inventory item auto-creates its `stock_levels` row (quantity 0) for every
+  branch of the tenant, so a newly created item can never hit the `STOCK_LEVEL_MISSING`
+  422 path in POS just because the cache row was never made.
+- `GET /v1/inventory/reconciliation` (backed by the pure `reconcileStockLevels()` in
+  `lib/reconciliation.ts`, covered by 5 unit tests) compares the cache against the batch
+  sum per item/branch and reports any drift. Run it periodically, or after suspecting a
+  bug in a stock-mutating route — a non-empty `drift` array means a code path updated one
+  side without the other.
+Revisit this decision (toward Option B) only if reconciliation keeps finding real drift
+despite the constraint — that would mean something is writing to `stock_levels` without
+going through the paths this task audited.
+
 ---
 
 ## Deprecated Documentation (DO NOT use as reference)

@@ -51,7 +51,7 @@ export const inventoryItems = pgTable('inventory_items', {
   unresolvedCompatibility: jsonb('unresolved_compatibility').default('[]'), // array of strings for unparsed models
   unitOfMeasure: varchar('unit_of_measure', { length: 20 }).notNull().default('pcs'),
 }, (table) => ({
-  // tenantSkuUnique: unique('inventory_items_tenant_sku_unique').on(table.tenantId, table.sku),
+  tenantSkuUnique: unique('inventory_items_tenant_sku_unique').on(table.tenantId, table.sku),
   tenantIdx: index('inventory_items_tenant_idx').on(table.tenantId),
 }));
 
@@ -69,12 +69,14 @@ export const itemBrandPricing = pgTable('item_brand_pricing', {
 
 export const stockLevels = pgTable('stock_levels', {
   id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   quantityAvailable: integer('quantity_available').notNull().default(0),
   quantityReserved: integer('quantity_reserved').notNull().default(0),
 }, (table) => ({
-  // itemBranchUnique: unique('stock_levels_item_branch_unique').on(table.inventoryItemId, table.branchId),
+  tenantItemBranchUnique: unique('stock_levels_tenant_item_branch_unique').on(table.tenantId, table.inventoryItemId, table.branchId),
+  tenantIdx: index('stock_levels_tenant_idx').on(table.tenantId),
 }));
 
 export const stockMovements = pgTable('stock_movements', {
@@ -195,11 +197,14 @@ export const purchaseOrders = pgTable('purchase_orders', {
 
 export const purchaseOrderLines = pgTable('purchase_order_lines', {
   id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   purchaseOrderId: uuid('purchase_order_id').notNull().references(() => purchaseOrders.id),
   inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
   quantity: integer('quantity').notNull(),
   receivedQuantity: integer('received_quantity').notNull().default(0),
   unitPrice: decimal('unit_price', { precision: 14, scale: 2 }).notNull(), // estimated
   actualUnitPrice: decimal('actual_unit_price', { precision: 14, scale: 2 }), // final from invoice
-});
+}, (table) => ({
+  tenantIdx: index('purchase_order_lines_tenant_idx').on(table.tenantId),
+}));
 
