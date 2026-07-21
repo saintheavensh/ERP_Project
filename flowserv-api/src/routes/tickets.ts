@@ -5,6 +5,7 @@ import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches, users } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
+import { requirePermission } from '../middleware/rbac';
 import { successResponse, errorResponse } from '../lib/response';
 import { FlowEngine } from '../services/flow-engine';
 import { BusinessError } from '../lib/errors';
@@ -118,7 +119,7 @@ const intakeSchema = z.object({
   branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
 });
 
-ticketsRouter.post('/intake', zValidator('json', intakeSchema), async (c) => {
+ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('json', intakeSchema), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -206,6 +207,9 @@ const transitionSchema = z.object({
   notes: z.string().optional()
 });
 
+// No requirePermission here on purpose: FlowEngine.executeTransition already gates
+// on the *target node's* requiredPermissionId (services/flow-engine.ts), which varies
+// per node — a route-level static permission code can't express that. See H12.
 ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), async (c) => {
   const { tenantId, userId, roleId } = getAuthContext(c);
   const ticketId = c.req.param('id');
@@ -246,7 +250,7 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
 // H8 — Technician assignment. Logic lives in modules/tickets/service.ts.
 // ============================================================================
 
-ticketsRouter.post('/:id/assign', zValidator('json', assignTechnicianInput), async (c) => {
+ticketsRouter.post('/:id/assign', requirePermission('ticket.assign_technician'), zValidator('json', assignTechnicianInput), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const input = c.req.valid('json');
@@ -284,7 +288,7 @@ ticketsRouter.get('/:id/charges', async (c) => {
 });
 
 // Add an estimated charge
-ticketsRouter.post('/:id/charges', zValidator('json', createChargeInput), async (c) => {
+ticketsRouter.post('/:id/charges', requirePermission('ticket.manage_charges'), zValidator('json', createChargeInput), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const input = c.req.valid('json');
@@ -301,7 +305,7 @@ ticketsRouter.post('/:id/charges', zValidator('json', createChargeInput), async 
 });
 
 // Edit a charge (only while estimated)
-ticketsRouter.patch('/:id/charges/:chargeId', zValidator('json', updateChargeInput), async (c) => {
+ticketsRouter.patch('/:id/charges/:chargeId', requirePermission('ticket.manage_charges'), zValidator('json', updateChargeInput), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -319,7 +323,7 @@ ticketsRouter.patch('/:id/charges/:chargeId', zValidator('json', updateChargeInp
 });
 
 // Delete a charge (only while estimated)
-ticketsRouter.delete('/:id/charges/:chargeId', async (c) => {
+ticketsRouter.delete('/:id/charges/:chargeId', requirePermission('ticket.manage_charges'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -336,7 +340,7 @@ ticketsRouter.delete('/:id/charges/:chargeId', async (c) => {
 });
 
 // H9 — physically deduct an approved part charge from FIFO stock
-ticketsRouter.post('/:id/charges/:chargeId/consume', async (c) => {
+ticketsRouter.post('/:id/charges/:chargeId/consume', requirePermission('ticket.manage_charges'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -353,7 +357,7 @@ ticketsRouter.post('/:id/charges/:chargeId/consume', async (c) => {
 });
 
 // H9 — undo a consumption: restore stock, flip the charge back to 'approved'
-ticketsRouter.post('/:id/charges/:chargeId/return', async (c) => {
+ticketsRouter.post('/:id/charges/:chargeId/return', requirePermission('ticket.manage_charges'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -370,7 +374,7 @@ ticketsRouter.post('/:id/charges/:chargeId/return', async (c) => {
 });
 
 // H10 — cancel an approved charge before it's consumed, releasing its stock reservation
-ticketsRouter.post('/:id/charges/:chargeId/cancel', async (c) => {
+ticketsRouter.post('/:id/charges/:chargeId/cancel', requirePermission('ticket.manage_charges'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const chargeId = c.req.param('chargeId');
@@ -387,7 +391,7 @@ ticketsRouter.post('/:id/charges/:chargeId/cancel', async (c) => {
 });
 
 // Freeze estimates into a quote → writes approval_requests.amount
-ticketsRouter.post('/:id/quotation', async (c) => {
+ticketsRouter.post('/:id/quotation', requirePermission('ticket.approve_quote'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   try {

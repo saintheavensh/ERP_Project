@@ -3,6 +3,7 @@ import { db } from '../db/connection';
 import { suppliers, supplierBrands } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
+import { requirePermission } from '../middleware/rbac';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -63,7 +64,7 @@ const linkBrandSchema = z.object({
   brandId: z.string().uuid()
 });
 
-suppliersRouter.post('/:id/brands', zValidator('json', linkBrandSchema), async (c) => {
+suppliersRouter.post('/:id/brands', requirePermission('supplier.manage'), zValidator('json', linkBrandSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   const { brandId } = c.req.valid('json');
@@ -87,7 +88,7 @@ suppliersRouter.post('/:id/brands', zValidator('json', linkBrandSchema), async (
 });
 
 // DELETE /v1/suppliers/:id/brands/:brandId
-suppliersRouter.delete('/:id/brands/:brandId', async (c) => {
+suppliersRouter.delete('/:id/brands/:brandId', requirePermission('supplier.manage'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   const brandId = c.req.param('brandId');
@@ -119,7 +120,7 @@ const supplierSchema = z.object({
   returnWarrantyNotes: z.string().optional()
 });
 
-suppliersRouter.post('/', zValidator('json', supplierSchema), async (c) => {
+suppliersRouter.post('/', requirePermission('supplier.manage'), zValidator('json', supplierSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -138,7 +139,7 @@ suppliersRouter.post('/', zValidator('json', supplierSchema), async (c) => {
 });
 
 // PUT /v1/suppliers/:id
-suppliersRouter.put('/:id', zValidator('json', supplierSchema), async (c) => {
+suppliersRouter.put('/:id', requirePermission('supplier.manage'), zValidator('json', supplierSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   const data = c.req.valid('json');
@@ -160,7 +161,7 @@ suppliersRouter.put('/:id', zValidator('json', supplierSchema), async (c) => {
 });
 
 // DELETE /v1/suppliers/:id
-suppliersRouter.delete('/:id', async (c) => {
+suppliersRouter.delete('/:id', requirePermission('supplier.manage'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const supplierId = c.req.param('id');
   

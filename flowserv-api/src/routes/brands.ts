@@ -3,6 +3,7 @@ import { db } from '../db/connection';
 import { partBrands } from '../db/schema';
 import { eq, desc, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
+import { requirePermission } from '../middleware/rbac';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -32,7 +33,7 @@ const brandSchema = z.object({
   qualityGrade: z.string().min(1, 'Quality grade is required')
 });
 
-brandsRouter.post('/', zValidator('json', brandSchema), async (c) => {
+brandsRouter.post('/', requirePermission('catalog.manage'), zValidator('json', brandSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -51,7 +52,7 @@ brandsRouter.post('/', zValidator('json', brandSchema), async (c) => {
 });
 
 // DELETE /v1/brands/:id
-brandsRouter.delete('/:id', async (c) => {
+brandsRouter.delete('/:id', requirePermission('catalog.manage'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const brandId = c.req.param('id');
   

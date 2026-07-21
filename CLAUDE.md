@@ -58,6 +58,13 @@ specification/   → Documentation (source of truth)
 - **After completing a phase:** Merge phase branch → `main`
 - **Never commit directly to `main`**
 
+## RBAC Break-Glass (added H12)
+If a bad permission grant locks you (or a real user) out of the app: set `RBAC_MODE=report`
+in `flowserv-api/.env` and restart the API server. This restores non-enforcing behavior
+(every request is allowed through, with `[RBAC] would deny` warnings logged to the
+console) with **no code change**. Fix the catalog/grant in `db/seed/01-core.ts`,
+re-seed, then flip back to `RBAC_MODE=enforce`. See `plan/H12-rbac.md`.
+
 ## Work Rules
 - Work on **1 phase at a time** in order from `PHASES.md` — never skip or combine phases.
 - Build **BE + FE together** per feature — every API endpoint should have a visible UI immediately.

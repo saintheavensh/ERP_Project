@@ -3,6 +3,7 @@ import { db } from '../db/connection';
 import { stockBatches, stockMovements, stockLevels, suppliers, inventoryItems } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
+import { requirePermission } from '../middleware/rbac';
 import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -25,7 +26,7 @@ const opnameSchema = z.object({
 });
 
 // POST /v1/opname
-opnameRouter.post('/', zValidator('json', opnameSchema), async (c) => {
+opnameRouter.post('/', requirePermission('inventory.adjust_stock'), zValidator('json', opnameSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   

@@ -5,6 +5,7 @@ import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/rbac';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { posCheckoutSchema } from './types';
@@ -64,7 +65,7 @@ router.get('/invoices/:id', async (c) => {
 });
 
 // POST /v1/pos/invoices - Checkout
-router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
+router.post('/invoices', requirePermission('pos.process_payment'), zValidator('json', posCheckoutSchema), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
 
@@ -224,7 +225,7 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
 });
 
 // DELETE /v1/pos/invoices/:id (Void)
-router.delete('/invoices/:id', async (c) => {
+router.delete('/invoices/:id', requirePermission('pos.void_transaction'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 

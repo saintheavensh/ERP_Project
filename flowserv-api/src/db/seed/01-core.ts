@@ -25,6 +25,23 @@ const PERMISSIONS = [
   { id: IDS.permFinanceRefund, code: 'finance.approve_refund', description: 'Approve a refund' },
   { id: IDS.permFinanceReports, code: 'finance.view_reports', description: 'View branch finance reports' },
   { id: IDS.permFlowConfigure, code: 'flow.configure_template', description: 'Configure a flow template' },
+
+  // H12 — coarse, resource-level codes covering route handlers the original
+  // 10-action spec matrix never named. One code per resource+action group,
+  // not one per endpoint — e.g. every ticket-charges mutation (add/update/
+  // delete/consume/return/cancel) shares `ticket.manage_charges`. Grants
+  // below are a first-pass judgment call; Stage 2 (report mode) is the actual
+  // mechanism for catching a wrong grant before it locks someone out.
+  { id: IDS.permTicketAssignTechnician, code: 'ticket.assign_technician', description: 'Assign a technician to a ticket' },
+  { id: IDS.permTicketManageCharges, code: 'ticket.manage_charges', description: 'Add, update, consume, return, or cancel ticket charges' },
+  { id: IDS.permInventoryManageItems, code: 'inventory.manage_items', description: 'Create/delete inventory items, edit compatibility and per-brand pricing' },
+  { id: IDS.permInventoryReceiveStock, code: 'inventory.receive_stock', description: 'Receive stock into a batch (manual receipt or PO receipt)' },
+  { id: IDS.permFinanceRecordPayment, code: 'finance.record_payment', description: 'Record a payment against a supplier payable' },
+  { id: IDS.permCatalogManage, code: 'catalog.manage', description: 'Manage categories and part brands' },
+  { id: IDS.permCustomerManage, code: 'customer.manage', description: 'Create/edit customers and their assets' },
+  { id: IDS.permSupplierManage, code: 'supplier.manage', description: 'Create/edit/delete suppliers and their brand links' },
+  { id: IDS.permPurchasingManageOrders, code: 'purchasing.manage_orders', description: 'Create, update status, or delete a purchase order' },
+  { id: IDS.permPurchasingManageInvoices, code: 'purchasing.manage_invoices', description: 'Create a supplier invoice (costing) from a purchase order' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
@@ -36,9 +53,22 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'inventory.reserve_part', 'inventory.adjust_stock',
     'pos.process_payment', 'pos.void_transaction',
     'finance.approve_refund', 'finance.view_reports',
+    // H12 additions — Manager is the broad operational-admin role until the
+    // spec's other 6 roles (Branch Mgr, Inv Staff, Finance Staff, etc.) get
+    // real seeded rows; see specification/03-rbac-roles.md.
+    'ticket.assign_technician', 'ticket.manage_charges',
+    'inventory.manage_items', 'inventory.receive_stock',
+    'finance.record_payment', 'catalog.manage', 'customer.manage',
+    'supplier.manage', 'purchasing.manage_orders', 'purchasing.manage_invoices',
   ],
-  [IDS.roleTechnician]: ['ticket.create', 'ticket.diagnose', 'inventory.reserve_part'],
-  [IDS.roleCashier]: ['pos.process_payment'],
+  [IDS.roleTechnician]: [
+    'ticket.create', 'ticket.diagnose', 'inventory.reserve_part',
+    'ticket.manage_charges', // adds/consumes parts on a ticket during repair
+  ],
+  [IDS.roleCashier]: [
+    'pos.process_payment',
+    'customer.manage', // walk-in registration at the till — matches CUST-001
+  ],
 };
 
 export async function seedCore(tx: SeedTx): Promise<void> {

@@ -4,6 +4,7 @@ import { supplierInvoices, suppliers, purchaseOrders, posInvoices, financeLedger
 import { eq, desc, and, ne, sql } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
+import { requirePermission } from '../middleware/rbac';
 import { successResponse, errorResponse } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { recordPaymentInput } from '../modules/finance/types';
@@ -55,7 +56,7 @@ financeRouter.get('/payables/:id', async (c) => {
 });
 
 // POST /v1/finance/payables/:id/payments — record a full or partial payment
-financeRouter.post('/payables/:id/payments', zValidator('json', recordPaymentInput), async (c) => {
+financeRouter.post('/payables/:id/payments', requirePermission('finance.record_payment'), zValidator('json', recordPaymentInput), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const id = c.req.param('id');
   const input = c.req.valid('json');

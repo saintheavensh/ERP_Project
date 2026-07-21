@@ -36,6 +36,20 @@ export const IDS = {
   permFinanceReports: 'd1000000-0000-4000-8000-000000000009',
   permFlowConfigure: 'd1000000-0000-4000-8000-000000000010',
 
+  // H12 — coarse, resource-level codes added to cover the ~37 mutating route
+  // handlers that had no permission code at all (everything above this line
+  // predates H12 and maps to the spec's 10-action matrix).
+  permTicketAssignTechnician: 'd1000000-0000-4000-8000-000000000011',
+  permTicketManageCharges: 'd1000000-0000-4000-8000-000000000012',
+  permInventoryManageItems: 'd1000000-0000-4000-8000-000000000013',
+  permInventoryReceiveStock: 'd1000000-0000-4000-8000-000000000014',
+  permFinanceRecordPayment: 'd1000000-0000-4000-8000-000000000015',
+  permCatalogManage: 'd1000000-0000-4000-8000-000000000016',
+  permCustomerManage: 'd1000000-0000-4000-8000-000000000017',
+  permSupplierManage: 'd1000000-0000-4000-8000-000000000018',
+  permPurchasingManageOrders: 'd1000000-0000-4000-8000-000000000019',
+  permPurchasingManageInvoices: 'd1000000-0000-4000-8000-000000000020',
+
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',
   userTechnician: 'e0000000-0000-4000-8000-000000000003',

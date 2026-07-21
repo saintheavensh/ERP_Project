@@ -3,6 +3,7 @@ import { db } from '../../db/connection';
 import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing, branches } from '../../db/schema/index';
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/rbac';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -80,7 +81,7 @@ const createItemSchema = z.object({
   reorderPoint: z.number().default(0)
 });
 
-router.post('/', zValidator('json', createItemSchema), async (c) => {
+router.post('/', requirePermission('inventory.manage_items'), zValidator('json', createItemSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -231,7 +232,7 @@ router.get('/:id', async (c) => {
 });
 
 // DELETE /v1/inventory/:id
-router.delete('/:id', async (c) => {
+router.delete('/:id', requirePermission('inventory.manage_items'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const inventoryItemId = c.req.param('id');
   

@@ -15,7 +15,10 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
 
   await tx.insert(flowNodes).values([
     { id: IDS.nodeIntake, flowTemplateId: IDS.flowTemplate, name: 'Intake', nodeType: 'action', sequenceOrder: 1 },
-    { id: IDS.nodeDiagnosis, flowTemplateId: IDS.flowTemplate, name: 'Diagnosis', nodeType: 'action', sequenceOrder: 2 },
+    // H12 — first node to actually use requiredPermissionId, so
+    // evaluateTransition's PERMISSION_DENIED branch (services/flow-engine.ts)
+    // finally runs against real data instead of only unit tests.
+    { id: IDS.nodeDiagnosis, flowTemplateId: IDS.flowTemplate, name: 'Diagnosis', nodeType: 'action', sequenceOrder: 2, requiredPermissionId: IDS.permTicketDiagnose },
     { id: IDS.nodeApproval, flowTemplateId: IDS.flowTemplate, name: 'Waiting Approval', nodeType: 'decision', sequenceOrder: 3 },
     { id: IDS.nodeRepair, flowTemplateId: IDS.flowTemplate, name: 'Repair', nodeType: 'action', sequenceOrder: 4 },
     // No outgoing transitions below — the flow engine detects a terminal node

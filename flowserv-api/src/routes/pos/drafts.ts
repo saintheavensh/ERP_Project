@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/rbac';
 
 const router = new Hono();
 
@@ -32,7 +33,7 @@ router.get('/drafts', async (c) => {
 });
 
 // POST /v1/pos/drafts
-router.post('/drafts', zValidator('json', draftSchema), async (c) => {
+router.post('/drafts', requirePermission('pos.process_payment'), zValidator('json', draftSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
 
@@ -47,7 +48,7 @@ router.post('/drafts', zValidator('json', draftSchema), async (c) => {
 });
 
 // DELETE /v1/pos/drafts/:id
-router.delete('/drafts/:id', async (c) => {
+router.delete('/drafts/:id', requirePermission('pos.process_payment'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 

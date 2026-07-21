@@ -3,6 +3,7 @@ import { db } from '../../db/connection';
 import { purchaseOrders, purchaseOrderLines, stockBatches, stockMovements, stockLevels, inventoryItems, itemBrandPricing, supplierInvoices, suppliers } from '../../db/schema/index';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/rbac';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -23,7 +24,7 @@ const receiveSchema = z.object({
   }))
 });
 
-router.post('/orders/:id/receive', zValidator('json', receiveSchema), async (c) => {
+router.post('/orders/:id/receive', requirePermission('inventory.receive_stock'), zValidator('json', receiveSchema), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const orderId = c.req.param('id');
   const { lines } = c.req.valid('json');

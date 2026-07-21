@@ -717,7 +717,55 @@ Stage 4
   - DB reset back to clean seed state after every live-testing round — final
     state confirmed (`0` `finance_ledger_entries`, `0` `pos_invoices`) before
     finishing, both dev servers stopped.
-- [ ] H12 RBAC
+- [x] H12 RBAC — three-stage rollout completed 2026-07-21, `RBAC_MODE=enforce` is
+  now the live default expectation (break-glass: `RBAC_MODE=report`, documented
+  in `CLAUDE.md`). See `PHASES.md` 4.5B for the full evidence trail. Summary:
+  - **Stage 1 (catalog):** `db/seed/01-core.ts` already had a 10-code catalog
+    seeded ahead of this task (prep work noted in its own comment) covering
+    only the spec's 10-action matrix. Extended to 20 coarse, resource-level
+    codes to cover the ~37 mutating handlers that had no code at all — one
+    code per resource+action group (e.g. all 6 ticket-charges mutations share
+    `ticket.manage_charges`), not one per endpoint. Verified idempotent via
+    `npm run db:reset` run twice.
+  - **Stage 2 (report mode):** `middleware/rbac.ts` — `evaluateRbac()` pure
+    decision + `requirePermission(code)` DB-fetching wrapper, same split as
+    `flow-engine.ts`'s `evaluateTransition`/`FlowEngine`. Applied inline to all
+    37 mutating handlers across 16 route files (one handler, ticket
+    transitions, is intentionally left ungated at the route level — already
+    gated per-target-node by the flow engine itself). Walked the catalog live:
+    logged in as all 4 seeded roles against a freshly-reset DB, exercised one
+    representative endpoint per permission code (both an allowed and a denied
+    role per code where a denial was expected). Every denied call logged
+    `[RBAC] would deny: user=... role=... perm=... METHOD /path`; every
+    allowed call logged nothing — the grant table matched intent on the first
+    pass, no corrections needed before flipping to enforce.
+  - **Stage 3 (enforce):** Restarted with `RBAC_MODE=enforce`. Verified live:
+    Cashier void → 403 naming `pos.void_transaction`; Manager void → passes
+    the permission gate to a business 404; Cashier create-supplier → 403
+    naming `supplier.manage`; Super Admin create-supplier → 201 despite zero
+    seeded grants (bypass is role-name-based, not grant-based). Populated
+    `flow_nodes.requiredPermissionId` on the Diagnosis node
+    (`ticket.diagnose`) — first time `evaluateTransition`'s `PERMISSION_DENIED`
+    branch has run against real data (previously 0 of 5 nodes had it set):
+    Cashier → Intake→Diagnosis is 403, Technician → same transition succeeds.
+    Cross-tenant read (second tenant's admin token against the first tenant's
+    ticket) → 404 `NOT_FOUND`, not 403, confirmed unaffected by the RBAC layer.
+    Break-glass tested for real: restarted with `RBAC_MODE` unset — the
+    previously-403'd Cashier action succeeded again, no code change.
+  - **Tests:** `middleware/__tests__/rbac.test.ts`, 4 tests on `evaluateRbac`
+    (grant-allows-both-modes, Super-Admin-bypasses-with-no-grant,
+    report-logs-but-allows, enforce-blocks). `npm test`: 104/104 (100 existing
+    + 4 new).
+  - **Caught during typecheck, not left for review:** `requirePermission`
+    initially returned a bare `(c: Context, next: Next) => ...`. Inlining that
+    in a route registration (`router.post(path, requirePermission(...),
+    handler)`) silently collapsed Hono's path-param type inference for the
+    handler after it (`c.req.param()` degraded to `string | undefined`),
+    which cascaded into ~24 spurious Drizzle "no overload matches" errors
+    elsewhere in the same files. Fixed by typing the return value as Hono's
+    `MiddlewareHandler` instead — `npx tsc --noEmit` went from 24 errors to 0
+    with that one change, confirming it was the root cause, not 24 separate
+    problems.
 - [ ] H13 API hardening
 
 Stage 5

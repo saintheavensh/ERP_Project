@@ -408,11 +408,66 @@ missing.
 - [x] 4.5A.6 FE: simple ledger view (Simple Mode per DAS-004) — new
       `/finance/ledger` page, SSR-verified with a real login cookie.
 
-### 4.5B. RBAC Enforcement (PLT-003)
-- [ ] 4.5B.1 BE: Create `middleware/rbac.ts` with `requirePermission('...')`
-- [ ] 4.5B.2 BE: Seed the permission catalog from specification/03-rbac-roles.md
-- [ ] 4.5B.3 BE: Apply `requirePermission` to every mutating endpoint
-- [ ] 4.5B.4 **Tests:** 403 on unauthorized access; tenant isolation holds
+### 4.5B. RBAC Enforcement (PLT-003) ✅ COMPLETE (2026-07-21, [H12](plan/H12-rbac.md))
+> Report-only-first, three-stage rollout — see H12 for the full design and the
+> lockout risk it exists to mitigate. `RBAC_MODE=enforce` is now live; the
+> break-glass (`RBAC_MODE=report`, no code change) is documented in this file's
+> top section and was itself tested, not just written.
+- [x] 4.5B.1 BE: `middleware/rbac.ts` — `evaluateRbac()` is the pure decision
+      (Super Admin bypass, granted-allow, enforce-deny, report-log-but-allow),
+      `requirePermission(code)` is the thin DB-fetching wrapper around it,
+      mirroring the `evaluateTransition`/`FlowEngine` split in
+      `services/flow-engine.ts`. Typed as Hono's `MiddlewareHandler` — a bare
+      `(c: Context, next: Next)` signature silently collapsed route path-param
+      typing in every file it was inlined into (`c.req.param()` degraded to
+      `string | undefined`), which cascaded into ~24 spurious Drizzle
+      "no overload matches" errors elsewhere in the same files. Caught by
+      `npx tsc --noEmit` before commit, not left for review to find.
+- [x] 4.5B.2 BE: `db/seed/01-core.ts` — catalog extended from the spec's 10
+      actions to 20 coarse, resource-level codes (one per resource+action
+      group, e.g. every ticket-charges mutation shares `ticket.manage_charges`)
+      to actually cover the ~37 mutating handlers that existed with zero
+      permission code. Idempotent (`onConflictDoNothing`, fixed UUIDs in
+      `ids.ts`) per the existing seed pattern. Verified: re-running
+      `npm run db:reset` produces the same 20 permissions / 19 Manager grants /
+      4 Technician grants / 2 Cashier grants / 20 Super Admin grants every time.
+- [x] 4.5B.3 BE: `requirePermission(code)` applied inline to all 37 mutating
+      handlers across the 16 route files that have them. One handler
+      (`POST /:id/transition` in `tickets.ts`) is deliberately left ungated at
+      the route level — it's already gated by the flow engine's own
+      per-target-node `requiredPermissionId` check, which varies per node and
+      can't be expressed as one static route-level code; documented inline.
+      Also populated `flow_nodes.requiredPermissionId` on the Diagnosis node
+      (`ticket.diagnose`) — this is the first time `evaluateTransition`'s
+      `PERMISSION_DENIED` branch has ever run against real data (previously
+      0 of 5 nodes had it set, so the branch was unit-tested only). Verified
+      live: Cashier → Intake→Diagnosis returns 403 `PERMISSION_DENIED`;
+      Technician → same transition succeeds.
+- [x] 4.5B.4 **Tests:** `middleware/__tests__/rbac.test.ts` — 4 tests on the
+      pure `evaluateRbac` decision (grant allows in both modes, Super Admin
+      bypasses with zero grants, report mode logs-but-allows, enforce mode
+      blocks). `npm test`: 104/104 passing (100 pre-existing + 4 new).
+      Tenant isolation verified live rather than as an automated test, matching
+      how the codebase already treats this class of check (flow-engine's
+      cross-template guard is pure-tested; cross-tenant HTTP behavior is not
+      separately re-tested elsewhere either): second tenant's admin token
+      requesting the first tenant's ticket returns 404 `NOT_FOUND`, not 403.
+      Full report/enforce/break-glass verification (all via real login +
+      curl against a locally reset DB, not just code review):
+      - Report mode: 10 mutating calls across all 4 seeded roles: every
+        legitimately-denied action logged `[RBAC] would deny: user=... role=...
+        perm=... METHOD /path`; every legitimately-allowed action logged nothing.
+      - Enforce mode: Cashier voiding a POS invoice → 403 `PERMISSION_DENIED`
+        naming `pos.void_transaction`; Manager doing the same → passes the
+        permission check through to a business-layer 404 `NOT_FOUND` (invoice
+        doesn't exist); Cashier creating a supplier → 403 naming
+        `supplier.manage`; Super Admin creating a supplier → 201, despite an
+        empty grant set, proving the bypass doesn't depend on `role_permissions`
+        contents.
+      - Break-glass: restarted the server with `RBAC_MODE` unset (defaults to
+        `'report'`) — the same previously-403'd Cashier action succeeded again,
+        with no code change, confirming the documented recovery path actually
+        works and isn't just a comment.
 
 ### 4.5C. Audit Log (PLT-006)
 - [ ] 4.5C.1 BE: Create `middleware/audit.ts` writing to the existing `auditLogs` table

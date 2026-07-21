@@ -3,6 +3,7 @@ import { db } from '../../db/connection';
 import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing } from '../../db/schema/index';
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/rbac';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -14,7 +15,7 @@ const updateBrandPriceSchema = z.object({
   sellingPrice: z.number().min(0)
 });
 
-router.put('/:id/brands/:brandId', zValidator('json', updateBrandPriceSchema), async (c) => {
+router.put('/:id/brands/:brandId', requirePermission('inventory.manage_items'), zValidator('json', updateBrandPriceSchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const itemId = c.req.param('id');
   const brandId = c.req.param('brandId');

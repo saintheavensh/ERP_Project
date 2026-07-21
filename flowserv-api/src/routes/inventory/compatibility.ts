@@ -3,6 +3,7 @@ import { db } from '../../db/connection';
 import { inventoryItems, stockLevels, stockBatches, stockMovements, partBrands, deviceBrands, productCompatibility, deviceModels, purchaseOrderLines, itemBrandPricing } from '../../db/schema/index';
 import { eq, desc, and, gt } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/rbac';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
@@ -15,7 +16,7 @@ const updateCompatibilitySchema = z.object({
   unresolvedCompatibility: z.array(z.string())
 });
 
-router.put('/:id/compatibility', zValidator('json', updateCompatibilitySchema), async (c) => {
+router.put('/:id/compatibility', requirePermission('inventory.manage_items'), zValidator('json', updateCompatibilitySchema), async (c) => {
   const { tenantId } = getAuthContext(c);
   const itemId = c.req.param('id');
   const data = c.req.valid('json');
