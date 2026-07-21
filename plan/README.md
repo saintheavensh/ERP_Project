@@ -292,7 +292,65 @@ Stage 2
     invoices were left behind.
 
 Stage 3
-- [ ] H6 Labor billing
+- [x] H6 Labor billing — 2026-07-21
+  - `pos_invoice_lines` restructured exactly per the task file: added `tenant_id`,
+    `source_type` (new `line_source` enum: `part`/`labor`/`fee`/`discount`, the last
+    reserved per "Watch out" — not implemented), `description` (`NOT NULL`, always
+    server-derived — for `part` lines it's looked up from `inventory_items.name` at
+    sale time, never client-supplied), and `unit_cost` (nullable, populated only for
+    `part` lines). `inventory_item_id` is now nullable. A `CHECK` constraint
+    (`part_lines_have_an_item`) enforces "parts have an item, labor/fee do not" in
+    Postgres — live-verified both directions: a `part` row with `inventory_item_id
+    IS NULL` is rejected, and a `labor` row with a non-null `inventory_item_id` is
+    also rejected (`ERROR: violates check constraint "part_lines_have_an_item"`
+    for each).
+  - `POST /v1/pos/invoices` now validates against a `z.discriminatedUnion`
+    (`routes/pos/types.ts`, new file — split out of `routes/pos/invoices.ts` so the
+    schema is unit-testable without Hono): a `part` line requires
+    `inventoryItemId`; a `labor`/`fee` line requires `description` and never
+    touches stock. In the checkout loop, only `sourceType === 'part'` runs FIFO
+    batch selection, stock movements, and the `stock_levels` cache update — labor/fee
+    lines insert their `pos_invoice_lines` row and `continue`.
+  - Added `calculateConsumedUnitCost()` to `lib/fifo.ts` (weighted average over the
+    *specific* FIFO deductions a sale drew from, not `calculateWac`'s "average of what's
+    left" — a deliberately different question). Line `unit_cost` is captured from
+    this at sale time, per the task's note that COGS is a historical fact.
+  - Live-verified end-to-end against the running dev server (then reset back to
+    clean seed state, no test invoices left behind):
+    - Labor-only invoice (`INV-20260721-0001`) created successfully; confirmed
+      **zero** rows in `stock_movements` for it (`SELECT ... WHERE reference_type =
+      'pos_sale' AND reference_id = <that invoice>` → 0 rows).
+    - Mixed invoice (7× a part spanning two batches: 5 @ Rp150.000 + 2 @ Rp165.000,
+      plus 1 labor line): part line stored `unit_cost: 154285.71` (=
+      1.080.000 / 7, matches the weighted-average by hand), `description: "LCD
+      Samsung A10"` (server-derived from `inventory_items.name`); exactly 2
+      `stock_movements` rows (one per consumed batch), none for the labor line.
+    - Voided the mixed invoice: both batches restored to their exact original
+      `quantity_remaining` (5 and 5), labor line caused no error in the void loop
+      (it was never in `stock_movements` to begin with — confirms the task's
+      "naturally safe" claim). Voided the labor-only invoice too — no-op stock
+      loop, no error.
+    - `GET /v1/pos/invoices/:id` renders both line types correctly, including
+      `inventoryItem: null` for the labor line via the relational query.
+  - Browser click-path actually walked (Playwright against Chrome, headless,
+    screenshots taken — not simulated): logged in, added a physical product
+    (LCD Samsung A10) to the POS cart, used the new "+ Tambah Jasa / Servis"
+    button in `CartSidebar.svelte` to add a labor line ("Jasa ganti LCD",
+    Rp150.000), checked out with cash, opened the invoice in `/pos/history` —
+    detail modal correctly shows both lines, the labor line labeled "JASA" with
+    no SKU. No console errors from app code. Test invoice reset away afterward.
+  - `npm test`: 61/61 passing (was 49 — 12 new: 4 for `calculateConsumedUnitCost`
+    in `lib/__tests__/fifo.test.ts`, 8 for the discriminated-union schema in the
+    new `routes/pos/__tests__/types.test.ts`).
+  - Frontend: `CartSidebar.svelte` gained the add-service form;
+    `InvoiceDetailModal.svelte` and `history.svelte.ts` (`handleEdit`'s
+    re-cart path) updated to read `description`/`sourceType` instead of assuming
+    every line has an `inventoryItem`. `pos.checkout.svelte.ts` now builds the
+    discriminated-union payload shape per line. `npx svelte-check`: 0 errors.
+  - Not applicable: the task's "5 existing invoice lines still render correctly
+    with backfilled descriptions" checkbox — live-checked before starting, the
+    database currently has 0 `pos_invoices`/`pos_invoice_lines` rows (H5 reset
+    the DB after its own live-checkout tests), so there was nothing to backfill.
 - [ ] H7 Ticket charges
 - [ ] H8 Technician & customer
 - [ ] H9 Ticket parts consumption

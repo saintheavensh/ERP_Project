@@ -62,6 +62,7 @@ export class PosCartState {
       this.cart = [...this.cart];
     } else {
       this.cart = [...this.cart, {
+        sourceType: 'part',
         inventoryItemId: product.inventoryItemId,
         partBrandId: product.partBrandId,
         name: product.name,
@@ -71,6 +72,30 @@ export class PosCartState {
         maxStock: available
       }];
     }
+  }
+
+  // Labor / fee: pure billing, no inventory item behind it — H6.
+  addServiceLine(sourceType: 'labor' | 'fee', description: string, unitPrice: number) {
+    if (!this.productsState.selectedBranchId) {
+      alert("Pilih cabang terlebih dahulu");
+      return;
+    }
+    if (!description.trim()) {
+      alert("Deskripsi wajib diisi");
+      return;
+    }
+    if (!(unitPrice > 0)) {
+      alert("Jumlah harus lebih dari 0");
+      return;
+    }
+
+    this.cart = [...this.cart, {
+      sourceType,
+      description: description.trim(),
+      name: description.trim(),
+      unitPrice,
+      quantity: 1,
+    }];
   }
 
   updateQty(index: number, delta: number) {

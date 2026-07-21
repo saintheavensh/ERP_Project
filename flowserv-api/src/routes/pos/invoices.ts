@@ -1,31 +1,16 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
 import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences } from '../../db/schema/index';
-import { eq, and, sql, asc, gt, desc } from 'drizzle-orm';
-import { z } from 'zod';
+import { eq, and, sql, asc, gt, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { BusinessError } from '../../lib/errors';
-import { pickFifoBatches } from '../../lib/fifo';
+import { pickFifoBatches, calculateConsumedUnitCost } from '../../lib/fifo';
 import { roundMoney, toMoneyString } from '../../lib/money';
+import { posCheckoutSchema } from './types';
 
 const router = new Hono();
-
-// Skema validasi untuk checkout POS
-const posCheckoutSchema = z.object({
-  branchId: z.string().uuid(),
-  customerName: z.string().optional(),
-  serviceTicketId: z.string().uuid().optional(),
-  paymentMethod: z.enum(['cash', 'transfer', 'qris', 'split', 'tempo']),
-  discountAmount: z.coerce.number().min(0).default(0),
-  items: z.array(z.object({
-    inventoryItemId: z.string().uuid(),
-    partBrandId: z.string().uuid().optional(),
-    quantity: z.number().int().positive(),
-    unitPrice: z.coerce.number().positive(),
-  })).min(1, 'Keranjang tidak boleh kosong'),
-});
 
 // GET /v1/pos/invoices - Get sales history
 router.get('/invoices', async (c) => {
@@ -129,21 +114,44 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
         createdBy: userId,
       }).returning();
 
-      // 3. Proses tiap item di keranjang
+      // 3. Look up descriptions for part lines up front. Server-derived, never
+      // client-supplied — a part's description is what the item was actually
+      // called at sale time, not whatever text a request happens to send.
+      const partItemIds = data.items
+        .filter((item) => item.sourceType === 'part')
+        .map((item) => item.inventoryItemId);
+
+      const itemNameById = new Map<string, string>();
+      if (partItemIds.length > 0) {
+        const rows = await tx.select({ id: inventoryItems.id, name: inventoryItems.name })
+          .from(inventoryItems)
+          .where(and(eq(inventoryItems.tenantId, tenantId), inArray(inventoryItems.id, partItemIds)));
+        for (const row of rows) itemNameById.set(row.id, row.name);
+      }
+
+      // 4. Proses tiap item di keranjang. Only 'part' lines touch stock —
+      // 'labor'/'fee' lines are pure billing, no inventory behind them.
       for (const item of data.items) {
         const lineSubtotal = roundMoney(item.unitPrice * item.quantity);
 
-        // Buat Invoice Line
-        await tx.insert(posInvoiceLines).values({
-          posInvoiceId: newInvoice.id,
-          inventoryItemId: item.inventoryItemId,
-          partBrandId: item.partBrandId || null,
-          quantity: item.quantity,
-          unitPrice: toMoneyString(item.unitPrice),
-          subtotal: toMoneyString(lineSubtotal),
-        });
+        if (item.sourceType !== 'part') {
+          // Labor / fee: bill it, skip FIFO entirely.
+          await tx.insert(posInvoiceLines).values({
+            tenantId,
+            posInvoiceId: newInvoice.id,
+            sourceType: item.sourceType,
+            description: item.description,
+            inventoryItemId: null,
+            partBrandId: null,
+            quantity: item.quantity,
+            unitPrice: toMoneyString(item.unitPrice),
+            subtotal: toMoneyString(lineSubtotal),
+            unitCost: null,
+          });
+          continue;
+        }
 
-        // 4. FIFO Stock Deduction
+        // FIFO Stock Deduction
         // FOR UPDATE locks these rows for the rest of this transaction — without
         // it, two concurrent checkouts can both read the same quantityRemaining
         // and both succeed, overselling the last unit.
@@ -177,6 +185,24 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
             422
           );
         }
+
+        // unitCost captured now, at sale time — a historical fact about which
+        // batches this specific sale drew from (H6).
+        const unitCost = calculateConsumedUnitCost(deductions, availableBatches);
+
+        // Buat Invoice Line
+        await tx.insert(posInvoiceLines).values({
+          tenantId,
+          posInvoiceId: newInvoice.id,
+          sourceType: 'part',
+          description: itemNameById.get(item.inventoryItemId) ?? 'Item tidak ditemukan',
+          inventoryItemId: item.inventoryItemId,
+          partBrandId: item.partBrandId || null,
+          quantity: item.quantity,
+          unitPrice: toMoneyString(item.unitPrice),
+          subtotal: toMoneyString(lineSubtotal),
+          unitCost: toMoneyString(Number(unitCost)),
+        });
 
         // Terapkan setiap potongan batch (FIFO) yang sudah diputuskan di atas
         for (const deduction of deductions) {

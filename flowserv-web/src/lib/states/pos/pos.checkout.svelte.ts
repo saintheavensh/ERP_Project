@@ -59,12 +59,22 @@ export class PosCheckoutState {
         serviceTicketId: undefined,
         paymentMethod: this.paymentMethod,
         discountAmount: this.cartState.discountAmount,
-        items: this.cartState.cart.map((item: any) => ({
-          inventoryItemId: item.inventoryItemId,
-          partBrandId: item.partBrandId || undefined,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice
-        }))
+        items: this.cartState.cart.map((item: any) =>
+          item.sourceType === 'labor' || item.sourceType === 'fee'
+            ? {
+                sourceType: item.sourceType,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice
+              }
+            : {
+                sourceType: 'part',
+                inventoryItemId: item.inventoryItemId,
+                partBrandId: item.partBrandId || undefined,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice
+              }
+        )
       };
 
       const res = await fetch(`${API_BASE}/pos/invoices`, {

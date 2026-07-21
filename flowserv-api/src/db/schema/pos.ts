@@ -11,14 +11,15 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  check,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 import { tenants, branches, users } from './core';
 import { serviceTickets } from './tickets';
 import { inventoryItems } from './inventory';
 import { partBrands } from './product_catalog';
-import { invoiceStatusEnum, paymentMethodEnum, paymentStatusEnum } from './enums';
+import { invoiceStatusEnum, paymentMethodEnum, paymentStatusEnum, lineSourceEnum } from './enums';
 import { money } from './columns';
 
 
@@ -48,13 +49,31 @@ export const posInvoices = pgTable('pos_invoices', {
 
 export const posInvoiceLines = pgTable('pos_invoice_lines', {
   id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   posInvoiceId: uuid('pos_invoice_id').notNull().references(() => posInvoices.id),
-  inventoryItemId: uuid('inventory_item_id').notNull().references(() => inventoryItems.id),
+
+  sourceType: lineSourceEnum('source_type').notNull(),
+  description: text('description').notNull(), // always set — survives item renames
+
+  // Only populated when sourceType = 'part'. A labor/fee line has no inventory item.
+  inventoryItemId: uuid('inventory_item_id').references(() => inventoryItems.id),
   partBrandId: uuid('part_brand_id').references(() => partBrands.id),
+
   quantity: integer('quantity').notNull(),
   unitPrice: money('unit_price').notNull(),
   subtotal: money('subtotal').notNull(),
-});
+
+  // Captured at sale time from the consumed FIFO batches. H11 posts COGS from
+  // this instead of recomputing it — the batches may be gone or changed by then.
+  unitCost: money('unit_cost'),
+}, (table) => ({
+  // The invariant "parts have an item, labor/fee do not" — enforced by Postgres,
+  // not by remembering it in every route that writes a line.
+  partLinesHaveAnItem: check(
+    'part_lines_have_an_item',
+    sql`(${table.sourceType} = 'part' AND ${table.inventoryItemId} IS NOT NULL) OR (${table.sourceType} <> 'part' AND ${table.inventoryItemId} IS NULL)`
+  ),
+}));
 
 // Per-tenant, per-day counter for invoice numbering. Allocated with
 // INSERT ... ON CONFLICT DO UPDATE ... RETURNING inside the checkout

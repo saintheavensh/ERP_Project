@@ -1,5 +1,17 @@
 <script lang="ts">
   let { pos } = $props<{ pos: any }>();
+
+  let showServiceForm = $state(false);
+  let serviceType = $state<'labor' | 'fee'>('labor');
+  let serviceDescription = $state('');
+  let serviceAmount = $state<number | null>(null);
+
+  function addService() {
+    pos.cart.addServiceLine(serviceType, serviceDescription, Number(serviceAmount) || 0);
+    serviceDescription = '';
+    serviceAmount = null;
+    showServiceForm = false;
+  }
 </script>
 
 <div class="w-96 flex flex-col bg-white shrink-0 shadow-[-4px_0_15px_-3px_rgba(0,0,0,0.05)]">
@@ -10,6 +22,44 @@
     {/if}
   </div>
   
+  <!-- Add service / labor charge -->
+  <div class="px-4 pt-3 shrink-0">
+    {#if showServiceForm}
+      <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 space-y-2">
+        <div class="flex space-x-2">
+          <select bind:value={serviceType} class="text-xs border-slate-300 rounded-md px-2 py-1.5 bg-white">
+            <option value="labor">Jasa Servis</option>
+            <option value="fee">Biaya Lain</option>
+          </select>
+          <input
+            type="text"
+            bind:value={serviceDescription}
+            placeholder="Deskripsi (mis. Jasa ganti LCD)"
+            class="flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded-md outline-none focus:border-indigo-500"
+          >
+        </div>
+        <div class="flex space-x-2">
+          <input
+            type="number"
+            bind:value={serviceAmount}
+            min="0"
+            placeholder="Jumlah (Rp)"
+            class="flex-1 text-xs px-2 py-1.5 border border-slate-300 rounded-md outline-none focus:border-indigo-500"
+          >
+          <button onclick={addService} class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-md">Tambah</button>
+          <button onclick={() => showServiceForm = false} class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-medium rounded-md">Batal</button>
+        </div>
+      </div>
+    {:else}
+      <button
+        onclick={() => showServiceForm = true}
+        class="w-full py-2 border border-dashed border-indigo-300 text-indigo-600 hover:bg-indigo-50 rounded-lg text-xs font-medium transition-colors"
+      >
+        + Tambah Jasa / Servis
+      </button>
+    {/if}
+  </div>
+
   <!-- Cart Items -->
   <div class="flex-1 overflow-y-auto p-4">
     {#if pos.cart.cart.length === 0}
@@ -24,7 +74,11 @@
             <div class="flex justify-between items-start mb-2">
               <div>
                 <h4 class="text-sm font-medium text-slate-800 leading-tight">{item.name}</h4>
-                <span class="text-[10px] font-mono text-slate-500">{item.sku}</span>
+                {#if item.sourceType === 'labor' || item.sourceType === 'fee'}
+                  <span class="text-[10px] uppercase tracking-wide text-indigo-500 font-medium">{item.sourceType === 'labor' ? 'Jasa' : 'Biaya Lain'}</span>
+                {:else}
+                  <span class="text-[10px] font-mono text-slate-500">{item.sku}</span>
+                {/if}
               </div>
               <span class="text-sm font-semibold text-slate-700">{pos.formatRp(item.unitPrice * item.quantity)}</span>
             </div>
@@ -41,7 +95,7 @@
       </div>
     {/if}
   </div>
-  
+
   <!-- Cart Footer / Totals -->
   <div class="p-4 border-t border-slate-200 bg-slate-50 shrink-0">
     <div class="space-y-2 mb-4">

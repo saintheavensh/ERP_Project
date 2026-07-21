@@ -1,6 +1,9 @@
 import { pgEnum } from 'drizzle-orm/pg-core';
 
 export const paymentStatusEnum   = pgEnum('payment_status',   ['unpaid', 'partial', 'paid']);
+// 'discount' is reserved for per-line discounts (SAL-006) — not implemented yet,
+// see H6-labor-billing.md "Watch out". Only 'part', 'labor', 'fee' are ever written today.
+export const lineSourceEnum      = pgEnum('line_source',      ['part', 'labor', 'fee', 'discount']);
 export const invoiceStatusEnum   = pgEnum('invoice_status',   ['active', 'voided']);
 export const poStatusEnum        = pgEnum('po_status',        ['draft', 'ordered', 'partial', 'received', 'completed']);
 export const movementTypeEnum    = pgEnum('movement_type',    ['in', 'out', 'reserve', 'release', 'adjust', 'write_off']);
@@ -17,6 +20,7 @@ export const supplierPayMethodEnum = pgEnum('supplier_payment_method', ['cash', 
 
 // Derive the TS unions from the same declaration — never hand-write them twice.
 export type PaymentStatus        = (typeof paymentStatusEnum.enumValues)[number];
+export type LineSource           = (typeof lineSourceEnum.enumValues)[number];
 export type InvoiceStatus        = (typeof invoiceStatusEnum.enumValues)[number];
 export type PoStatus             = (typeof poStatusEnum.enumValues)[number];
 export type MovementType         = (typeof movementTypeEnum.enumValues)[number];

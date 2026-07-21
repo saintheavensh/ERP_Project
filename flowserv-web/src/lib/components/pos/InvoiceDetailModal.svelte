@@ -56,8 +56,12 @@
                 {#each state.selectedInvoiceDetail.lines as line}
                   <tr>
                     <td class="p-3">
-                      <p class="font-medium text-slate-800">{line.inventoryItem?.name || 'Unknown Item'}</p>
-                      <p class="text-xs text-slate-500">{line.inventoryItem?.sku || '-'}</p>
+                      <p class="font-medium text-slate-800">{line.description || line.inventoryItem?.name || 'Unknown Item'}</p>
+                      {#if line.sourceType === 'labor' || line.sourceType === 'fee'}
+                        <p class="text-[10px] uppercase tracking-wide text-indigo-500 font-medium">{line.sourceType === 'labor' ? 'Jasa' : 'Biaya Lain'}</p>
+                      {:else}
+                        <p class="text-xs text-slate-500">{line.inventoryItem?.sku || '-'}</p>
+                      {/if}
                     </td>
                     <td class="p-3 text-center">{line.quantity}</td>
                     <td class="p-3 text-right">{state.formatRp(line.unitPrice)}</td>

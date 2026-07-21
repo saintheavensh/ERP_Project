@@ -82,13 +82,25 @@ export class PosHistoryState {
       if (!res.ok) throw new Error('Gagal membatalkan transaksi lama');
       
       if (invoice.lines) {
-        const cartToRestore = invoice.lines.map((l: any) => ({
-          inventoryItemId: l.inventoryItemId,
-          quantity: l.quantity,
-          unitPrice: Number(l.unitPrice),
-          name: l.inventoryItem?.name || 'Unknown',
-          sku: l.inventoryItem?.sku || ''
-        }));
+        const cartToRestore = invoice.lines.map((l: any) =>
+          l.sourceType === 'labor' || l.sourceType === 'fee'
+            ? {
+                sourceType: l.sourceType,
+                description: l.description,
+                quantity: l.quantity,
+                unitPrice: Number(l.unitPrice),
+                name: l.description
+              }
+            : {
+                sourceType: 'part',
+                inventoryItemId: l.inventoryItemId,
+                partBrandId: l.partBrandId || undefined,
+                quantity: l.quantity,
+                unitPrice: Number(l.unitPrice),
+                name: l.inventoryItem?.name || l.description || 'Unknown',
+                sku: l.inventoryItem?.sku || ''
+              }
+        );
         localStorage.setItem('pos_restore_cart', JSON.stringify({
           branchId: invoice.branchId,
           items: cartToRestore
