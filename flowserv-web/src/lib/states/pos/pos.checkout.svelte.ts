@@ -14,19 +14,13 @@ export class PosCheckoutState {
   paymentMethod = $state('cash');
   selectedCustomerId = $state('');
   customerNameInput = $state('');
+  showCustomerDropdown = $state(false);
 
   constructor(data: any, productsState: PosProductsState, cartState: PosCartState, commonState: PosCommonState) {
     this.data = data;
     this.productsState = productsState;
     this.cartState = cartState;
     this.commonState = commonState;
-
-    $effect(() => {
-      if (this.selectedCustomerId) {
-        const cust = this.customers.find((c: any) => c.id === this.selectedCustomerId);
-        if (cust) this.customerNameInput = cust.name;
-      }
-    });
   }
 
   get paymentMethods() {
@@ -37,6 +31,27 @@ export class PosCheckoutState {
     return this.data.customers || [];
   }
 
+  // Same "search as you type, pick from a dropdown" pattern used by ticket
+  // intake — only shown while the typed text doesn't already match a selection.
+  get filteredCustomers() {
+    return this.customerNameInput && !this.selectedCustomerId
+      ? this.customers
+          .filter((c: any) => c.name.toLowerCase().includes(this.customerNameInput.toLowerCase()))
+          .slice(0, 5)
+      : [];
+  }
+
+  searchCustomer() {
+    this.selectedCustomerId = '';
+    this.showCustomerDropdown = true;
+  }
+
+  selectCustomer(customer: any) {
+    this.selectedCustomerId = customer.id;
+    this.customerNameInput = customer.name;
+    this.showCustomerDropdown = false;
+  }
+
   openCheckout() {
     if (this.cartState.cart.length === 0) return;
     this.commonState.errorMsg = '';
@@ -44,18 +59,22 @@ export class PosCheckoutState {
   }
 
   async processCheckout() {
-    if (this.paymentMethod === 'tempo' && !this.customerNameInput.trim()) {
-      this.commonState.errorMsg = 'Nama pelanggan wajib diisi untuk pembayaran tempo!';
+    // customerId is the link that actually enables credit — the backend
+    // requires it for 'tempo' too (Zod + a Postgres CHECK), this is just the
+    // fast client-side echo of that rule.
+    if (this.paymentMethod === 'tempo' && !this.selectedCustomerId) {
+      this.commonState.errorMsg = 'Pelanggan wajib dipilih dari daftar untuk pembayaran tempo!';
       return;
     }
 
     this.commonState.processing = true;
     this.commonState.errorMsg = '';
-    
+
     try {
       const payload = {
         branchId: this.productsState.selectedBranchId,
-        customerName: this.customerNameInput,
+        customerName: this.customerNameInput || undefined,
+        customerId: this.selectedCustomerId || undefined,
         serviceTicketId: undefined,
         paymentMethod: this.paymentMethod,
         discountAmount: this.cartState.discountAmount,

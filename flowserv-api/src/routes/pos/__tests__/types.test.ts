@@ -71,3 +71,23 @@ describe('posCheckoutSchema — H6: labor/fee lines vs part lines', () => {
     expect(result.success).toBe(false);
   });
 });
+
+describe('posCheckoutSchema — H8: tempo requires a real customer link', () => {
+  const customerId = '90000000-0000-4000-8000-000000000001';
+  const items = [{ sourceType: 'labor' as const, description: 'Jasa servis', quantity: 1, unitPrice: 50000 }];
+
+  it('rejects a tempo checkout with no customerId', () => {
+    const result = posCheckoutSchema.safeParse({ branchId, paymentMethod: 'tempo', items });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts a tempo checkout when customerId is present', () => {
+    const result = posCheckoutSchema.safeParse({ branchId, paymentMethod: 'tempo', customerId, items });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a cash checkout with no customerId (walk-in)', () => {
+    const result = posCheckoutSchema.safeParse({ branchId, paymentMethod: 'cash', items });
+    expect(result.success).toBe(true);
+  });
+});

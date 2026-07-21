@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
-import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences } from '../../db/schema/index';
+import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers } from '../../db/schema/index';
 import { eq, and, sql, asc, gt, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse } from '../../lib/response';
@@ -66,9 +66,22 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
 
-  // Validasi rule bisnis: Tempo wajib isi nama customer
-  if (data.paymentMethod === 'tempo' && (!data.customerName || data.customerName.trim() === '')) {
-    return errorResponse(c, 'BAD_REQUEST', 'Nama pelanggan wajib diisi untuk pembayaran tempo', undefined, 400);
+  // Business rule (tempo requires a real customer link) is enforced by
+  // posCheckoutSchema's .refine() and, as a second guard, the
+  // `tempo_requires_customer` CHECK constraint in Postgres.
+
+  // Resolve the customer snapshot: customerId is the link, customerName is
+  // what the invoice says at the time — it must survive a rename/delete later.
+  let resolvedCustomerName = data.customerName || 'Pelanggan Umum';
+  if (data.customerId) {
+    const [customer] = await db
+      .select({ name: customers.name })
+      .from(customers)
+      .where(and(eq(customers.id, data.customerId), eq(customers.tenantId, tenantId)));
+    if (!customer) {
+      return errorResponse(c, 'CUSTOMER_NOT_FOUND', 'Customer not found', undefined, 404);
+    }
+    resolvedCustomerName = customer.name;
   }
 
   // Hitung total
@@ -103,7 +116,8 @@ router.post('/invoices', zValidator('json', posCheckoutSchema), async (c) => {
         tenantId,
         branchId: data.branchId,
         invoiceNumber,
-        customerName: data.customerName || 'Pelanggan Umum',
+        customerName: resolvedCustomerName,
+        customerId: data.customerId,
         serviceTicketId: data.serviceTicketId,
         subtotal: toMoneyString(subtotal),
         discountAmount: toMoneyString(data.discountAmount),

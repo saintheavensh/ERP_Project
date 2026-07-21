@@ -16,7 +16,7 @@ import {
 import { relations, sql } from 'drizzle-orm';
 
 import { tenants, branches, users } from './core';
-import { serviceTickets } from './tickets';
+import { serviceTickets, customers } from './tickets';
 import { inventoryItems } from './inventory';
 import { partBrands } from './product_catalog';
 import { invoiceStatusEnum, paymentMethodEnum, paymentStatusEnum, lineSourceEnum } from './enums';
@@ -28,7 +28,12 @@ export const posInvoices = pgTable('pos_invoices', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   invoiceNumber: varchar('invoice_number', { length: 50 }).notNull(),
-  customerName: text('customer_name'), // Opsional untuk walk-in tunai, wajib untuk tempo
+  // H8 — customerId is the link to the customer record; customerName is a
+  // snapshot of what the invoice said at the time. Keep both: an invoice is a
+  // historical document and must not change when a customer record does
+  // (rename/delete). Opsional untuk walk-in tunai, wajib untuk tempo.
+  customerName: text('customer_name'),
+  customerId: uuid('customer_id').references(() => customers.id),
   serviceTicketId: uuid('service_ticket_id').references(() => serviceTickets.id),
   subtotal: money('subtotal').notNull().default('0'),
   discountAmount: money('discount_amount').notNull().default('0'),
@@ -42,9 +47,16 @@ export const posInvoices = pgTable('pos_invoices', {
 }, (table) => ({
   branchIdx: index('pos_invoices_branch_idx').on(table.branchId),
   ticketIdx: index('pos_invoices_ticket_idx').on(table.serviceTicketId),
+  customerIdx: index('pos_invoices_customer_idx').on(table.customerId),
   // Per-tenant uniqueness, not global — two tenants issuing the same day's
   // sequence number is expected, not a collision. See invoiceSequences below.
   tenantInvoiceNumberUnique: unique('pos_invoices_tenant_invoice_number_unique').on(table.tenantId, table.invoiceNumber),
+  // You cannot extend credit to a free-text string — a 'tempo' sale must be
+  // linked to a real customer record. Enforced in Postgres, not just Zod.
+  tempoRequiresCustomer: check(
+    'tempo_requires_customer',
+    sql`${table.paymentMethod} <> 'tempo' OR ${table.customerId} IS NOT NULL`
+  ),
 }));
 
 export const posInvoiceLines = pgTable('pos_invoice_lines', {

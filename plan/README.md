@@ -392,7 +392,69 @@ Stage 3
     (or installing Playwright) is the remaining confirmation if the full DoD bar is wanted.
   - Half A (schema + CRUD + totals + tests) was committed separately before Half B, per the
     plan's split.
-- [ ] H8 Technician & customer
+- [x] H8 Technician & customer — 2026-07-21
+  - Schema: `service_tickets` gained `assigned_technician_id` (references `users`,
+    nullable) + `assigned_at`; `pos_invoices` gained `customer_id` (references
+    `customers`, nullable) alongside the existing `customer_name` snapshot, plus a
+    `tempo_requires_customer` CHECK (`payment_method <> 'tempo' OR customer_id IS
+    NOT NULL`) — per the task's own "Watch out", `assignedTechnicianId` points at
+    `users` directly, no parallel technicians table.
+  - `POST /v1/tickets/:id/assign` (body `{ technicianId }`) added to
+    `modules/tickets/service.ts` (the H7-established extraction point, per H16):
+    validates the technician is a `users` row in the same tenant, writes both new
+    columns, and records a `ticket_stage_history` note at the ticket's current node
+    — "Ditugaskan ke X" on first assignment, "Dialihkan dari X ke Y" on
+    reassignment. The reassignment/note decision is pulled out as a pure
+    `describeAssignment()` so it's unit-testable without a database (4 new tests).
+  - `GET /v1/tickets?assignedTo=<userId>` and the `me` shorthand added to the
+    existing inline list handler in `routes/tickets.ts` (left inline, matching
+    that handler's current style — not extracted, per H16's "only when already
+    touching it for this feature").
+  - POS: `posCheckoutSchema` gained an optional `customerId` plus a `.refine()`
+    requiring it when `paymentMethod === 'tempo'` (mirrors the DB-level CHECK —
+    3 new schema tests). The checkout route resolves `customerId` to the
+    customer's current name for the invoice's `customerName` snapshot, so the
+    invoice keeps saying what was true at sale time even if the customer is later
+    renamed.
+  - **Frontend:** `CheckoutModal.svelte` / `pos.checkout.svelte.ts` replaced the
+    free-text "Nama Pelanggan" input with the same search-as-you-type dropdown
+    pattern already used by `IntakeForm.svelte` / `ticket.intake.svelte.ts`
+    (`filteredCustomers` / `searchCustomer()` / `selectCustomer()`), reusing the
+    `customers` list the POS page already loaded. The pay button is disabled for
+    `tempo` until a real customer is selected (`selectedCustomerId`), not just
+    until text is typed. `npx svelte-check`: 0 errors, 0 warnings.
+  - `npm test`: **78 passing** (was 71 — 4 new in
+    `modules/tickets/__tests__/service.test.ts` for `describeAssignment`, 3 new in
+    `routes/pos/__tests__/types.test.ts` for the tempo/customerId refine).
+    `npx tsc --noEmit` clean.
+  - **Live API run** (recorded, then DB reset to clean seed):
+    assigned Teknisi Andi to the seeded in-progress ticket → `GET
+    /v1/tickets/:id` returned `assignedTechnician: { name: "Teknisi Andi" }` and a
+    new history entry `"Ditugaskan ke Teknisi Andi"`; `GET
+    /v1/tickets?assignedTo=<Andi's userId>` returned exactly that ticket,
+    `assignedTo=<Manager's userId>` and `assignedTo=me` (as Super Admin) both
+    returned `[]`; reassigning to Budi Manager added `"Dialihkan dari Teknisi Andi
+    ke Budi Manager"` as the newest history entry; a `tempo` checkout with no
+    `customerId` → 400 from Zod; a raw SQL `INSERT ... payment_method='tempo',
+    customer_id=NULL` against the running Postgres instance → rejected
+    independently by the `tempo_requires_customer` CHECK (proves the DB guard
+    doesn't just piggyback on Zod); a `cash` checkout with no `customerId` → 201,
+    `customerName: "Pelanggan Umum"`; a `tempo` checkout with a real `customerId`
+    → 201, `customerName` snapshotted from that customer; renaming the customer
+    afterward via `PUT /v1/customers/:id` left the already-created invoice's
+    `customerName` unchanged (still the pre-rename value) — proving the snapshot
+    survives a rename, exactly as designed.
+  - **Not done this session:** an interactive browser click-through of the POS
+    customer picker. Neither Playwright nor `chromium-cli` is available in this
+    environment (same gap H7 recorded). Substituted with: `svelte-check` (0
+    errors), an SSR fetch of `/pos` with a real `flowserv_token` cookie (200,
+    customer data present in the hydration payload), and the API run above, which
+    covers every one of this task's explicit Verification checkboxes — none of
+    which name the POS UI specifically (only the "3. POS UI" *step* does). A
+    manual walk (or installing Playwright) is the remaining confirmation if the
+    full visual DoD bar is wanted.
+  - DB reset back to clean seed state after the live run (ticket unassigned again,
+    customer name reverted, 0 `pos_invoices`) — confirmed via API before moving on.
 - [ ] H9 Ticket parts consumption
 - [ ] H10 Stock reservation
 

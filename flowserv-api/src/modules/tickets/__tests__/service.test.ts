@@ -3,6 +3,7 @@ import {
   calculateTicketTotals,
   canModifyCharge,
   calculateTicketMargin,
+  describeAssignment,
   type ChargeCalcRow,
 } from '../service';
 
@@ -81,5 +82,31 @@ describe('calculateTicketMargin', () => {
 
   it('returns zeros for an empty ticket', () => {
     expect(calculateTicketMargin([])).toEqual({ revenue: 0, cost: 0, margin: 0 });
+  });
+});
+
+describe('describeAssignment', () => {
+  it('treats a ticket with no prior technician as a first assignment', () => {
+    const result = describeAssignment(null, null, 'tech-1', 'Teknisi Andi');
+    expect(result.isReassignment).toBe(false);
+    expect(result.note).toBe('Ditugaskan ke Teknisi Andi');
+  });
+
+  it('treats assigning the same technician again as a no-op assignment, not a reassignment', () => {
+    const result = describeAssignment('tech-1', 'Teknisi Andi', 'tech-1', 'Teknisi Andi');
+    expect(result.isReassignment).toBe(false);
+    expect(result.note).toBe('Ditugaskan ke Teknisi Andi');
+  });
+
+  it('treats assigning a different technician as a reassignment and names both', () => {
+    const result = describeAssignment('tech-1', 'Teknisi Andi', 'tech-2', 'Teknisi Budi');
+    expect(result.isReassignment).toBe(true);
+    expect(result.note).toBe('Dialihkan dari Teknisi Andi ke Teknisi Budi');
+  });
+
+  it('falls back to a generic label if the previous technician name could not be resolved', () => {
+    const result = describeAssignment('tech-1', null, 'tech-2', 'Teknisi Budi');
+    expect(result.isReassignment).toBe(true);
+    expect(result.note).toBe('Dialihkan dari teknisi sebelumnya ke Teknisi Budi');
   });
 });

@@ -36,3 +36,11 @@ export const updateChargeInput = z.object({
 
 export type CreateChargeInput = z.infer<typeof createChargeInput>;
 export type UpdateChargeInput = z.infer<typeof updateChargeInput>;
+
+// H8 — manual technician assignment. technicianId is a users.id; there is no
+// separate technicians table (see plan/H8-technician-and-customer.md "Watch out").
+export const assignTechnicianInput = z.object({
+  technicianId: z.string().uuid(),
+});
+
+export type AssignTechnicianInput = z.infer<typeof assignTechnicianInput>;

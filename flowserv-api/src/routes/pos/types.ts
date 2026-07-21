@@ -26,10 +26,16 @@ export const posCheckoutLineSchema = z.discriminatedUnion('sourceType', [
 export const posCheckoutSchema = z.object({
   branchId: z.string().uuid(),
   customerName: z.string().optional(),
+  // H8 — you cannot extend credit to a free-text string. 'tempo' requires a
+  // real customer link; walk-in cash sales may leave this null.
+  customerId: z.string().uuid().optional(),
   serviceTicketId: z.string().uuid().optional(),
   paymentMethod: z.enum(['cash', 'transfer', 'qris', 'split', 'tempo']),
   discountAmount: z.coerce.number().min(0).default(0),
   items: z.array(posCheckoutLineSchema).min(1, 'Keranjang tidak boleh kosong'),
+}).refine((data) => data.paymentMethod !== 'tempo' || !!data.customerId, {
+  message: 'Pelanggan wajib dipilih untuk pembayaran tempo',
+  path: ['customerId'],
 });
 
 export type PosCheckoutInput = z.infer<typeof posCheckoutSchema>;

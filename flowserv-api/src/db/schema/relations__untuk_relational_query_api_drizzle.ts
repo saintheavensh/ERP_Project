@@ -104,6 +104,7 @@ export const serviceTicketsRelations = relations(serviceTickets, ({ one, many })
   customerAsset: one(customerAssets, { fields: [serviceTickets.customerAssetId], references: [customerAssets.id] }),
   flowTemplate: one(flowTemplates, { fields: [serviceTickets.flowTemplateId], references: [flowTemplates.id] }),
   currentNode: one(flowNodes, { fields: [serviceTickets.currentNodeId], references: [flowNodes.id] }),
+  assignedTechnician: one(users, { fields: [serviceTickets.assignedTechnicianId], references: [users.id] }),
   stageHistory: many(ticketStageHistory),
   approvalRequests: many(approvalRequests),
   stockMovements: many(stockMovements),
@@ -215,6 +216,7 @@ export const posInvoicesRelations = relations(posInvoices, ({ one, many }) => ({
   tenant: one(tenants, { fields: [posInvoices.tenantId], references: [tenants.id] }),
   branch: one(branches, { fields: [posInvoices.branchId], references: [branches.id] }),
   serviceTicket: one(serviceTickets, { fields: [posInvoices.serviceTicketId], references: [serviceTickets.id] }),
+  customer: one(customers, { fields: [posInvoices.customerId], references: [customers.id] }),
   creator: one(users, { fields: [posInvoices.createdBy], references: [users.id] }),
   lines: many(posInvoiceLines),
 }));

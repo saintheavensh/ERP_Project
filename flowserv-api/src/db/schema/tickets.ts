@@ -14,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-import { tenants, branches } from './core';
+import { tenants, branches, users } from './core';
 import { flowTemplates, flowNodes } from './flow';
 import { ticketStatusEnum } from './enums';
 import { money } from './columns';
@@ -53,10 +53,15 @@ export const serviceTickets = pgTable('service_tickets', {
   // Kept in sync by the tickets service inside the same transaction as every charge write.
   estimatedTotal: money('estimated_total').notNull().default('0'),
   approvedTotal: money('approved_total'),
+  // H8 — a technician is a user with a role, not a separate identity. Nullable:
+  // a ticket at intake has no technician yet.
+  assignedTechnicianId: uuid('assigned_technician_id').references(() => users.id),
+  assignedAt: timestamp('assigned_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({
   tenantBranchIdx: index('service_tickets_tenant_branch_idx').on(table.tenantId, table.branchId),
+  assignedTechnicianIdx: index('service_tickets_assigned_technician_idx').on(table.assignedTechnicianId),
 }));
 
 export const ticketStageHistory = pgTable('ticket_stage_history', {

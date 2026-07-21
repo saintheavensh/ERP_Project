@@ -2,24 +2,32 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
-import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches } from '../db/schema';
+import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches, users } from '../db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
 import { FlowEngine } from '../services/flow-engine';
 import { BusinessError } from '../lib/errors';
-import { createChargeInput, updateChargeInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation } from '../modules/tickets/service';
+import { createChargeInput, updateChargeInput, assignTechnicianInput } from '../modules/tickets/types';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
 
 // Get all tickets
 ticketsRouter.get('/', async (c) => {
-  const { tenantId } = getAuthContext(c);
+  const { tenantId, userId } = getAuthContext(c);
   // Ideally filter by branchId too, but for MVP we return all tenant tickets
   // To keep it simple, we join with customers and assets
-  
+
+  // H8 — "My Jobs" (?assignedTo=me) and manager filtering (?assignedTo=<userId>)
+  const assignedToParam = c.req.query('assignedTo');
+  const filters = [eq(serviceTickets.tenantId, tenantId)];
+  if (assignedToParam) {
+    const assignedToId = assignedToParam === 'me' ? userId : assignedToParam;
+    filters.push(eq(serviceTickets.assignedTechnicianId, assignedToId));
+  }
+
   const results = await db
     .select({
       id: serviceTickets.id,
@@ -30,16 +38,19 @@ ticketsRouter.get('/', async (c) => {
       brand: customerAssets.brand,
       model: customerAssets.model,
       flowTemplateName: flowTemplates.name,
-      nodeName: flowNodes.name
+      nodeName: flowNodes.name,
+      assignedTechnicianId: serviceTickets.assignedTechnicianId,
+      assignedTechnicianName: users.name,
     })
     .from(serviceTickets)
     .innerJoin(customers, eq(serviceTickets.customerId, customers.id))
     .innerJoin(customerAssets, eq(serviceTickets.customerAssetId, customerAssets.id))
     .innerJoin(flowTemplates, eq(serviceTickets.flowTemplateId, flowTemplates.id))
     .leftJoin(flowNodes, eq(serviceTickets.currentNodeId, flowNodes.id))
-    .where(eq(serviceTickets.tenantId, tenantId))
+    .leftJoin(users, eq(serviceTickets.assignedTechnicianId, users.id))
+    .where(and(...filters))
     .orderBy(desc(serviceTickets.createdAt));
-    
+
   return successResponse(c, results);
 });
 
@@ -54,13 +65,15 @@ ticketsRouter.get('/:id', async (c) => {
       customer: customers,
       asset: customerAssets,
       template: flowTemplates,
-      node: flowNodes
+      node: flowNodes,
+      assignedTechnician: { id: users.id, name: users.name },
     })
     .from(serviceTickets)
     .innerJoin(customers, eq(serviceTickets.customerId, customers.id))
     .innerJoin(customerAssets, eq(serviceTickets.customerAssetId, customerAssets.id))
     .innerJoin(flowTemplates, eq(serviceTickets.flowTemplateId, flowTemplates.id))
     .leftJoin(flowNodes, eq(serviceTickets.currentNodeId, flowNodes.id))
+    .leftJoin(users, eq(serviceTickets.assignedTechnicianId, users.id))
     .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
     
   if (ticketQuery.length === 0) {
@@ -226,6 +239,26 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), asyn
     return successResponse(c, { success: true });
   } catch (err: any) {
     return errorResponse(c, 'TRANSITION_FAILED', err.message, [], 500);
+  }
+});
+
+// ============================================================================
+// H8 — Technician assignment. Logic lives in modules/tickets/service.ts.
+// ============================================================================
+
+ticketsRouter.post('/:id/assign', zValidator('json', assignTechnicianInput), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const input = c.req.valid('json');
+  try {
+    const result = await assignTechnician(tenantId, ticketId, input, userId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to assign technician:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to assign technician', undefined, 500);
   }
 });
 

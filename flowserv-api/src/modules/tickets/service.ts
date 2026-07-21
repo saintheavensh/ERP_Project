@@ -1,10 +1,10 @@
 import { db } from '../../db/connection';
-import { serviceTickets, ticketCharges, inventoryItems, approvalRequests } from '../../db/schema';
+import { serviceTickets, ticketCharges, inventoryItems, approvalRequests, ticketStageHistory, users } from '../../db/schema';
 import type { ChargeStatus } from '../../db/schema/enums';
 import { eq, and, asc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
-import type { CreateChargeInput, UpdateChargeInput } from './types';
+import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput } from './types';
 
 // ============================================================================
 // Pure functions — no database, no HTTP. These are what the unit tests exercise.
@@ -299,6 +299,91 @@ export async function generateQuotation(tenantId: string, ticketId: string) {
       .returning();
 
     return { approvalRequest, quotedAmount, approvedTotal: totals.approved };
+  });
+}
+
+/**
+ * H8 — pure decision behind the assignment audit note: is this a first
+ * assignment or a reassignment away from a different technician, and what
+ * should the ticket_stage_history note say. No database — this is what the
+ * unit tests exercise.
+ */
+export function describeAssignment(
+  previousTechnicianId: string | null,
+  previousTechnicianName: string | null,
+  newTechnicianId: string,
+  newTechnicianName: string
+): { isReassignment: boolean; note: string } {
+  const isReassignment = !!previousTechnicianId && previousTechnicianId !== newTechnicianId;
+  const note = isReassignment
+    ? `Dialihkan dari ${previousTechnicianName ?? 'teknisi sebelumnya'} ke ${newTechnicianName}`
+    : `Ditugaskan ke ${newTechnicianName}`;
+  return { isReassignment, note };
+}
+
+/**
+ * H8 — manual technician assignment. A technician is a user with a role, not a
+ * separate identity, so technicianId is validated against `users` scoped to the
+ * same tenant. Reassignment (a technician was already set) and first assignment
+ * both record a ticket_stage_history note at the ticket's current node — TECH-015
+ * wants a reason eventually; a note is enough for now.
+ */
+export async function assignTechnician(
+  tenantId: string,
+  ticketId: string,
+  input: AssignTechnicianInput,
+  actorUserId: string
+) {
+  return db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select()
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+    if (!ticket.currentNodeId) {
+      throw new BusinessError('INVALID_STATE', 'Ticket has no current stage', 409);
+    }
+
+    const [technician] = await tx
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(and(eq(users.id, input.technicianId), eq(users.tenantId, tenantId)));
+    if (!technician) {
+      throw new BusinessError('TECHNICIAN_NOT_FOUND', 'Technician not found', 404);
+    }
+
+    let previousName: string | null = null;
+    if (ticket.assignedTechnicianId && ticket.assignedTechnicianId !== technician.id) {
+      const [previous] = await tx
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, ticket.assignedTechnicianId));
+      previousName = previous?.name ?? null;
+    }
+
+    const { note } = describeAssignment(
+      ticket.assignedTechnicianId,
+      previousName,
+      technician.id,
+      technician.name
+    );
+
+    const [updated] = await tx
+      .update(serviceTickets)
+      .set({ assignedTechnicianId: technician.id, assignedAt: new Date() })
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
+      .returning();
+
+    await tx.insert(ticketStageHistory).values({
+      ticketId,
+      nodeId: ticket.currentNodeId,
+      actorId: actorUserId,
+      notes: note,
+    });
+
+    return { ...updated, assignedTechnicianName: technician.name };
   });
 }
 

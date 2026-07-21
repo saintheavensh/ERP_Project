@@ -29,18 +29,40 @@
         <div class="space-y-5">
           <!-- Customer Input -->
           <div>
-            <label for="customerName" class="block text-sm font-medium text-slate-700 mb-2">Nama Pelanggan (Opsional)</label>
+            <label for="customerName" class="block text-sm font-medium text-slate-700 mb-2">
+              Pelanggan {pos.checkout.paymentMethod === 'tempo' ? '(Wajib untuk Tempo)' : '(Opsional)'}
+            </label>
             <div class="relative">
-              <input 
+              <input
                 id="customerName"
-                type="text" 
-                bind:value={pos.checkout.customerNameInput} 
-                placeholder="Pelanggan Umum..." 
+                type="text"
+                bind:value={pos.checkout.customerNameInput}
+                oninput={() => pos.checkout.searchCustomer()}
+                autocomplete="off"
+                placeholder="Cari nama pelanggan, atau kosongkan untuk walk-in..."
                 class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               >
+              {#if pos.checkout.showCustomerDropdown && pos.checkout.filteredCustomers.length > 0}
+                <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {#each pos.checkout.filteredCustomers as c}
+                    <li>
+                      <button type="button" class="w-full text-left px-4 py-2 hover:bg-slate-50 border-b last:border-0" onclick={() => pos.checkout.selectCustomer(c)}>
+                        <div class="font-medium text-slate-900">{c.name}</div>
+                        <div class="text-xs text-slate-500">{c.phone || 'Tanpa nomor telepon'}</div>
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+              {#if pos.checkout.selectedCustomerId}
+                <div class="text-xs text-green-600 mt-1 flex items-center">
+                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                  Pelanggan terdaftar dipilih
+                </div>
+              {/if}
             </div>
           </div>
-          
+
           <!-- Payment Method -->
           <div>
             <span class="block text-sm font-medium text-slate-700 mb-2">Metode Pembayaran</span>
@@ -59,7 +81,7 @@
             {#if pos.checkout.paymentMethod === 'tempo'}
               <p class="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-start">
                 <svg class="w-4 h-4 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Nama pelanggan WAJIB diisi saat memilih pembayaran tempo.
+                Pelanggan terdaftar WAJIB dipilih dari daftar saat memilih pembayaran tempo.
               </p>
             {/if}
           </div>
@@ -69,7 +91,7 @@
       <div class="p-6 border-t border-slate-100 bg-slate-50/50 shrink-0">
         <button 
           onclick={() => pos.checkout.processCheckout()}
-          disabled={pos.commonState.processing || (pos.checkout.paymentMethod === 'tempo' && !pos.checkout.customerNameInput.trim())}
+          disabled={pos.commonState.processing || (pos.checkout.paymentMethod === 'tempo' && !pos.checkout.selectedCustomerId)}
           class="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-sm transition-colors flex items-center justify-center"
         >
           {#if pos.commonState.processing}
