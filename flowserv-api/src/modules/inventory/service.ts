@@ -35,6 +35,12 @@ export interface ConsumeStockResult {
  * Shared by POS checkout (H6) and ticket part consumption (H9) so there is one
  * FIFO deduction path with one set of tests, instead of a second implementation
  * that drifts the way calculateWac did before H5.
+ *
+ * H10: also enforces the *sellable* quantity (available − reserved), not just the
+ * physical batch total — this is the check that stops POS from selling a part a
+ * ticket already holds a reservation on. Callers that are consuming their OWN
+ * reservation (H9's consumeCharge) must call releaseReservation() first, in the
+ * same transaction, so this check sees their hold already released.
  */
 export async function consumeStock(tx: any, params: ConsumeStockParams): Promise<ConsumeStockResult> {
   const batchFilters = [
@@ -63,6 +69,40 @@ export async function consumeStock(tx: any, params: ConsumeStockParams): Promise
     throw new BusinessError(
       'INSUFFICIENT_STOCK',
       `Stok tidak cukup untuk item ${params.inventoryItemId}`,
+      422
+    );
+  }
+
+  // Master stock level cache — see PHASES.md Architecture Debt (H4) for why this
+  // is a cache and not the source of truth, and why a missing row is a hard fail
+  // rather than a silently invented negative-quantity row. Locked FOR UPDATE
+  // (after the batch locks, matching returnStock's lock order below) so the
+  // sellable check below can't race against a concurrent reserve/consume.
+  const [stockLevel] = await tx
+    .select()
+    .from(stockLevels)
+    .where(
+      and(
+        eq(stockLevels.tenantId, params.tenantId),
+        eq(stockLevels.inventoryItemId, params.inventoryItemId),
+        eq(stockLevels.branchId, params.branchId)
+      )
+    )
+    .for('update');
+
+  if (!stockLevel) {
+    throw new BusinessError(
+      'STOCK_LEVEL_MISSING',
+      `No stock level record found for item ${params.inventoryItemId} at this branch — batches exist but the level cache does not`,
+      422
+    );
+  }
+
+  const sellable = computeSellable(stockLevel.quantityAvailable, stockLevel.quantityReserved);
+  if (sellable < params.quantity) {
+    throw new BusinessError(
+      'INSUFFICIENT_SELLABLE',
+      `Stok tersedia untuk dijual tidak cukup untuk item ${params.inventoryItemId}: ${sellable} sellable, ${params.quantity} diminta (sebagian sedang direservasi)`,
       422
     );
   }
@@ -96,31 +136,150 @@ export async function consumeStock(tx: any, params: ConsumeStockParams): Promise
     movementIds.push(movement.id);
   }
 
-  // Master stock level cache — see PHASES.md Architecture Debt (H4) for why this
-  // is a cache and not the source of truth, and why a missing row is a hard fail
-  // rather than a silently invented negative-quantity row.
-  const stockLevel = await tx.query.stockLevels.findFirst({
-    where: and(
-      eq(stockLevels.tenantId, params.tenantId),
-      eq(stockLevels.inventoryItemId, params.inventoryItemId),
-      eq(stockLevels.branchId, params.branchId)
-    ),
-  });
-
-  if (!stockLevel) {
-    throw new BusinessError(
-      'STOCK_LEVEL_MISSING',
-      `No stock level record found for item ${params.inventoryItemId} at this branch — batches exist but the level cache does not`,
-      422
-    );
-  }
-
   await tx
     .update(stockLevels)
     .set({ quantityAvailable: stockLevel.quantityAvailable - params.quantity })
     .where(eq(stockLevels.id, stockLevel.id));
 
   return { deductions, unitCost, totalCost, movementIds };
+}
+
+// ============================================================================
+// H10 — Stock reservation. A reservation is a claim on stock that is still
+// physically present (quantityReserved), not a movement of stock itself — it
+// never touches stock_batches and creates no 'out'/'in' movement, only a
+// 'reserve'/'release' ledger row for audit. See plan/H10-stock-reservation.md.
+// ============================================================================
+
+/** Pure — no database. sellable is what POS (and reservation itself) must check. */
+export function computeSellable(quantityAvailable: number, quantityReserved: number): number {
+  return quantityAvailable - quantityReserved;
+}
+
+/** Pure — no database. Guards the invariant that quantityReserved can never go negative. */
+export function clampReleasedReserved(currentReserved: number, releaseQuantity: number): number {
+  return Math.max(0, currentReserved - releaseQuantity);
+}
+
+export interface ReserveStockParams {
+  tenantId: string;
+  branchId: string;
+  inventoryItemId: string;
+  quantity: number;
+  referenceType: string;
+  referenceId: string;
+  serviceTicketId?: string;
+}
+
+export interface ReservationResult {
+  quantityReserved: number;
+  movementId: string;
+}
+
+/**
+ * Claims `quantity` of an item against the ticket that just had it approved.
+ * Fails 422 INSUFFICIENT_SELLABLE if what's left to sell (available − already
+ * reserved) can't cover it. Locked FOR UPDATE so two concurrent approvals on the
+ * last unit can't both succeed.
+ */
+export async function reserveStock(tx: any, params: ReserveStockParams): Promise<ReservationResult> {
+  const [stockLevel] = await tx
+    .select()
+    .from(stockLevels)
+    .where(
+      and(
+        eq(stockLevels.tenantId, params.tenantId),
+        eq(stockLevels.inventoryItemId, params.inventoryItemId),
+        eq(stockLevels.branchId, params.branchId)
+      )
+    )
+    .for('update');
+
+  if (!stockLevel) {
+    throw new BusinessError(
+      'STOCK_LEVEL_MISSING',
+      `No stock level record found for item ${params.inventoryItemId} at this branch`,
+      422
+    );
+  }
+
+  const sellable = computeSellable(stockLevel.quantityAvailable, stockLevel.quantityReserved);
+  if (sellable < params.quantity) {
+    throw new BusinessError(
+      'INSUFFICIENT_SELLABLE',
+      `Tidak bisa mereservasi: hanya ${sellable} yang tersedia untuk dijual, ${params.quantity} diminta`,
+      422
+    );
+  }
+
+  const quantityReserved = stockLevel.quantityReserved + params.quantity;
+  await tx.update(stockLevels).set({ quantityReserved }).where(eq(stockLevels.id, stockLevel.id));
+
+  const [movement] = await tx
+    .insert(stockMovements)
+    .values({
+      tenantId: params.tenantId,
+      branchId: params.branchId,
+      inventoryItemId: params.inventoryItemId,
+      stockBatchId: null,
+      movementType: 'reserve',
+      quantity: params.quantity,
+      referenceType: params.referenceType,
+      referenceId: params.referenceId,
+      serviceTicketId: params.serviceTicketId ?? null,
+    })
+    .returning();
+
+  return { quantityReserved, movementId: movement.id };
+}
+
+/**
+ * Releases a prior reservation — on consume (immediately followed by
+ * consumeStock, in the same transaction) or on cancel. Never lets
+ * quantityReserved go negative (clampReleasedReserved), so a double-release or a
+ * release racing a concurrent change degrades to a no-op floor instead of
+ * corrupting the counter.
+ */
+export async function releaseReservation(tx: any, params: ReserveStockParams): Promise<ReservationResult> {
+  const [stockLevel] = await tx
+    .select()
+    .from(stockLevels)
+    .where(
+      and(
+        eq(stockLevels.tenantId, params.tenantId),
+        eq(stockLevels.inventoryItemId, params.inventoryItemId),
+        eq(stockLevels.branchId, params.branchId)
+      )
+    )
+    .for('update');
+
+  if (!stockLevel) {
+    throw new BusinessError(
+      'STOCK_LEVEL_MISSING',
+      `No stock level record found for item ${params.inventoryItemId} at this branch`,
+      422
+    );
+  }
+
+  const quantityReserved = clampReleasedReserved(stockLevel.quantityReserved, params.quantity);
+  await tx.update(stockLevels).set({ quantityReserved }).where(eq(stockLevels.id, stockLevel.id));
+
+  const [movement] = await tx
+    .insert(stockMovements)
+    .values({
+      tenantId: params.tenantId,
+      branchId: params.branchId,
+      inventoryItemId: params.inventoryItemId,
+      stockBatchId: null,
+      movementType: 'release',
+      quantity: params.quantity,
+      referenceType: params.referenceType,
+      referenceId: params.referenceId,
+      serviceTicketId: params.serviceTicketId ?? null,
+    })
+    .returning();
+
+  return { quantityReserved, movementId: movement.id };
 }
 
 export interface ReturnStockParams {

@@ -518,7 +518,103 @@ Stage 3
     `consumeCharge`/`returnCharge` methods are wired correctly end-to-end.
   - DB reset back to clean seed state after the live run — confirmed via a
     fresh `npm run db:reset` before moving on.
-- [ ] H10 Stock reservation
+- [x] H10 Stock reservation — 2026-07-21
+  - `modules/inventory/service.ts` gained `reserveStock` / `releaseReservation` +
+    two pure functions (`computeSellable`, `clampReleasedReserved` — unit tested
+    without a database, 7 tests). Both lock the `stock_levels` row `FOR UPDATE`
+    and write a `stock_movements` row using the `reserve`/`release` enum values
+    that existed since H2 but had never once been written. Reservation never
+    touches `stock_batches` and creates no `in`/`out` movement — exactly the
+    "claim on stock, not a movement of it" distinction the task's Design section
+    calls load-bearing.
+  - `consumeStock` (shared by POS and ticket consumption) now also locks
+    `stock_levels` `FOR UPDATE` and rejects with **422 `INSUFFICIENT_SELLABLE`**
+    when `available − reserved < quantity` — this is the check that actually
+    stops POS from selling a part a ticket already holds. Lock order kept
+    consistent with the existing `returnStock` (batches, then stock_levels) to
+    avoid a cross-function deadlock.
+  - Wired into the H7 charge lifecycle in `modules/tickets/service.ts`:
+    `generateQuotation` reserves every part among the charges it just flipped
+    `estimated → approved` (whole thing rolls back if any part can't be
+    reserved); `consumeCharge` releases the charge's own hold *before* calling
+    `consumeStock` (order matters — otherwise the sellable check would count a
+    charge's reservation against itself); `returnCharge` re-reserves after
+    restoring stock, since 'approved' is a reserved state and a return lands
+    back on 'approved'. Added a new `cancelCharge` (+ route
+    `POST /:id/charges/:chargeId/cancel` + frontend "Batalkan" button) since no
+    lifecycle transition previously existed to release an approved-but-not-yet-
+    consumed charge's reservation — deliberately scoped to `status === 'approved'`
+    only (estimated charges are deleted, never reserved; consumed charges must
+    be returned first), which sidesteps ever writing `approvedTotal` before a
+    ticket's first quotation (would have broken the frontend's
+    `isQuoted = approvedTotal != null` check).
+  - **Frontend:** `pos.products.svelte.ts`'s `getStockForBranch` now returns
+    *sellable* (`available − reserved`) for the non-branded path — this is what
+    already fed `ProductGrid`'s grey-out/click-block and `pos.cart.svelte.ts`'s
+    `maxStock`, so both now enforce sellable automatically; new
+    `getReservedForBranch` feeds a "N direservasi" note on the tile. Branded
+    tiles are a known, documented limitation: `stock_levels.quantityReserved` is
+    item+branch scoped, not per-brand (no schema column for it, matching how
+    reservation itself is scoped — see task's Design section), so the
+    brand-specific batch count can't subtract a brand-specific reserved amount;
+    backend enforcement is unaffected since it checks the real item+branch
+    sellable regardless of which brand tile a sale came from.
+  - `npm test`: **85/85 passing** (was 78 — 7 new in the new
+    `modules/inventory/__tests__/service.test.ts`). `npx tsc --noEmit` clean;
+    `npx svelte-check`: 0 errors, 0 warnings (683 files).
+  - **Live API run** (recorded, then DB reset to clean seed), using the seeded
+    1-unit item (Baterai iPhone X, `BAT-IPH-X`):
+    - Added a 1-unit part charge, approved via `/quotation` → `quantityReserved`
+      went 0→1, `quantityAvailable` unchanged at 1 (checkbox 1).
+    - **The core test:** POS checkout for that same item while reserved →
+      **422 `INSUFFICIENT_SELLABLE`**, `"0 sellable, 1 diminta (sebagian sedang
+      direservasi)"` — not a successful sale (checkbox 2).
+    - Consumed the charge → both counters dropped together, `available: 1→0`,
+      `reserved: 1→0` in the same response (checkbox 3).
+    - Returned the charge → stock restored **and** re-reserved,
+      `available: 0→1`, `reserved: 0→1` — confirmed the "approved is a reserved
+      state" invariant holds across an undo.
+    - Cancelled the (now approved-again) charge → `reserved: 1→0`; immediately
+      re-attempted the same POS sale → **201**, sale succeeded — proves
+      cancellation actually frees the part for a walk-in (checkbox 4). Voided
+      that sale afterward to keep testing.
+    - Second independent guard case: added a 100-unit charge against the
+      30-unit LCD item, approved → 422 `INSUFFICIENT_SELLABLE`,
+      `"hanya 30 yang tersedia untuk dijual, 100 diminta"`; confirmed the LCD's
+      `available`/`reserved` were untouched afterward — the failed reservation
+      left no partial state (checkbox 6).
+    - **Concurrency, not just sequential** (matching H9's bar): created a
+      second ticket, put a 1-unit charge for the same last-unit item on each of
+      two tickets, fired both `/quotation` requests simultaneously
+      (backgrounded curl + `wait`). Exactly one returned 201, the other 422
+      `INSUFFICIENT_SELLABLE` with `"hanya 0 yang tersedia"`; the loser's charge
+      was confirmed still `estimated` (its transaction rolled back cleanly, not
+      partially applied) — the `FOR UPDATE` lock on `stock_levels` serialized
+      the race exactly like H9's charge-row lock did for consumption.
+    - `GET /v1/inventory/reconciliation` → `{ isClean: true, drift: [] }` after
+      every step above, including after the two failed 422 attempts.
+    - Raw SQL against `stock_movements`: every reserve/release pair present,
+      `movement_type` correctly `'reserve'`/`'release'`, `stock_batch_id` null
+      (no batch touched), `reference_type: 'ticket_charge_reservation'`,
+      `service_ticket_id` populated.
+  - **Click-path:** Playwright is still not installed in `flowserv-web` (same
+    gap recorded in H7/H8/H9). Substituted with an SSR fetch of `/tickets/:id`
+    using a real `flowserv_token` login cookie while the charge was reserved:
+    200, both the "Pakai Part" and the new "Batalkan" button rendered for the
+    approved charge — proving the new button and `ticket.detail.svelte.ts`'s
+    `cancelCharge` method are wired correctly. An SSR fetch of `/pos` returned
+    200 with the item's tile present, but the "N direservasi" note and the
+    stock-based grey-out did not appear in the raw SSR HTML — confirmed this is
+    an existing SSR limitation predating this task (`selectedBranchId` is set by
+    a client-side `$effect` after branch data loads, so the whole product grid
+    — including the pre-existing "Stok:" badge — only renders post-hydration,
+    same as before H10). The substantive "try to sell it in POS, see it
+    blocked" is proven at the API level above (the 201→422 pair); the cosmetic
+    reserved-badge rendering in an actual browser is the one piece not walked
+    — a manual walk (or installing Playwright) would close it.
+  - DB reset back to clean seed state after every live-testing round — final
+    state confirmed via a fresh `npm run db:reset` before finishing, both dev
+    servers stopped.
 
 Stage 4
 - [ ] H11 Finance ledger

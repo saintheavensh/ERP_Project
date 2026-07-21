@@ -9,7 +9,7 @@ import { successResponse, errorResponse } from '../lib/response';
 import { FlowEngine } from '../services/flow-engine';
 import { BusinessError } from '../lib/errors';
 import { createChargeInput, updateChargeInput, assignTechnicianInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge } from '../modules/tickets/service';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -366,6 +366,23 @@ ticketsRouter.post('/:id/charges/:chargeId/return', async (c) => {
     }
     console.error('Failed to return charge:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to return charge', undefined, 500);
+  }
+});
+
+// H10 — cancel an approved charge before it's consumed, releasing its stock reservation
+ticketsRouter.post('/:id/charges/:chargeId/cancel', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const chargeId = c.req.param('chargeId');
+  try {
+    const result = await cancelCharge(tenantId, ticketId, chargeId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to cancel charge:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to cancel charge', undefined, 500);
   }
 });
 

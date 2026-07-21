@@ -58,15 +58,29 @@ export class PosProductsState {
     });
   }
 
+  // H10 — sellable = available − reserved. This is what POS must check: a part
+  // held by a service ticket's reservation is physically on the shelf but not
+  // sellable to a walk-in. Reservation is tracked per item+branch, not per brand
+  // (stock_levels has no partBrandId column — see H10 "Design"), so the
+  // branded-product path below can't subtract a brand-specific reserved amount;
+  // it still uses the raw batch count. The backend enforces the real (item+branch)
+  // sellable limit regardless of which brand tile the sale came from.
   getStockForBranch(product: any, branchId: string) {
     if (product.partBrandId !== undefined) {
       if (!product.brandStock || !product.brandStock[branchId]) return 0;
       const bId = product.partBrandId || 'generic';
       return product.brandStock[branchId][bId] || 0;
     }
-    
+
     if (!product.stockLevels) return 0;
     const level = product.stockLevels.find((l: any) => l.branchId === branchId);
-    return level ? level.quantityAvailable : 0;
+    if (!level) return 0;
+    return level.quantityAvailable - level.quantityReserved;
+  }
+
+  getReservedForBranch(product: any, branchId: string) {
+    if (!product.stockLevels) return 0;
+    const level = product.stockLevels.find((l: any) => l.branchId === branchId);
+    return level ? level.quantityReserved : 0;
   }
 }

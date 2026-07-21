@@ -4,7 +4,11 @@ import type { ChargeStatus } from '../../db/schema/enums';
 import { eq, and, asc } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
-import { consumeStock, returnStock } from '../inventory/service';
+import { consumeStock, returnStock, reserveStock, releaseReservation } from '../inventory/service';
+
+// H10 — every reserve/release movement for a ticket charge shares this
+// referenceType, distinguished by movementType; referenceId is always the charge id.
+const RESERVATION_REFERENCE_TYPE = 'ticket_charge_reservation';
 import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput } from './types';
 
 // ============================================================================
@@ -231,15 +235,32 @@ export async function deleteCharge(tenantId: string, ticketId: string, chargeId:
 
 /**
  * Freeze the current estimate into a quote: flip every 'estimated' charge to 'approved',
- * update the ticket's totals, and write an approval_requests row whose `amount` is the
- * sum being quoted — the number that column has always waited for and nothing produced.
+ * reserve stock for every part among them (H10 — this is the moment a part becomes
+ * "promised" and must stop being sellable elsewhere), update the ticket's totals, and
+ * write an approval_requests row whose `amount` is the sum being quoted — the number
+ * that column has always waited for and nothing produced.
+ *
+ * If any part can't be reserved (INSUFFICIENT_SELLABLE), the whole transaction rolls
+ * back — no charge flips to 'approved' and no partial reservation is left behind.
  */
 export async function generateQuotation(tenantId: string, ticketId: string) {
   return db.transaction(async (tx) => {
-    await assertTicketExists(tx, tenantId, ticketId);
+    const [ticket] = await tx
+      .select({ id: serviceTickets.id, branchId: serviceTickets.branchId })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
 
     const estimated = await tx
-      .select({ quantity: ticketCharges.quantity, unitPrice: ticketCharges.unitPrice })
+      .select({
+        id: ticketCharges.id,
+        sourceType: ticketCharges.sourceType,
+        inventoryItemId: ticketCharges.inventoryItemId,
+        quantity: ticketCharges.quantity,
+        unitPrice: ticketCharges.unitPrice,
+      })
       .from(ticketCharges)
       .where(
         and(
@@ -268,6 +289,20 @@ export async function generateQuotation(tenantId: string, ticketId: string) {
           eq(ticketCharges.status, 'estimated')
         )
       );
+
+    // H10 — reserve every part charge just approved. Labor/fee never touch stock.
+    for (const charge of estimated) {
+      if (charge.sourceType !== 'part') continue;
+      await reserveStock(tx, {
+        tenantId,
+        branchId: ticket.branchId,
+        inventoryItemId: charge.inventoryItemId!,
+        quantity: charge.quantity,
+        referenceType: RESERVATION_REFERENCE_TYPE,
+        referenceId: charge.id,
+        serviceTicketId: ticketId,
+      });
+    }
 
     // Recompute both totals from the post-flip rows: estimated drops (usually to 0),
     // approved rises to the cumulative approved sum.
@@ -430,6 +465,19 @@ export async function consumeCharge(tenantId: string, ticketId: string, chargeId
       throw new BusinessError('CHARGE_NOT_APPROVED', 'Only an approved charge can be consumed', 409);
     }
 
+    // H10 — release this charge's own hold before deducting. Must happen first:
+    // consumeStock's sellable check would otherwise see this charge's own
+    // reservation counted against itself.
+    await releaseReservation(tx, {
+      tenantId,
+      branchId: ticket.branchId,
+      inventoryItemId: charge.inventoryItemId!,
+      quantity: charge.quantity,
+      referenceType: RESERVATION_REFERENCE_TYPE,
+      referenceId: charge.id,
+      serviceTicketId: ticketId,
+    });
+
     const result = await consumeStock(tx, {
       tenantId,
       branchId: ticket.branchId,
@@ -461,9 +509,21 @@ export async function consumeCharge(tenantId: string, ticketId: string, chargeId
  * not a fresh FIFO pick) and flips the charge back to 'approved'. Mirrors the POS
  * void guard (3.5B.5): restored quantity may never exceed a batch's
  * quantityReceived, and a charge can only be returned once.
+ *
+ * H10 — 'approved' is a reserved state (see generateQuotation), so a return must
+ * re-establish the reservation it released on consume, or the part sits back on
+ * the shelf "approved" for this ticket but sellable to a walk-in.
  */
 export async function returnCharge(tenantId: string, ticketId: string, chargeId: string) {
   return db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select({ branchId: serviceTickets.branchId })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+
     const [charge] = await tx
       .select()
       .from(ticketCharges)
@@ -490,11 +550,106 @@ export async function returnCharge(tenantId: string, ticketId: string, chargeId:
       serviceTicketId: ticketId,
     });
 
+    await reserveStock(tx, {
+      tenantId,
+      branchId: ticket.branchId,
+      inventoryItemId: charge.inventoryItemId!,
+      quantity: charge.quantity,
+      referenceType: RESERVATION_REFERENCE_TYPE,
+      referenceId: charge.id,
+      serviceTicketId: ticketId,
+    });
+
     const [updated] = await tx
       .update(ticketCharges)
       .set({ status: 'approved', unitCost: null, stockMovementId: null })
       .where(eq(ticketCharges.id, chargeId))
       .returning();
+
+    return updated;
+  });
+}
+
+/**
+ * H10 — cancel an approved charge: the job no longer needs this part/labor/fee
+ * before it was consumed. Releases the reservation (part charges only — labor/fee
+ * never held one). Deliberately scoped to 'approved' only: an 'estimated' charge
+ * is removed via DELETE (never reserved, nothing to release), and a 'consumed'
+ * charge must go through returnCharge first (physical stock has to come back
+ * before the charge can be cancelled).
+ */
+export async function cancelCharge(tenantId: string, ticketId: string, chargeId: string) {
+  return db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select({ branchId: serviceTickets.branchId })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+
+    const [charge] = await tx
+      .select()
+      .from(ticketCharges)
+      .where(
+        and(
+          eq(ticketCharges.id, chargeId),
+          eq(ticketCharges.ticketId, ticketId),
+          eq(ticketCharges.tenantId, tenantId)
+        )
+      )
+      .for('update');
+    if (!charge) {
+      throw new BusinessError('NOT_FOUND', 'Charge not found', 404);
+    }
+    if (charge.status === 'consumed') {
+      throw new BusinessError('CHARGE_CONSUMED', 'A consumed charge must be returned before it can be cancelled', 409);
+    }
+    if (charge.status !== 'approved') {
+      throw new BusinessError(
+        'CANNOT_CANCEL',
+        'Only an approved charge can be cancelled (an estimated charge can be deleted)',
+        409
+      );
+    }
+
+    if (charge.sourceType === 'part') {
+      await releaseReservation(tx, {
+        tenantId,
+        branchId: ticket.branchId,
+        inventoryItemId: charge.inventoryItemId!,
+        quantity: charge.quantity,
+        referenceType: RESERVATION_REFERENCE_TYPE,
+        referenceId: charge.id,
+        serviceTicketId: ticketId,
+      });
+    }
+
+    const [updated] = await tx
+      .update(ticketCharges)
+      .set({ status: 'cancelled' })
+      .where(eq(ticketCharges.id, chargeId))
+      .returning();
+
+    // Safe to recompute approvedTotal here (unlike addCharge/updateCharge/deleteCharge,
+    // which must never write it — see recomputeAndPersistTotals): a charge can only
+    // reach 'approved' via generateQuotation, which already made approvedTotal
+    // non-null, so isQuoted's `approvedTotal != null` check on the frontend can't
+    // regress from this write.
+    const rows = await tx
+      .select({
+        status: ticketCharges.status,
+        quantity: ticketCharges.quantity,
+        unitPrice: ticketCharges.unitPrice,
+        unitCost: ticketCharges.unitCost,
+      })
+      .from(ticketCharges)
+      .where(and(eq(ticketCharges.ticketId, ticketId), eq(ticketCharges.tenantId, tenantId)));
+    const totals = calculateTicketTotals(rows.map(toCalcRow));
+    await tx
+      .update(serviceTickets)
+      .set({ approvedTotal: toMoneyString(totals.approved) })
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
 
     return updated;
   });

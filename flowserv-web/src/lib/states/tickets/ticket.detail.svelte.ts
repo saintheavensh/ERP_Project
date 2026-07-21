@@ -121,6 +121,21 @@ export class TicketDetailState {
     finally { this.chargeLoading = false; }
   }
 
+  // H10 — cancel an approved charge before it's consumed, releasing its stock reservation
+  async cancelCharge(id: string) {
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/charges/${id}/cancel`, {
+        method: 'POST', headers: this.chargeHeaders()
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal membatalkan biaya';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
   async requestApproval() {
     this.chargeLoading = true;
     this.errorMsg = '';

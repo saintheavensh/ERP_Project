@@ -14,7 +14,8 @@
       <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {#each pos.products.filteredProducts as product}
           {@const stock = pos.products.getStockForBranch(product, pos.products.selectedBranchId)}
-          <div 
+          {@const reserved = pos.products.getReservedForBranch(product, pos.products.selectedBranchId)}
+          <div
             role="button"
             tabindex="0"
             class="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-all cursor-pointer flex flex-col {stock <= 0 ? 'opacity-50 grayscale' : 'hover:border-blue-300'}"
@@ -29,9 +30,14 @@
               <h3 class="font-medium text-slate-800 line-clamp-2 leading-tight mb-3 flex-1">{product.name}</h3>
               <div class="mt-auto flex items-end justify-between">
                 <span class="font-bold text-blue-600">{pos.formatRp(parseFloat(product.sellingPrice) || 0)}</span>
-                <span class="text-xs font-medium px-2 py-1 rounded-full {stock > 5 ? 'bg-green-100 text-green-700' : stock > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">
-                  Stok: {stock}
-                </span>
+                <div class="flex flex-col items-end gap-0.5">
+                  <span class="text-xs font-medium px-2 py-1 rounded-full {stock > 5 ? 'bg-green-100 text-green-700' : stock > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}">
+                    Stok: {stock}
+                  </span>
+                  {#if reserved > 0}
+                    <span class="text-[10px] text-amber-600">{reserved} direservasi</span>
+                  {/if}
+                </div>
               </div>
             </div>
           </div>
