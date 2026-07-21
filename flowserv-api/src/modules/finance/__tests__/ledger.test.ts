@@ -5,6 +5,7 @@ import {
   buildTicketCogsEntry,
   buildApInvoiceEntry,
   buildApSettlementEntry,
+  buildArSettlementEntry,
 } from '../ledger';
 
 const invoice = { id: 'inv-1', tenantId: 'tenant-1', branchId: 'branch-1', grandTotal: 150000 };
@@ -149,5 +150,43 @@ describe('accounts payable entries', () => {
 
     const balance = [...invoiceEntry, ...paymentEntry].reduce((sum, e) => sum + e.amount, 0);
     expect(balance).toBe(600000);
+  });
+});
+
+describe('buildArSettlementEntry', () => {
+  it('posts a negative adjustment on a distinct referenceType, never revenue', () => {
+    const entries = buildArSettlementEntry({
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      invoiceId: 'pos-inv-1',
+      amount: 400000,
+    });
+
+    expect(entries).toEqual([
+      { tenantId: 'tenant-1', branchId: 'branch-1', entryType: 'adjustment', amount: -400000, referenceType: 'pos_invoice', referenceId: 'pos-inv-1' },
+    ]);
+  });
+
+  it('posts nothing for a zero or negative amount', () => {
+    expect(buildArSettlementEntry({ tenantId: 't', branchId: 'b', invoiceId: 'i', amount: 0 })).toEqual([]);
+  });
+
+  it('H14 Watch out: a tempo sale followed by full settlement never double-counts revenue', () => {
+    // Revenue is posted in FULL at sale time regardless of payment status
+    // (buildSaleEntries), so collecting the tempo balance later must add
+    // nothing to the revenue bucket — only the AR-visibility adjustment.
+    const lines = [{ sourceType: 'part' as const, quantity: 1, unitCost: 50000 }];
+    const saleEntries = buildSaleEntries(invoice, lines);
+    const settlementEntries = buildArSettlementEntry({
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      invoiceId: 'inv-1',
+      amount: 150000,
+    });
+
+    const allEntries = [...saleEntries, ...settlementEntries];
+    const revenueTotal = allEntries.filter((e) => e.entryType === 'revenue').reduce((sum, e) => sum + e.amount, 0);
+    expect(revenueTotal).toBe(150000); // exactly the original sale — not doubled
+    expect(settlementEntries.every((e) => e.entryType === 'adjustment' && e.referenceType === 'pos_invoice')).toBe(true);
   });
 });

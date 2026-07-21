@@ -41,6 +41,10 @@ export const posInvoices = pgTable('pos_invoices', {
   grandTotal: money('grand_total').notNull().default('0'),
   status: invoiceStatusEnum('status').notNull().default('active'), // document lifecycle — separate from payment
   paymentStatus: paymentStatusEnum('payment_status').notNull(),
+  // H14 — the running total actually collected against this invoice. Set at
+  // checkout (grandTotal if paid immediately, 0 for tempo) and advanced by
+  // customerPayments below; mirrors supplierInvoices.amountPaid exactly.
+  amountPaid: money('amount_paid').notNull().default('0'),
   paymentMethod: paymentMethodEnum('payment_method').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),
@@ -85,6 +89,25 @@ export const posInvoiceLines = pgTable('pos_invoice_lines', {
     'part_lines_have_an_item',
     sql`(${table.sourceType} = 'part' AND ${table.inventoryItemId} IS NOT NULL) OR (${table.sourceType} <> 'part' AND ${table.inventoryItemId} IS NULL)`
   ),
+}));
+
+// H14 — mirrors supplierPayments exactly (customer-side symmetry with
+// supplier-side, per the task's own design note). One row per instalment
+// recorded against a pos_invoice; applyPayment() in modules/finance/service.ts
+// is the same pure decision function that already governs supplier payments.
+export const customerPayments = pgTable('customer_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  posInvoiceId: uuid('pos_invoice_id').notNull().references(() => posInvoices.id),
+  amount: money('amount').notNull(),
+  // A settlement method, not a payment term — 'tempo'/'split' describe how a
+  // sale was billed, never how a single instalment was actually paid.
+  method: paymentMethodEnum('method').notNull(),
+  referenceNumber: varchar('reference_number', { length: 100 }),
+  paidAt: timestamp('paid_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by').references(() => users.id),
+}, (table) => ({
+  invoiceIdx: index('customer_payments_invoice_idx').on(table.posInvoiceId),
 }));
 
 // Per-tenant, per-day counter for invoice numbering. Allocated with

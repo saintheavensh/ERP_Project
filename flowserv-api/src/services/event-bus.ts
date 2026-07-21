@@ -19,6 +19,10 @@ export enum AppEvent {
   TICKET_PART_CONSUMED = 'ticket.part.consumed',
   SUPPLIER_INVOICE_CREATED = 'supplier.invoice.created',
   SUPPLIER_PAYMENT_RECORDED = 'supplier.payment.recorded',
+  // H14 — a customer settling an instalment on a tempo pos_invoice. Never
+  // posts revenue (that already happened in full at POS_SALE_COMPLETED) —
+  // see ledger.ts's buildArSettlementEntry for why.
+  CUSTOMER_PAYMENT_RECORDED = 'customer.payment.recorded',
 }
 
 export function emitEvent(event: AppEvent, payload: unknown) {

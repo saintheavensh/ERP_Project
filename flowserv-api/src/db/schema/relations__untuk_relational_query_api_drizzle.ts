@@ -25,7 +25,7 @@ import { deviceBrands, deviceModels, productCompatibility, partBrands, productSu
 import { paymentMethods } from './payment_methods__settings_';
 import { auditLogs } from './audit_log';
 import { printerDevices, printerTemplates, printerAssignments } from './printer';
-import { posInvoices, posInvoiceLines } from './pos';
+import { posInvoices, posInvoiceLines, customerPayments } from './pos';
 
 // ==========================================================
 
@@ -219,11 +219,18 @@ export const posInvoicesRelations = relations(posInvoices, ({ one, many }) => ({
   customer: one(customers, { fields: [posInvoices.customerId], references: [customers.id] }),
   creator: one(users, { fields: [posInvoices.createdBy], references: [users.id] }),
   lines: many(posInvoiceLines),
+  payments: many(customerPayments),
 }));
 
 export const posInvoiceLinesRelations = relations(posInvoiceLines, ({ one }) => ({
   posInvoice: one(posInvoices, { fields: [posInvoiceLines.posInvoiceId], references: [posInvoices.id] }),
   inventoryItem: one(inventoryItems, { fields: [posInvoiceLines.inventoryItemId], references: [inventoryItems.id] }),
+}));
+
+export const customerPaymentsRelations = relations(customerPayments, ({ one }) => ({
+  tenant: one(tenants, { fields: [customerPayments.tenantId], references: [tenants.id] }),
+  posInvoice: one(posInvoices, { fields: [customerPayments.posInvoiceId], references: [posInvoices.id] }),
+  createdByUser: one(users, { fields: [customerPayments.createdBy], references: [users.id] }),
 }));
 
 export const paymentMethodsRelations = relations(paymentMethods, ({ one }) => ({

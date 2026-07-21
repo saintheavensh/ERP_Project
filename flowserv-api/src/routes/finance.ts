@@ -9,7 +9,7 @@ import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse, getRequestId } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { recordPaymentInput } from '../modules/finance/types';
-import { recordPayment, getPayableDetail } from '../modules/finance/service';
+import { recordPayment, getPayableDetail, getReceivables } from '../modules/finance/service';
 import { reconcileSaleLedger } from '../lib/ledger-reconciliation';
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 
@@ -91,6 +91,20 @@ financeRouter.post('/payables/:id/payments', requirePermission('finance.record_p
     }
     console.error('Failed to record payment:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to record payment', undefined, 500);
+  }
+});
+
+// GET /v1/finance/receivables — H14/FIN-003: outstanding customer debt,
+// mirroring /payables. Only possible because H8 gave pos_invoices a real
+// customerId FK.
+financeRouter.get('/receivables', async (c) => {
+  const { tenantId } = getAuthContext(c);
+
+  try {
+    const receivables = await getReceivables(tenantId);
+    return successResponse(c, receivables);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch receivables', [err.message]);
   }
 });
 

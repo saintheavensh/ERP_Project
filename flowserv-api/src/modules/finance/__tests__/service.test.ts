@@ -73,4 +73,14 @@ describe('applyPayment', () => {
     // Assert
     expect(second).toEqual({ ok: true, newAmountPaid: 1000000, newStatus: 'paid' });
   });
+
+  it('H14 — the exact same decision function governs a receivable (pos_invoice), not just a payable', () => {
+    // Arrange — shaped like a tempo pos_invoice (grandTotal/amountPaid/paymentStatus
+    // mapped onto the generic {totalAmount, amountPaid, status} the function takes).
+    const posInvoiceLike = { totalAmount: 500000, amountPaid: 200000, status: 'partial' as const };
+    // Act
+    const result = applyPayment(posInvoiceLike, 300000);
+    // Assert — identical decision shape/logic as the supplier-side tests above
+    expect(result).toEqual({ ok: true, newAmountPaid: 500000, newStatus: 'paid' });
+  });
 });

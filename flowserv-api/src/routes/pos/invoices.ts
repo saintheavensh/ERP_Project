@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
-import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers } from '../../db/schema/index';
+import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers, customerPayments } from '../../db/schema/index';
 import { eq, and, sql, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse, getRequestId, buildSuccessEnvelope } from '../../lib/response';
@@ -15,6 +15,8 @@ import { posCheckoutSchema } from './types';
 import { consumeStock } from '../../modules/inventory/service';
 import { emitEvent, AppEvent } from '../../services/event-bus';
 import type { SaleLineForLedger } from '../../modules/finance/ledger';
+import { recordCustomerPaymentInput } from '../../modules/finance/types';
+import { recordCustomerPayment } from '../../modules/finance/service';
 
 const router = new Hono();
 
@@ -68,7 +70,9 @@ router.get('/invoices/:id', async (c) => {
         with: {
           inventoryItem: { columns: { name: true, sku: true } }
         }
-      }
+      },
+      // H14 — payment history, newest first, mirroring getPayableDetail.
+      payments: { orderBy: [desc(customerPayments.paidAt)] },
     }
   });
 
@@ -159,6 +163,10 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
         taxAmount: '0',
         grandTotal: toMoneyString(grandTotal),
         paymentStatus,
+        // H14 — paid immediately (cash/transfer/qris/split) means the full
+        // amount is collected at checkout; tempo starts at zero and is
+        // advanced later via POST /invoices/:id/payments.
+        amountPaid: paymentStatus === 'paid' ? toMoneyString(grandTotal) : '0',
         paymentMethod: data.paymentMethod,
         createdBy: userId,
       }).returning();
@@ -272,6 +280,46 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
   }
 });
 
+// POST /v1/pos/invoices/:id/payments — record a full or partial payment
+// against a tempo (unpaid/partial) invoice. H14: named explicitly in
+// coding-guidelines §3.4 as a critical mutation requiring Idempotency-Key
+// (as the modern equivalent of the doc's `pos-transactions/:id/payments`).
+const RECORD_CUSTOMER_PAYMENT_ENDPOINT = 'POST /v1/pos/invoices/:id/payments';
+
+router.post('/invoices/:id/payments', requirePermission('pos.process_payment'), zValidator('json', recordCustomerPaymentInput), auditMiddleware({ action: 'pos_invoice.record_payment', entityType: 'pos_invoice', entityIdParam: 'id', bodyFields: ['amount', 'method', 'referenceNumber'] }), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const id = c.req.param('id');
+  const input = c.req.valid('json');
+
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (idempotencyKey) {
+    const replay = await findIdempotentResponse(tenantId, RECORD_CUSTOMER_PAYMENT_ENDPOINT, idempotencyKey);
+    if (replay) return replayIdempotentResponse(c, replay);
+  }
+
+  try {
+    const result = await recordCustomerPayment(
+      tenantId,
+      id,
+      input,
+      userId,
+      idempotencyKey ? { key: idempotencyKey, endpoint: RECORD_CUSTOMER_PAYMENT_ENDPOINT } : undefined,
+      getRequestId(c)
+    );
+    return successResponse(c, result, undefined, 201);
+  } catch (err) {
+    if (idempotencyKey && isIdempotencyKeyConflict(err)) {
+      const replay = await findIdempotentResponse(tenantId, RECORD_CUSTOMER_PAYMENT_ENDPOINT, idempotencyKey);
+      if (replay) return replayIdempotentResponse(c, replay);
+    }
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to record customer payment:', err);
+    return errorResponse(c, 'INTERNAL_SERVER_ERROR', 'Gagal mencatat pembayaran', undefined, 500);
+  }
+});
+
 // DELETE /v1/pos/invoices/:id (Void)
 router.delete('/invoices/:id', requirePermission('pos.void_transaction'), auditMiddleware({ action: 'pos_invoice.void', entityType: 'pos_invoice', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
@@ -303,6 +351,26 @@ router.delete('/invoices/:id', requirePermission('pos.void_transaction'), auditM
 
       if (existingVoidMovements.length > 0) {
         throw new BusinessError('ALREADY_VOIDED', 'Invoice is already voided', 409);
+      }
+
+      // H14 — block voiding an invoice that has any recorded instalment.
+      // Refunding money already collected is SBL-005 (out of scope here);
+      // blocking is the safe default so a void can never silently strand a
+      // customer's payment with no corresponding cash movement. A cash sale
+      // that was simply paid in full at checkout never has a customer_payments
+      // row (paymentStatus was set to 'paid' directly at insert), so ordinary
+      // POS voids are unaffected — this only blocks a tempo sale that has
+      // since collected at least one instalment via POST .../payments.
+      const existingPayments = await tx.select({ id: customerPayments.id })
+        .from(customerPayments)
+        .where(eq(customerPayments.posInvoiceId, id));
+
+      if (existingPayments.length > 0) {
+        throw new BusinessError(
+          'VOID_BLOCKED_HAS_PAYMENTS',
+          'Cannot void an invoice that has recorded payments; refund is out of scope for void',
+          409
+        );
       }
 
       // 2. Reverse Stock Movements

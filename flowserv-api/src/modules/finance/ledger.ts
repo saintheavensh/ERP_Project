@@ -164,6 +164,40 @@ export function buildApSettlementEntry(params: SupplierPaymentForLedger): Ledger
   ];
 }
 
+export interface CustomerPaymentForLedger {
+  tenantId: string;
+  branchId: string;
+  invoiceId: string;
+  amount: string | number;
+}
+
+/**
+ * Pure — no database. H14: a customer settling an instalment on a tempo
+ * pos_invoice. Revenue for that invoice was already posted in FULL at sale
+ * time by buildSaleEntries, regardless of paymentStatus — that is standard
+ * accrual recognition, and re-posting revenue here would double-count income
+ * (exactly the mistake the task's own "Watch out" warns against). This entry
+ * only makes the cash movement visible, on a distinct referenceType
+ * ('pos_invoice', not 'pos_sale') so it can never be picked up by
+ * /ledger/reconcile's revenue-vs-grandTotal check. Structurally mirrors
+ * buildApSettlementEntry (same shape, negative adjustment) per the task's
+ * "customer-side symmetry with supplier-side" design note.
+ */
+export function buildArSettlementEntry(params: CustomerPaymentForLedger): LedgerEntryInput[] {
+  const amount = roundMoney(Number(params.amount));
+  if (amount <= 0) return [];
+  return [
+    {
+      tenantId: params.tenantId,
+      branchId: params.branchId,
+      entryType: 'adjustment',
+      amount: -amount,
+      referenceType: 'pos_invoice',
+      referenceId: params.invoiceId,
+    },
+  ];
+}
+
 // ============================================================================
 // Event subscriptions — DB writes. Registered once at startup (index.ts).
 // Every emit site fires AFTER its owning transaction has already committed —
@@ -195,6 +229,7 @@ export type PosSaleVoidedPayload = PosSaleCompletedPayload;
 export type TicketPartConsumedPayload = TicketConsumptionForLedger;
 export type SupplierInvoiceCreatedPayload = SupplierInvoiceForLedger;
 export type SupplierPaymentRecordedPayload = SupplierPaymentForLedger;
+export type CustomerPaymentRecordedPayload = CustomerPaymentForLedger;
 
 async function postSaleEntries(payload: PosSaleCompletedPayload) {
   try {
@@ -236,6 +271,14 @@ async function postApSettlement(payload: SupplierPaymentRecordedPayload) {
   }
 }
 
+async function postArSettlement(payload: CustomerPaymentRecordedPayload) {
+  try {
+    await insertEntries(buildArSettlementEntry(payload));
+  } catch (error) {
+    console.error('Failed to post AR settlement ledger entry for pos invoice', payload.invoiceId, error);
+  }
+}
+
 /**
  * Wires the ledger up to the event bus. Call once at startup (index.ts).
  * A handler throwing must never propagate back into the route that emitted
@@ -248,4 +291,5 @@ export function subscribeLedger() {
   onEvent<TicketPartConsumedPayload>(AppEvent.TICKET_PART_CONSUMED, postTicketCogs);
   onEvent<SupplierInvoiceCreatedPayload>(AppEvent.SUPPLIER_INVOICE_CREATED, postAccountsPayable);
   onEvent<SupplierPaymentRecordedPayload>(AppEvent.SUPPLIER_PAYMENT_RECORDED, postApSettlement);
+  onEvent<CustomerPaymentRecordedPayload>(AppEvent.CUSTOMER_PAYMENT_RECORDED, postArSettlement);
 }

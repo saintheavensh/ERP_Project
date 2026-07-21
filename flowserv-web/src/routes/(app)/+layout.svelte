@@ -35,6 +35,7 @@
         path: '/finance',
         subItems: [
           { label: 'Accounts Payable', path: '/finance/payables' },
+          { label: 'Accounts Receivable', path: '/finance/receivables' },
           { label: 'Ledger', path: '/finance/ledger' }
         ]
       });
@@ -50,6 +51,7 @@
         path: '/finance',
         subItems: [
           { label: 'Accounts Payable', path: '/finance/payables' },
+          { label: 'Accounts Receivable', path: '/finance/receivables' },
           { label: 'Ledger', path: '/finance/ledger' }
         ]
       });

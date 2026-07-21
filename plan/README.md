@@ -954,7 +954,104 @@ Stage 4
     exercised end-to-end in a browser.
 
 Stage 5
-- [ ] H14 Payments
+- [x] H14 Payments — 2026-07-21
+  - New `customer_payments` table (`db/schema/pos.ts`, mirrors `supplier_payments`
+    exactly — same shape, same guards) + `pos_invoices.amount_paid`. Set explicitly
+    at checkout (`grandTotal` if paid immediately via cash/transfer/qris/split,
+    `0` for tempo) rather than relying on the column default, so cache and reality
+    never disagree from the first row. No manual backfill needed: DB held 0
+    `pos_invoices` rows going in (confirmed before starting), so `npm run db:reset`
+    was the entire migration.
+  - `applyPayment()` in `modules/finance/service.ts` needed **no signature
+    change** — its shape (`{totalAmount, amountPaid, status}`) never referenced
+    "supplier" to begin with, so H14 reuses it as-is for both
+    `recordPayment` (AP) and the new `recordCustomerPayment` (AR). Added a test
+    (`service.test.ts`) that runs the identical function against a
+    pos_invoice-shaped input to make the reuse explicit, not just implicit.
+  - `recordCustomerPayment` mirrors `recordPayment`'s lock-decide-write shape
+    exactly (`FOR UPDATE` on the invoice row, same ALREADY_PAID/OVERPAYMENT
+    error codes, same idempotency-as-last-write-in-transaction pattern).
+    `POST /v1/pos/invoices/:id/payments` — the modern equivalent of
+    coding-guidelines §3.4's named `pos-transactions/:id/payments` — gated by
+    the existing `pos.process_payment` permission (no new RBAC catalog entry
+    needed; recording a follow-up instalment is the same resource-action group
+    as checkout, already granted to Cashier and Manager).
+  - `GET /v1/pos/invoices/:id` now includes `payments` (newest-first, mirrors
+    `getPayableDetail`). New `GET /v1/finance/receivables` (FIN-003) mirrors
+    `/payables`, excluding both `paymentStatus='paid'` and `status='voided'`
+    invoices (a voided sale carries no real debt regardless of what
+    paymentStatus it froze at).
+  - **Ledger (H11 event bus):** new `AppEvent.CUSTOMER_PAYMENT_RECORDED` →
+    `buildArSettlementEntry` posts a **negative `adjustment`** entry on a
+    **distinct `referenceType` (`'pos_invoice'`, not `'pos_sale'`)** — never
+    revenue. Revenue is already posted in FULL at sale time by
+    `buildSaleEntries`, independent of payment status (standard accrual
+    recognition); re-posting it on payment would double-count income, exactly
+    the mistake the task's own "Watch out" warns against. Using a distinct
+    `referenceType` also means these entries can never be picked up by
+    `/ledger/reconcile`'s revenue-vs-grandTotal check. Structurally mirrors
+    `buildApSettlementEntry` (same shape) per the task's "customer-side
+    symmetry with supplier-side" design note — proved with a dedicated test
+    composing `buildSaleEntries` + `buildArSettlementEntry` and asserting the
+    revenue total stays at exactly the original sale amount.
+  - **Void vs. paid — decided and enforced, not left undefined:** voiding an
+    invoice that has **any** `customer_payments` row is blocked with
+    **409 `VOID_BLOCKED_HAS_PAYMENTS`** (checked inside the same `FOR UPDATE`
+    transaction as the existing void guards). Refund is SBL-005, out of scope.
+    An ordinary cash/transfer/qris sale paid in full *at checkout* never gets a
+    `customer_payments` row (its `paymentStatus`/`amountPaid` are set directly
+    at insert), so this only blocks a **tempo** sale that has since collected
+    at least one instalment — ordinary POS voids (H6/H9's existing tests, and
+    a fresh live check below) are unaffected.
+  - `npm test`: **126/126 passing** (was 122 — 4 new: 1 in `service.test.ts`
+    for the shared `applyPayment` reuse, 3 in `ledger.test.ts` for
+    `buildArSettlementEntry`). `npx tsc --noEmit` clean. `npx svelte-check`:
+    0 errors, 0 warnings (696 files — 2 new routes).
+  - **Live API run** (recorded, then DB reset to clean seed):
+    - Tempo checkout (Rp1.000.000) → `unpaid`, `amountPaid: 0`. Partial payment
+      (400k, cash) → `partial`, `amountPaid: 400000`. Completing payment (600k,
+      transfer) → `paid`, `amountPaid: 1000000`.
+    - Second tempo invoice (500k): overpayment attempt (999999) → **422
+      `OVERPAYMENT`**, `"Payment exceeds outstanding balance of 500000."`;
+      re-fetched the invoice — `unpaid`/`amountPaid: 0` untouched.
+    - Payment against the now-fully-paid first invoice → **409 `ALREADY_PAID`**.
+    - `GET .../invoices/:id` on the first invoice: `payments` array newest-first
+      (transfer 600k, then cash 400k) — matches insertion order reversed.
+    - Receivables list showed the second invoice (500k, unpaid) and correctly
+      excluded the first (paid); settling the second in full made it disappear
+      from the list entirely.
+    - **Click-path, literally walked end-to-end via the API** (tempo sale →
+      appears in receivables → partial payment → remaining balance → gone):
+      third tempo invoice (200k) → appeared in `/receivables` at `partial`
+      after a 50k payment → recorded the remaining 150k → invoice list
+      returned `[]`.
+    - Void guard: partially-paid third invoice → **409
+      `VOID_BLOCKED_HAS_PAYMENTS`**. Regression check: a fresh **cash**
+      invoice (paid immediately, no `customer_payments` row) → void →
+      **200 success**, proving the guard doesn't affect ordinary POS voids.
+    - **Ledger dump across all 3 tempo invoices**: each posted revenue exactly
+      once at sale (1.000.000 / 500.000 / 200.000 — never doubled by the
+      payments that followed), each payment posted as a negative `adjustment`
+      on `referenceType: 'pos_invoice'` (-400000/-600000, -500000,
+      -50000/-150000). `GET /ledger/reconcile` → `{isClean: true, gaps: []}`
+      throughout — confirms the AR adjustment entries are invisible to the
+      revenue reconciliation check, as designed.
+  - **Frontend:** `InvoiceDetailModal.svelte` gained a payment-status line,
+    outstanding-balance display, a payment-history table, a "Bayar" button
+    (hidden once `paymentStatus === 'paid'`), and a pay modal — state lives in
+    `history.svelte.ts` (`openPayModal`/`submitPayment`, same
+    idempotency-key-minted-on-open pattern as `payables.svelte.ts`). New
+    `/finance/receivables` page (`ReceivablesState`, `ReceivablesTable.svelte`)
+    mirrors `/finance/payables` exactly, added to the sidebar under Finance for
+    Super Admin/Manager. Playwright is still not installed in `flowserv-web`
+    (same gap recorded since H7) — substituted with `svelte-check` (0 errors)
+    and the live API run above, which is what the UI calls directly with no
+    intermediate logic of its own.
+  - DB reset back to clean seed state after the live run (`0` `pos_invoices`,
+    `0` `customer_payments`, `0` `finance_ledger_entries`) — confirmed via a
+    fresh `npm run db:reset` before finishing; the session's own dev-server
+    instance stopped (pre-existing stray dev servers from earlier sessions
+    were left running, out of this task's scope).
 - [ ] H15 End-to-end verification
 
 Continuous

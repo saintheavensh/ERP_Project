@@ -10,6 +10,17 @@ export class PosHistoryState {
   selectedInvoiceDetail: any = $state(null);
   loadingDetail = $state(false);
 
+  // H14 — payment modal for a tempo invoice, opened from InvoiceDetailModal.
+  payingInvoice: any = $state(null);
+  payAmount = $state(0);
+  payMethod = $state('cash');
+  payReferenceNumber = $state('');
+  paySubmitting = $state(false);
+  payError = $state('');
+  // Minted when the modal opens (a new action), reused across retries of
+  // submitPayment for this same modal session — never regenerated on retry.
+  payIdempotencyKey = $state('');
+
   constructor(data: any, token: string) {
     this.data = data;
     this.token = token;
@@ -110,6 +121,56 @@ export class PosHistoryState {
       window.location.href = '/pos';
     } catch (e: any) {
       alert('Gagal edit: ' + e.message);
+    }
+  }
+
+  outstandingBalance(inv: any) {
+    return Number(inv.grandTotal) - Number(inv.amountPaid);
+  }
+
+  openPayModal(invoice: any) {
+    this.payingInvoice = invoice;
+    this.payAmount = this.outstandingBalance(invoice);
+    this.payMethod = 'cash';
+    this.payReferenceNumber = '';
+    this.payError = '';
+    this.payIdempotencyKey = crypto.randomUUID();
+  }
+
+  closePayModal() {
+    this.payingInvoice = null;
+  }
+
+  async submitPayment() {
+    if (!this.payingInvoice) return;
+    this.paySubmitting = true;
+    this.payError = '';
+
+    try {
+      const res = await fetch(`${API_BASE}/pos/invoices/${this.payingInvoice.id}/payments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`,
+          'Idempotency-Key': this.payIdempotencyKey
+        },
+        body: JSON.stringify({
+          amount: this.payAmount,
+          method: this.payMethod,
+          referenceNumber: this.payReferenceNumber || undefined
+        })
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error?.message || 'Gagal mencatat pembayaran');
+      }
+
+      window.location.reload();
+    } catch (err: any) {
+      this.payError = err.message;
+      this.paySubmitting = false;
     }
   }
 
