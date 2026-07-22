@@ -13,19 +13,26 @@
 
 ---
 
-## Current Phase: `PHASE 4 (Purchasing, Supplier Debts, & Margins)` ← IN PROGRESS
+## Current Phase: `PHASE 4.5 (Hardening Track) — effectively COMPLETE` → next: finish 4C, then Phase 5
 
-> **Phase 3.5 (Stabilization) completed 2026-07-20.** All 9 stabilization tasks are
-> done and merged to `main`. The flow engine now actually enforces transitions, stock
-> can no longer be silently oversold or mis-received, tickets close, supplier debt can
-> be paid, and there are 37 passing tests where there were none.
+> **⚠️ Reconciled 2026-07-22.** This file had drifted badly out of sync with the
+> **Hardening Track** (`plan/README.md`, tasks H0–H16), which built most of Phases 3.5,
+> 4.5, and the Phase 3 gaps between 2026-07-21 and 2026-07-22. Every checkbox below was
+> re-verified against `plan/README.md` and the actual code. The H-track work still lives
+> only on `phase-4/purchasing-completion` (main is behind — merge pending).
 >
-> **One item is deliberately `[/]`, not `[x]`:** 3.5B.2 (row locking) is code-reviewed
-> but was never load-tested under real concurrency. That gap is recorded rather than
-> papered over — see the Definition of Done below.
+> **Phase 3.5 (Stabilization) completed 2026-07-20** and merged to `main`; 3.5B.2 (row
+> locking) was promoted `[/]` → `[x]` on 2026-07-21 after H9/H10 concurrency-tested it.
 >
-> Phase 4 remains open: 4C.1 and 4C.2 (margin config endpoint + server-side pricing
-> on stock arrival) are still unbuilt. See Phase 4 below.
+> **Phase 4.5 (Finance Ledger, RBAC, Audit, API Hardening)** is the Hardening Track:
+> 4.5A (H11), 4.5B (H12), 4.5C + 4.5D (H13) are all done. **H14** added customer
+> payments, **H15** wired the full flow into an end-to-end test (`[/]` — two documented
+> gaps remain), **H16** continued the module migration.
+>
+> **Still open:** Phase 4C.1/4C.2 (margin config endpoint + server-side price validation —
+> never built), the two H15 `[/]` gaps (service-invoice-from-ticket + in-browser UI walk),
+> plus long-standing 2A.1 (register endpoint) and 3B.5 (Kanban board). See `plan/README.md`
+> for the full H-track evidence trail.
 
 ---
 
@@ -54,8 +61,10 @@ missing.
 - **Before starting work:** Check current branch with `git branch`
 - **Never commit to `main` directly** — always work in a phase branch
 
-> **Current debt:** `phase-4/purchasing` contains all of Phase 2, 3, and 4.
-> `main` has not moved since Phase 1. Task 3.5D below resolves this.
+> **Branch debt (2026-07-22):** 3.5D.1 merged Phases 1–3.5 to `main` (last `main`
+> commit: "phase 3.5 complete"). Since then the entire Hardening Track (H0–H16) has
+> accumulated on `phase-4/purchasing-completion` — `main` is ~20 commits behind and a
+> merge is pending as the immediate next step.
 
 ---
 
@@ -151,11 +160,13 @@ missing.
       live: `Intake → Diagnosis` returns 200; `Intake → Completion` returns 409
       `TRANSITION_NOT_ALLOWED`.
 - [x] 2B.3 Stage history recording (TicketStageHistory — append-only)
-- [x] 2B.4 Event emission on state change — `FlowEngine.executeTransition` now
-      performs the DB update and emits `TICKET_STAGE_CHANGED` on every successful
-      transition. No listeners subscribe yet (Phase 4.5A will add ledger posting).
-- [ ] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
-      — ⚠️ **no test files exist anywhere in the repo.** `npm test` exits 1.
+- [x] 2B.4 Event emission on state change — `FlowEngine.executeTransition` performs the
+      DB update and emits `TICKET_STAGE_CHANGED` on every successful transition. The
+      finance ledger now subscribes (H11, `subscribeLedger()`), and other events were
+      added across the H-track (`event-bus.ts`).
+- [x] 2B.5 **Unit tests** — transition validation, invalid transitions, permission checks
+      — done in 3.5C.3, now `flow-engine/__tests__/engine.test.ts` (moved in H16). The
+      repo now has 126 unit + 20 e2e tests passing; `npm test` is green (was `exits 1`).
 
 ### 2C. Flow Engine Visualization (FE)
 - [x] 2C.1 FE: Flow template list UI
@@ -189,31 +200,50 @@ missing.
 ### 3C. Inventory + FIFO (BE + FE)
 - [x] 3C.1 BE: Inventory item CRUD
 - [x] 3C.2 BE: Batch creation (goods receipt → FIFO batch)
-- [ ] 3C.3 BE: Parts reservation (soft-lock) — ⚠️ **not implemented.**
-      `quantityReserved` is only ever written as the literal `0`.
-- [ ] 3C.4 BE: Parts consumption from a ticket (hard deduction, FIFO order) — ⚠️ FIFO
-      deduction exists **only in POS checkout**. Nothing consumes parts from a service ticket.
+- [x] 3C.3 BE: Parts reservation (soft-lock) — built in **H10**. `generateQuotation`
+      reserves every part charge (`stock_levels.quantityReserved`), POS checkout
+      rejects a sale that would dip into reserved stock (422 `INSUFFICIENT_SELLABLE`).
+      See `plan/README.md` H10.
+- [x] 3C.4 BE: Parts consumption from a ticket (hard deduction, FIFO order) — built in
+      **H9**. `POST /v1/tickets/:id/charges/:chargeId/consume` runs shared `consumeStock()`
+      (FIFO), writes `stock_movements` with `reference_type='ticket_consumption'`. See
+      `plan/README.md` H9.
 - [x] 3C.5 FE: Inventory list page (stock levels, alerts)
 - [x] 3C.6 FE: Stock receipt form (add batch)
 
 ### 3D. POS + Finance (BE + FE)
 - [x] 3D.1 BE: POS transaction + invoice generation
-- [ ] 3D.2 BE: Payment processing (partial/full) — `payments` table never written to;
-      `paymentStatus` is a flat string, partial payment impossible
-- [ ] 3D.3 BE: Finance ledger posting (COGS, revenue) — ⚠️ **`financeLedgerEntries` is
-      never written to by any route.** FIFO already computes the cost and discards it.
+- [x] 3D.2 BE: Payment processing (partial/full) — built in **H14**. `customer_payments`
+      table + `POST /v1/pos/invoices/:id/payments`; partial/deposit/settlement with
+      `amountPaid` tracking, OVERPAYMENT/ALREADY_PAID guards. See `plan/README.md` H14.
+- [x] 3D.3 BE: Finance ledger posting (COGS, revenue) — built in **H11**. Event-driven
+      posting to `financeLedgerEntries` on POS checkout/void, ticket consumption, and
+      supplier invoice/payment; the FIFO cost is no longer discarded. See `plan/README.md` H11.
 - [x] 3D.4 FE: Simple POS page
-- [ ] 3D.5 FE: Payment form
-- [ ] 3D.6 **Unit tests** — FIFO batch split, ledger accuracy, stock levels
+- [x] 3D.5 FE: Payment form — built in **H14**. Pay modal on `InvoiceDetailModal.svelte`
+      + new `/finance/receivables` page. See `plan/README.md` H14.
+- [x] 3D.6 **Unit tests** — FIFO batch split, ledger accuracy, stock levels — built across
+      **H4–H14** (`lib/__tests__/fifo.test.ts`, `modules/finance/__tests__/ledger.test.ts`,
+      `lib/__tests__/stock-lifecycle.test.ts`, and more; 126 unit + 20 e2e passing).
 
-### 3E. Verify Full Flow
-- [ ] 3E.1 Test full flow in UI: Intake → Diagnosis → Approve → Reserve Part → Repair → QC → Invoice → Pay → Close
-- [ ] 3E.2 Verify: stock levels decreased, finance ledger entries created, ticket closed
-- [ ] 3E.3 Git commit: `feat: phase 3 complete — vertical slice working`
+### 3E. Verify Full Flow — delivered by **H15** (see `plan/README.md` H15)
+- [x] 3E.1 Test full flow: Intake → Diagnosis → Approve → Reserve Part → Repair → Invoice → Pay → Close
+      — automated integration test `src/__tests__/e2e-service-flow.test.ts` (20 tests) walks
+      the whole path through the real HTTP routes against a dedicated `flowserv_test`
+      database. The *automated* flow is proven; the literal in-browser UI walk is the one
+      piece still `[/]` on H15 (Playwright not yet installed) — see H15 gap (b).
+- [x] 3E.2 Verify: stock decreased by exactly the consumed qty, ledger entries created,
+      ticket closed (`status='closed'`, `closedAt` set), reconciliation clean, margin positive.
+- [/] 3E.3 Git commit — H15 landed on `phase-4/purchasing-completion` (commit `6543c07`),
+      correctly marked `[/]` not `[x]` because two documented gaps remain: billing a
+      ticket's *parts* into an invoice (blocked by a discovered double-deduct bug) and the
+      in-browser UI walk. Both are the H15-gap follow-up (H17 + Playwright).
 
-> **Note:** 3E cannot pass today. Diagnosis, approval, reservation, ticket-linked
-> consumption, ledger posting, and ticket closure all do not exist. Phases 3.5 and
-> 4.5 close these gaps.
+> **Update 2026-07-22:** 3E was previously impossible (diagnosis, approval, reservation,
+> ticket-linked consumption, ledger posting, and closure did not exist). Phases 3.5 and the
+> Hardening Track (H9/H10/H11/H14) built all of them, and **H15** wired them into one
+> passing end-to-end test. The two remaining `[/]` gaps are tracked under H15 in
+> `plan/README.md`.
 
 ---
 
@@ -250,12 +280,15 @@ missing.
       name, so it works for any flow template. Verified live: transitioned a real
       ticket to Completion, `GET /v1/tickets/:id` showed `status: "closed"` with a
       populated `closedAt`.
-- [/] 3.5B.2 Fix BUG-07: add `SELECT ... FOR UPDATE` row locking on batch/level reads
+- [x] 3.5B.2 Fix BUG-07: add `SELECT ... FOR UPDATE` row locking on batch/level reads
       in POS checkout, purchasing receive, and opname (also applied to the manual
-      inventory receive path, which had the same lost-update shape). **Code-reviewed,
-      not load-tested** — no concurrent-request harness was run against two
-      simultaneous checkouts of the last unit. Per the task's own instruction, marked
-      `[/]` rather than `[x]` until that's actually verified.
+      inventory receive path, which had the same lost-update shape). **Now
+      concurrency-tested** (was `[/]` "code-reviewed, not load-tested" until 2026-07-21):
+      **H9** fired two simultaneous ticket-charge consumptions of the last unit — one
+      200, one 409, exactly one `stock_movements` row; **H10** fired two simultaneous
+      quotations reserving the last unit — one 201, one 422, loser rolled back cleanly.
+      Both prove the `FOR UPDATE` locks serialize the race, not request ordering. See
+      `plan/README.md` H9 & H10.
 - [x] 3.5B.3 Fix BUG-08: stop swallowing POS errors — log them, and return **422**
       `INSUFFICIENT_STOCK` instead of a generic 500. Verified live: selling 1 unit of
       a zero-stock item now returns 422 with code `INSUFFICIENT_STOCK` (was a generic
@@ -371,10 +404,11 @@ missing.
 
 ---
 
-## PHASE 4.5 — Finance Ledger, RBAC & Audit
+## PHASE 4.5 — Finance Ledger, RBAC & Audit ✅ COMPLETE (Hardening Track H11–H14)
 > **Goal:** Build the three cross-cutting foundations that have schema tables but no code.
 > **Read first:** specification/features/10-finance.md, specification/03-rbac-roles.md
-> **Branch:** `phase-4.5/foundations`
+> **Branch:** actually landed on `phase-4/purchasing-completion` (the H-track branch),
+> not `phase-4.5/foundations` — the H-track absorbed this phase (see `plan/README.md`).
 >
 > **Why this phase exists:** the old Quick Reference table listed Phase 4 as
 > "RBAC + Audit" while the phase body said Purchasing. Both fell into that gap. This
@@ -417,7 +451,8 @@ missing.
       (Super Admin bypass, granted-allow, enforce-deny, report-log-but-allow),
       `requirePermission(code)` is the thin DB-fetching wrapper around it,
       mirroring the `evaluateTransition`/`FlowEngine` split in
-      `services/flow-engine.ts`. Typed as Hono's `MiddlewareHandler` — a bare
+      `flow-engine/engine.ts` (moved there from `services/flow-engine.ts` in H16).
+      Typed as Hono's `MiddlewareHandler` — a bare
       `(c: Context, next: Next)` signature silently collapsed route path-param
       typing in every file it was inlined into (`c.req.param()` degraded to
       `string | undefined`), which cascaded into ~24 spurious Drizzle
@@ -469,19 +504,30 @@ missing.
         with no code change, confirming the documented recovery path actually
         works and isn't just a comment.
 
-### 4.5C. Audit Log (PLT-006)
-- [ ] 4.5C.1 BE: Create `middleware/audit.ts` writing to the existing `auditLogs` table
-- [ ] 4.5C.2 BE: Apply to all mutations
-- [ ] 4.5C.3 FE: Audit log viewer (admin only)
+### 4.5C. Audit Log (PLT-006) ✅ COMPLETE (2026-07-21, [H13](plan/H13-api-hardening.md))
+- [x] 4.5C.1 BE: `middleware/audit.ts` — runs `await next()` first, records only if
+      `c.res.status < 400`, so a rolled-back mutation is never logged as having happened;
+      `action` is an explicit `<entity>.<verb>`, `changes` is a per-route field allowlist
+      (never a raw body dump). See `plan/README.md` H13.
+- [x] 4.5C.2 BE: applied inline to all 37 mutating handlers across the 16 route files
+      H12 catalogued. A replayed idempotent response is skipped (not double-logged).
+- [x] 4.5C.3 FE/BE: `GET /v1/audit-logs` (`routes/audit-logs.ts`), gated by a new
+      `audit.view` permission granted to no seeded role — only the Super Admin bypass
+      reaches it (admin-only). Live-verified: Cashier/Manager 403, Super Admin 200.
 
-### 4.5D. API Hardening
-- [ ] 4.5D.1 Create `lib/pagination.ts`; apply cursor pagination to tickets, inventory,
-      POS invoices (currently a hardcoded `limit: 100`)
-- [ ] 4.5D.2 Create `lib/idempotency.ts`; apply `Idempotency-Key` to the three endpoints
-      named in coding-guidelines §3.4
-- [ ] 4.5D.3 Create the `BusinessError` class (guidelines §8) and wire it to the error
-      handler so 409 and 422 are actually returned
-- [ ] 4.5D.4 Git commit: `feat: phase 4.5 complete — ledger, rbac, audit`
+### 4.5D. API Hardening ✅ COMPLETE (2026-07-21, [H13](plan/H13-api-hardening.md))
+- [x] 4.5D.1 `lib/pagination.ts` — cursor pagination applied to `GET /v1/tickets`,
+      `GET /v1/pos/invoices` (was hardcoded `limit: 100`), `GET /v1/inventory` (had no
+      limit), and `GET /v1/audit-logs`. Found + fixed a real microsecond-precision cursor
+      bug live (150-ticket walk, zero duplicates). See `plan/README.md` H13.
+- [x] 4.5D.2 `lib/idempotency.ts` + `idempotency_keys` table; `Idempotency-Key` applied to
+      `POST /v1/pos/invoices`, `POST /v1/tickets/:id/transition`,
+      `POST /v1/tickets/:id/charges/:chargeId/consume`, and
+      `POST /v1/finance/payables/:id/payments`. Concurrent-race tested live.
+- [x] 4.5D.3 `BusinessError` class (`lib/errors.ts`) wired to the error handler — 409 and
+      422 are returned throughout (INSUFFICIENT_STOCK, INSUFFICIENT_SELLABLE, OVERPAYMENT,
+      CHARGE_LOCKED, VOID_CONFLICT, etc., all proven live across the H-track).
+- [x] 4.5D.4 Git commit — landed as H13 on `phase-4/purchasing-completion` (commit `6d117f6`).
 
 ---
 
@@ -621,10 +667,13 @@ HTTP route handlers, which is why so little of it was testable.
 
 Phase 3.5 began the correction: `modules/finance/` is the first module in the
 specified shape, and the pure decision functions extracted along the way
-(`services/flow-engine.ts`'s `evaluateTransition`, `lib/fifo.ts`, `lib/wac.ts`,
-`routes/purchasing/order-status.ts`) are what the 37 current tests actually exercise.
+(`flow-engine/engine.ts`'s `evaluateTransition`, `lib/fifo.ts`, `lib/wac.ts`,
+`routes/purchasing/order-status.ts`) are what the tests actually exercise. The
+Hardening Track (H7/H9/H11/H16) continued it: `modules/tickets/`,
+`modules/inventory/`, `flow-engine/` are now in the specified shape.
 
-**Decision: retrofit incrementally, never big-bang.**
+**Decision: retrofit incrementally, never big-bang.** (Restated as standing rule
+[H16](plan/H16-module-migration.md).)
 
 When you touch a module for a fix or a feature, extract its `service.ts` *then*,
 with a test. Do **not** refactor modules you are not otherwise changing. A
@@ -633,9 +682,14 @@ application.
 
 Other known debt, to be addressed as modules are touched:
 - `drizzle-zod` is installed but never used; Zod schemas are hand-written (§4)
-- `services/flow-engine.ts` should be `flow-engine/{engine,types,events}.ts`
-- Two schema files violate kebab-case naming: `payment_methods__settings_.ts`,
-  `relations__untuk_relational_query_api_drizzle.ts`
+- ~~`services/flow-engine.ts` should be `flow-engine/{engine,types,events}.ts`~~ —
+  **done in H16** (`flow-engine/engine.ts` + `flow-engine/types.ts`; no `events.ts`,
+  the event bus is cross-cutting and stays in `services/event-bus.ts`).
+- ~~Two schema files violate kebab-case naming: `payment_methods__settings_.ts`,
+  `relations__untuk_relational_query_api_drizzle.ts`~~ — **renamed in H16** to
+  `payment-methods.ts` and `relations.ts`.
+- `catch (err: any)` (~36 sites) → `catch (err: unknown)` + a shared `toBusinessError()`
+  helper — **still open** (H16 scoped it as future per-module work).
 - Comments and error strings mix Indonesian and English — pick one for user-facing text
 
 **Decision (2026-07-21, H4): `stock_levels` is deliberately a cache, not the source of
