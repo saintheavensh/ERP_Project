@@ -22,7 +22,7 @@ import { customers, customerAssets, serviceTickets, ticketStageHistory, approval
 import { ticketCharges } from './ticket-charges';
 import { inventoryCategories, inventoryItems, itemBrandPricing, stockLevels, stockMovements, stockBatches, suppliers, supplierBrands, supplierInvoices, supplierPayments, purchaseOrders, purchaseOrderLines } from './inventory';
 import { deviceBrands, deviceModels, productCompatibility, partBrands, productSuppliers } from './product_catalog';
-import { paymentMethods } from './payment_methods__settings_';
+import { paymentMethods } from './payment-methods';
 import { auditLogs } from './audit_log';
 import { printerDevices, printerTemplates, printerAssignments } from './printer';
 import { posInvoices, posInvoiceLines, customerPayments } from './pos';

@@ -10,7 +10,7 @@ import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse, getRequestId } from '../lib/response';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../lib/pagination';
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
-import { FlowEngine } from '../services/flow-engine';
+import { FlowEngine } from '../flow-engine/engine';
 import { BusinessError } from '../lib/errors';
 import { createChargeInput, updateChargeInput, assignTechnicianInput } from '../modules/tickets/types';
 import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge } from '../modules/tickets/service';
@@ -223,7 +223,7 @@ const transitionSchema = z.object({
 });
 
 // No requirePermission here on purpose: FlowEngine.executeTransition already gates
-// on the *target node's* requiredPermissionId (services/flow-engine.ts), which varies
+// on the *target node's* requiredPermissionId (flow-engine/engine.ts), which varies
 // per node — a route-level static permission code can't express that. See H12.
 const TRANSITION_ENDPOINT = 'POST /v1/tickets/:id/transition';
 

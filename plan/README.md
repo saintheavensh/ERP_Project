@@ -1163,4 +1163,65 @@ Stage 5
     it from scratch on the next run, so no cleanup step is needed there.
 
 Continuous
-- [ ] H16 Module migration (ongoing — never "done")
+- [/] H16 Module migration (ongoing — never "done") — 2026-07-22
+  - **H16 is a standing constraint, not a one-time task** ("Never migrate a
+    module you are not otherwise changing... never a dedicated
+    'refactor-everything' branch"). Treated it that way here: did the one
+    migration the task file explicitly names as safe to do standalone
+    ("`flow-engine/` — any time, do it first — 2 files, pure move, zero
+    behaviour change") plus two trivial, zero-risk renames it separately
+    names. Deliberately did **not** touch `modules/pos/`, `modules/purchasing/`,
+    the repo-wide `catch (err: any)` sweep (36 occurrences, up from the doc's
+    estimated ~30), drizzle-zod adoption (still 0 imports), or
+    `packages/shared/` — every one of those requires either "already touching
+    that module for a fix/feature" (not true today) or is explicitly deferred
+    by the task file itself. Doing them now would be exactly the "whole-codebase
+    restructure with thin test coverage" the task warns is the fastest way to
+    break a working application.
+  - **`services/` → `flow-engine/`:** moved `services/flow-engine.ts` →
+    `flow-engine/engine.ts`, split `TransitionFacts`/`TransitionResult`/
+    `TransitionErrorCode` into `flow-engine/types.ts`, moved its test file to
+    `flow-engine/__tests__/engine.test.ts`. Updated the one real importer
+    (`routes/tickets.ts`) and three prose comments that named the old path
+    (`middleware/rbac.ts` ×2, `db/seed/04-flows.ts`, `routes/tickets.ts`
+    itself). `services/event-bus.ts` deliberately stayed put — grepped its
+    importers (5: tickets, pos, finance, purchasing, ledger) and confirmed
+    it is genuinely cross-cutting, not flow-engine-specific, so pulling it
+    into `flow-engine/events.ts` would have been wrong, not just extra work;
+    documented that decision in the new `flow-engine/README.md` (the
+    "Per-module README" the task asks for) so a future reader doesn't
+    "fix" it back the wrong way.
+  - **Also fixed while here** (both named explicitly in the task file, both
+    genuinely zero-risk mechanical renames with exactly one non-index
+    importer each, grepped before touching): `payment_methods__settings_.ts`
+    → `payment-methods.ts`, `relations__untuk_relational_query_api_drizzle.ts`
+    → `relations.ts`. Updated `db/schema/index.ts`'s two `export *` lines and
+    the one cross-file import (`relations.ts` importing `paymentMethods`).
+  - **Verification (per the task's own per-migration checklist, applied to
+    this one migration):**
+    - [x] `npm test` passes unchanged before and after — 126 unit + 20 e2e
+      (146 total) both before and after, confirmed via two full runs.
+    - [x] `npx tsc --noEmit` → 0 errors, confirmed after every file move.
+    - [x] New `engine.ts` has no HTTP imports — grepped for `hono` in
+      `flow-engine/engine.ts` and `flow-engine/types.ts`: no match.
+    - [ ] "At least one new unit test exists that was impossible before the
+      extraction" — **not applicable here, not skipped.** This was a pure
+      directory move of code that was already 100% unit-testable as a pure
+      function before the move (`evaluateTransition` had 13 passing tests in
+      `services/__tests__/` already); nothing about moving its file location
+      unlocks new testability the way extracting logic out of a `routes/*.ts`
+      handler does (e.g. H7/H9/H11's extractions, which is what this
+      checklist line is really aimed at). Left unchecked rather than padding
+      in a contrived test just to tick the box.
+    - [x] The relevant UI page still loads — read-only smoke test against
+      the **running dev server + dev database** (not the e2e test database):
+      `GET /v1/tickets/:id` for the seeded in-progress ticket returned 200
+      with the expected `currentNodeId`, and `GET /v1/flows` returned 200 —
+      both routes exercise the moved module's import path for real, not just
+      in the test suite. The full e2e suite (20 tests) also repeatedly calls
+      `POST /v1/tickets/:id/transition` — including a terminal-node close —
+      through this exact code path, unchanged.
+  - Marked `[/]`, matching its own Progress-table label ("ongoing — never
+    'done'") — this line item does not become `[x]` at the end of this task;
+    it stays open as the standing rule for every future task that touches one
+    of the not-yet-migrated modules.

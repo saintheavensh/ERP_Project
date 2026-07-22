@@ -29,7 +29,7 @@ export type RbacResult = {
 
 /**
  * Pure decision — no DB, no HTTP. Mirrors evaluateTransition in
- * services/flow-engine.ts: keep the decision testable, push DB fetching to
+ * flow-engine/engine.ts: keep the decision testable, push DB fetching to
  * a thin wrapper around it.
  */
 export function evaluateRbac(check: RbacCheck): RbacResult {
@@ -49,7 +49,7 @@ export function evaluateRbac(check: RbacCheck): RbacResult {
 export async function hasPermission(roleId: string, code: string): Promise<boolean> {
   // 'no-role' is the JWT fallback for a user with no role assignment — not a
   // UUID, so querying it would throw a Postgres type error. Mirrors the same
-  // guard in services/flow-engine.ts.
+  // guard in flow-engine/engine.ts.
   if (roleId === 'no-role') return false;
 
   const rows = await db

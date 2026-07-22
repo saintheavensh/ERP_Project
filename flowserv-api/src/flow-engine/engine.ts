@@ -1,34 +1,10 @@
 import { db } from '../db/connection';
 import { flowTransitions, flowNodes, flowTemplates, rolePermissions, serviceTickets, ticketStageHistory } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { emitEvent, AppEvent } from './event-bus';
+import { emitEvent, AppEvent } from '../services/event-bus';
 import { buildSuccessEnvelope } from '../lib/response';
 import { recordIdempotentResponse, type IdempotencyRef } from '../lib/idempotency';
-
-/**
- * All the facts the decision needs, already fetched.
- * Keeping this separate from the DB lets us test every rule with no database.
- */
-export type TransitionFacts = {
-  transitionExists: boolean;
-  ticketFlowTemplateId: string;
-  targetNode: {
-    id: string;
-    flowTemplateId: string;
-    requiredPermissionId: string | null;
-  } | null;
-  rolePermissionIds: string[];
-};
-
-export type TransitionResult =
-  | { valid: true }
-  | { valid: false; code: TransitionErrorCode; reason: string };
-
-export type TransitionErrorCode =
-  | 'NODE_NOT_FOUND'
-  | 'NODE_WRONG_TEMPLATE'
-  | 'TRANSITION_NOT_ALLOWED'
-  | 'PERMISSION_DENIED';
+import type { TransitionFacts, TransitionResult } from './types';
 
 /**
  * Pure decision — no database, no HTTP. This is the piece we test.

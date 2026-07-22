@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateTransition, type TransitionFacts } from '../flow-engine';
+import { evaluateTransition } from '../engine';
+import type { TransitionFacts } from '../types';
 
 const TEMPLATE_A = 'template-a';
 const TEMPLATE_B = 'template-b';
