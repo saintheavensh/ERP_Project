@@ -21,3 +21,10 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Playwright (H15 gap b — e2e UI walk). Screenshots/traces are regenerated on
+# every run; the spec + config are committed, the binary artifacts are not.
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache

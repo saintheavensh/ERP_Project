@@ -3,7 +3,12 @@ import { invalidateAll } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
 
 export class TicketDetailState {
-  data: any;
+  // $state so every getter that reads `this.data` (ticket, currentNode, charges…)
+  // is reactive. Without this, invalidateAll() after an action (transition,
+  // consume, invoice) updated the page's `data` prop but NOT this captured copy,
+  // so the workspace showed stale state until a full reload. The +page.svelte
+  // syncs this via $effect. (Found by the H15-gap-(b) Playwright walk.)
+  data = $state<any>(undefined);
   token: string;
 
   loading = $state(false);

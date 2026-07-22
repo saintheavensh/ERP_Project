@@ -5,9 +5,17 @@
   import TicketCustomerModals from '$lib/components/tickets/TicketCustomerModals.svelte';
 
   let { data } = $props();
-  
+
   // svelte-ignore state_referenced_locally
   const state = new TicketDetailState(data, data.token);
+
+  // Keep the state's data in sync with the page's data. invalidateAll() after an
+  // action (transition, consume charge, generate invoice) re-runs the load and
+  // swaps `data`; without this the workspace would keep rendering the pre-action
+  // state until a full page reload.
+  $effect(() => {
+    state.data = data;
+  });
 </script>
 
 <svelte:head>

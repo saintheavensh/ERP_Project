@@ -488,4 +488,28 @@ describe('H15 — end-to-end service flow: intake to close', () => {
     expect(res.body.data.isClean).toBe(true);
     expect(res.body.data.drift).toEqual([]);
   });
+
+  // Regression for the UI dead end the H15-gap-(b) Playwright walk caught: the
+  // intake form sends customerId:'' (and assetId:'') for a NEW customer, which
+  // z.string().uuid().optional() used to reject with 400 — so no ticket could be
+  // created for a walk-in through the UI. The schema now normalizes '' -> undefined.
+  it('creates a ticket for a NEW customer when customerId is an empty string (was 400)', async () => {
+    const res = await api('POST', '/v1/tickets/intake', {
+      token,
+      body: {
+        customerId: '',
+        customerName: 'New Walk-in QA',
+        customerPhone: '',
+        customerEmail: '',
+        assetType: 'Smartphone',
+        assetBrand: 'Xiaomi',
+        assetModel: 'Redmi 12',
+        assetSn: '',
+        flowTemplateId: IDS.flowTemplate,
+        branchId: IDS.branchPusat,
+      },
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.data.currentNodeId).toBe(IDS.nodeIntake);
+  });
 });

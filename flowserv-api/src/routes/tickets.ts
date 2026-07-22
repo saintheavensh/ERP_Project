@@ -118,13 +118,20 @@ ticketsRouter.get('/:id', async (c) => {
 });
 
 // UNIFIED INTAKE ENDPOINT
+// The intake form sends every field, including '' for the id it isn't using
+// (customerId '' when registering a NEW customer, assetId '' for a new asset).
+// z.string().uuid().optional() rejects '' because '' is neither undefined nor a
+// valid UUID — which 400'd every new-customer intake from the UI. Normalize ''
+// -> undefined first so the handler's "no id -> create it" path runs. (Found by
+// the H15-gap-(b) Playwright walk — exactly the UI dead end an API test misses.)
+const emptyToUndefined = (v: unknown) => (v === '' ? undefined : v);
 const intakeSchema = z.object({
-  customerId: z.string().uuid().optional(), // if existing customer
+  customerId: z.preprocess(emptyToUndefined, z.string().uuid().optional()), // if existing customer
   customerName: z.string().min(2).optional(), // if new customer
   customerPhone: z.string().optional(),
   customerEmail: z.string().email().optional().or(z.literal('')),
-  
-  assetId: z.string().uuid().optional(), // if existing asset
+
+  assetId: z.preprocess(emptyToUndefined, z.string().uuid().optional()), // if existing asset
   assetType: z.string().optional(), // if new asset
   assetBrand: z.string().optional(),
   assetModel: z.string().optional(),
