@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run && npm run test:e2e",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "node scripts/test-e2e.mjs",
     "dev": "tsx watch src/index.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed/index.ts",

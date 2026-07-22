@@ -1052,7 +1052,115 @@ Stage 5
     fresh `npm run db:reset` before finishing; the session's own dev-server
     instance stopped (pre-existing stray dev servers from earlier sessions
     were left running, out of this task's scope).
-- [ ] H15 End-to-end verification
+- [/] H15 End-to-end verification — 2026-07-22
+  - **New kind of test for this repo:** every prior test (126 of them, across
+    16 files) was a pure-function unit test with no HTTP and no database.
+    `src/__tests__/e2e-service-flow.test.ts` is the first that drives the
+    real Hono app (`app.request()`, no listening socket — required splitting
+    `index.ts` into a new `src/app.ts` that exports the app, and a thin
+    `index.ts` that just calls `serve()` on it) against a real Postgres
+    database, exercising every route layer (Zod validation, RBAC middleware,
+    the flow engine, the event bus, the actual transactions) at once.
+  - **Dedicated test database, per the task's own warning:** new
+    `DATABASE_URL_TEST` (`.env`/`.env.example`), a fresh `flowserv_test`
+    database, and `flowserv-api/scripts/test-e2e.mjs`, which refuses to run
+    if `DATABASE_URL_TEST` is unset or doesn't contain `localhost`, then
+    drops/pushes/reseeds exactly that database before invoking vitest against
+    a dedicated `vitest.e2e.config.ts` (the default `vitest.config.ts` now
+    excludes `src/__tests__/e2e-*.test.ts` — it has no test database of its
+    own). The test file has its own independent guard (checks `DATABASE_URL`
+    contains `flowserv_test` before touching anything) in case it's ever run
+    directly instead of via the script. `npm run test:e2e` runs just this;
+    `npm test` now runs the unit suite (`test:unit`) and then this, in one
+    command, per the task's own checklist item.
+  - **The full happy path** (20 tests, all passing): intake → 409 on a
+    transition the flow template forbids → Intake→Diagnosis → assign
+    technician → add 2 part charges + 1 labor charge → 409 consuming before
+    approval → Diagnosis→Waiting Approval → quotation (charges→approved,
+    parts reserved, `approval_requests.amount` written) → 422 selling the
+    now-reserved single-unit part via POS (the task's named "key
+    cross-check") → Waiting Approval→Repair → consume both parts (FIFO split
+    5@Rp150.000+2@Rp165.000 for the multi-batch item, exact cost match to
+    H9's own proven case; the single-unit item to 0) → Repair→Completion
+    (terminal node; `status='closed'`, `closedAt` populated) → bill the labor
+    via a POS invoice linked to the ticket (tempo) → 422 overpayment → settle
+    in full.
+  - **All four negative paths, exact codes asserted:** 409
+    `TRANSITION_NOT_ALLOWED`, 409 `CHARGE_NOT_APPROVED`, 422
+    `INSUFFICIENT_SELLABLE`, 422 `OVERPAYMENT`.
+  - **Invariants proven, not just HTTP 200s:** stock decreased by exactly the
+    consumed quantity (30→23 for the multi-batch item, cross-checked against
+    each individual batch's `quantityRemaining`, not just the cache);
+    `quantityReserved` returns to 0 for both items after consumption; ticket
+    COGS ledger entries cross-checked against an **independently computed**
+    sum (joining `stock_movements`→`stock_batches` directly, the same method
+    H11's backfill script uses, deliberately not the same code path that
+    produced the ledger entry) — matches to within a few cents (expected
+    `roundMoney` noise from a rounded per-unit cost: 154285.71×7 = Rp1.079.999,97
+    vs. the true Rp1.080.000, not a bug); ticket margin
+    (`GET /v1/tickets/:id/charges`'s `margin` field) equals revenue − cost and
+    is positive; `GET /v1/inventory/reconciliation` and
+    `GET /v1/finance/ledger/reconcile` both clean after the full flow.
+  - **A real composition gap, found and proven, not papered over:** there is
+    no endpoint that bills an already-consumed ticket charge into a customer
+    invoice. POS checkout's only mechanism for a `part` line is
+    `consumeStock()` (H6) — the exact same FIFO deduction ticket consumption
+    (H9) already ran. A dedicated test proves both failure modes concretely
+    rather than asserting it in prose: (1) invoicing the ticket's
+    already-consumed single-unit part (0 remaining) returns a hard **422
+    `INSUFFICIENT_STOCK`** — visible, at least; (2) invoicing the
+    already-consumed multi-batch part (23 of 30 remain elsewhere in the
+    catalog) **succeeds with 201** and silently deducts **7 more units nobody
+    actually used** — proven by reading `stock_levels.quantityAvailable`
+    before/after, then undone via void in the same test so it doesn't
+    contaminate the file's earlier invariants. This is exactly the kind of
+    bug isolated unit tests (H6's and H9's own, both still 100% passing)
+    cannot see — each is correct on its own; only running them in sequence
+    against the same part reveals they don't compose. **Not fixed here** —
+    H15 is a verification task, and a real fix (e.g., a "bill from
+    already-consumed charges, skip FIFO" mode) is new-feature work belonging
+    in its own task, not a silent addition to a verification pass. Recorded
+    here per the Definition of Done instead of being marked as passing.
+    Consequence for the checklist below: "ledger revenue = invoice
+    grandTotal" is proven only for the labor portion of a ticket (the only
+    part of a repair that can honestly be invoiced today) — not for a
+    combined parts+labor invoice, because no such invoice can exist without
+    hitting the bug above.
+  - **Manual UI walk-through:** Playwright is still not installed in
+    `flowserv-web` (the same gap recorded in every task since H7) — a literal
+    browser click-through of intake-to-close was not performed. Substituted,
+    consistent with H7–H14's own pattern: logged in via a real POST to the
+    SvelteKit login form action (not simulated), saved the real
+    `flowserv_token` cookie, and SSR-fetched every page this flow touches —
+    `/tickets` (200), a ticket detail page (200, `Ticket Workspace | FlowServ`),
+    `/pos` (200, no error markers), `/finance/ledger` (200), `/finance/receivables`
+    (200) — confirming no dead ends structurally. This is evidence of
+    "the pages render", not evidence of "a human walked the click-path" —
+    marked `[/]` rather than `[x]` for that reason, same as every prior task
+    that hit this exact gap.
+  - **Verification checklist, honestly scored:**
+    - [x] Full happy path passes as an automated test
+    - [x] All four negative paths return the correct status codes
+    - [/] Ledger entries balance against invoice totals — true for the labor
+      invoice; not provable for parts, per the discovered gap above
+    - [x] Ticket margin calculation is correct and positive
+    - [x] Stock reconciliation reports zero drift afterward
+    - [/] Manual UI walk-through — SSR-with-real-cookie substitute only, no
+      Playwright available
+    - [x] `npm test` runs unit (126) + e2e (20) green from a freshly
+      reset+reseeded database — confirmed via two full runs of `npm test`
+      and one of `npm run test:e2e` alone, all 146/146
+  - Marked `[/]`, not `[x]`, for the same reason 3.5B.2 was: two of the seven
+    boxes above are real, named limitations rather than passing invariants.
+  - Verified the `app.ts`/`index.ts` split didn't change dev behavior: booted
+    the ordinary `npx tsx src/index.ts` against the real dev database
+    afterward — `GET /v1/health` still returns `database: "connected"`
+    against `flowserv` (not `flowserv_test`). `npx tsc --noEmit` clean before
+    and after every change in this task.
+  - Dev API and web dev-server instances used for the manual-walkthrough
+    check were stopped afterward; the e2e run leaves `flowserv_test` in a
+    used state on purpose — `scripts/test-e2e.mjs` always wipes and reseeds
+    it from scratch on the next run, so no cleanup step is needed there.
 
 Continuous
 - [ ] H16 Module migration (ongoing — never "done")
