@@ -1,143 +1,174 @@
-# Universal Service ERP Specification
+# FlowServ — Universal Service ERP
 
 ## Overview
 
-This repository is the **single source of truth (SSOT)** for the Universal Service ERP system.
+FlowServ is a **multi-tenant SaaS platform** that unifies Inventory Management,
+Service/Ticket Management, POS & Finance — governed by granular RBAC — for service
+centers of any kind (electronics, automotive, appliances, IT equipment, etc.).
 
-It contains full system specification including:
+What makes it different: **workflows are data/configuration, not hardcoded logic.**
+Service and inventory flows are composed of modular blocks ("Flow Nodes") that can be
+rearranged per tenant/branch/service type without deploying new code.
 
-- Business rules
-- System architecture
-- Module definitions
-- API contracts
-- Database design
-- UI/UX structure
-- Engineering standards
-- Quality assurance rules
-- AI agent behavior rules
+This repository is a monorepo containing both the full specification **and** the
+living implementation:
 
-This repository is **NOT source code**.
+```
+flowserv-api/    → Backend (Hono + Drizzle + PostgreSQL)
+flowserv-web/    → Frontend (SvelteKit + Tailwind + shadcn-svelte)
+specification/   → Documentation (single source of truth for business rules,
+                    architecture, API design, and coding standards)
+```
 
-It is the **blueprint of the entire system**.
+> `docs/` and `books/` are **deprecated archives** from an earlier documentation
+> pass. Use `specification/` — never those two folders — as the source of truth.
 
----
-
-## Purpose
-
-The purpose of this repository is to ensure:
-
-- Every feature is clearly defined before development
-- All modules follow consistent architecture
-- AI agents and developers follow the same rules
-- No ambiguity between business logic and implementation
-- System is scalable into SaaS and multi-service platforms
+For current build status (what phase is in progress, what's actually done vs. just
+planned), see [`PHASES.md`](./PHASES.md). For AI-agent working rules, see
+[`CLAUDE.md`](./CLAUDE.md).
 
 ---
 
-## System Vision
+## Tech Stack
 
-This system is designed to become a:
-
-> Universal Service Management Platform
-
-Initially focused on:
-
-- Phone Service Center
-- Inventory Management
-- Sales & Purchase System
-
-Later expandable to:
-
-- Laptop Service
-- Printer Service
-- Multi-branch Service Centers
-- SaaS Platform
-- Plugin-based ecosystem
+| Layer | Technology |
+|-------|-----------|
+| Backend | Hono (Node.js, TypeScript) |
+| ORM | Drizzle ORM |
+| Database | PostgreSQL |
+| Validation | Zod + drizzle-zod |
+| Frontend | SvelteKit |
+| UI Components | Tailwind CSS + shadcn-svelte |
+| Auth | JWT (tenant-scoped) |
+| Testing | Vitest |
 
 ---
 
-## Core Principles
+## Prerequisites
 
-The system follows these core principles:
+Install these before cloning:
 
-- Modular First Architecture
-- Configuration over Hardcoding
-- DRY (Don't Repeat Yourself)
-- Strict Type Safety
-- Single Responsibility Principle
-- AI-readable documentation structure
-- Fully traceable business logic
-- Extensible module system
+- **Node.js** 20+ and npm (this repo uses npm workspaces)
+- **PostgreSQL** running locally (or reachable via a connection string)
+- **Git**
 
 ---
 
-## Documentation Structure
+## Getting Started (Clone → Running)
 
-All documentation is organized into "Books":
+### 1. Clone the repository
 
-- Book 00 → Documentation System
-- Book 01 → Project Foundation
-- Book 02 → System Architecture
-- Book 03 → Core Platform
-- Book 04 → Shared Resources
-- Book 05 → Modules
-- Book 06 → Database
-- Book 07 → API
-- Book 08 → UI/UX
-- Book 09 → Engineering Standards
-- Book 10 → AI System Rules
-- Book 11 → Quality Assurance
-- Book 12 → Roadmap
+```bash
+git clone https://github.com/saintheavensh/ERP_Project.git
+cd ERP_Project
+```
 
-Each Book contains detailed chapters and references.
+### 2. Install dependencies
+
+This is an npm-workspaces monorepo — one install at the root covers both
+`flowserv-api` and `flowserv-web`.
+
+```bash
+npm install
+```
+
+### 3. Create a PostgreSQL database
+
+```bash
+# using psql, or your preferred client
+createdb flowserv
+```
+
+### 4. Configure environment variables
+
+Copy the example env files and fill in your local values.
+
+```bash
+cp flowserv-api/.env.example flowserv-api/.env
+cp flowserv-web/.env.example flowserv-web/.env
+```
+
+Edit `flowserv-api/.env`:
+
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Port the API listens on (default `3001`) |
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://postgres:yourpassword@localhost:5432/flowserv` |
+| `TZ` | Process timezone (default `Asia/Jakarta`) |
+| `JWT_SECRET` | Secret used to sign JWTs — set a real random value outside solo local dev |
+| `RBAC_MODE` | `report` (log-only, safe default while developing) or `enforce` |
+
+`flowserv-web/.env` only needs `API_URL`/`PUBLIC_API_URL` pointed at the API
+(defaults to `http://localhost:3001`, already correct for local development).
+
+### 5. Set up the database schema and seed data
+
+From `flowserv-api/`, push the Drizzle schema and load seed data:
+
+```bash
+cd flowserv-api
+npx drizzle-kit push
+npm run db:seed
+```
+
+> During development, prefer `npm run db:reset` instead — it drops and
+> recreates the schema, pushes it, and re-seeds in one deterministic step. It
+> refuses to run unless `DATABASE_URL` contains `localhost`, so it's safe to
+> use freely against your local database.
+
+### 6. Run the application
+
+From the repository root, start both the API and the web app together:
+
+```bash
+npm run dev
+```
+
+Or run them individually:
+
+```bash
+npm run dev:api   # http://localhost:3001
+npm run dev:web   # SvelteKit dev server, printed to the console
+```
+
+### 7. Verify it's working
+
+- API health check: `GET http://localhost:3001/v1/health` should return
+  `{ "data": { "status": "ok" }, ... }`.
+- Open the frontend URL printed by `npm run dev:web` and log in with the
+  seeded Super Admin account (see `flowserv-api/src/db/seed/` for seeded
+  credentials).
+
+### 8. Run tests (backend)
+
+```bash
+cd flowserv-api
+npm test
+```
 
 ---
 
-## How to Use This Repository
+## Documentation Map
 
-### For Developers
+Start here, in order:
 
-1. Read Book 00 first
-2. Understand system structure
-3. Follow Engineering Standards (Book 09)
-4. Implement based on Module specifications
-
----
-
-### For AI Agents
-
-AI must:
-
-- Read Book 00 first
-- Always follow Book 09 (Engineering Rules)
-- Always follow Book 10 (AI Rules)
-- Never generate code without reading module specification
-- Always respect Quality Assurance rules (Book 11)
+1. [`specification/00-README.md`](./specification/00-README.md) — document map and reading order
+2. [`specification/features/00-feature-catalog.md`](./specification/features/00-feature-catalog.md) — full feature list with build status
+3. [`specification/coding-guidelines.md`](./specification/coding-guidelines.md) — mandatory naming, architecture, and API conventions
+4. [`PHASES.md`](./PHASES.md) — current phase, task-by-task progress, and what's verified vs. just written
 
 ---
 
-## Critical Rules
+## Contributing / Working Rules
 
-- This repository defines SYSTEM BEHAVIOR, not code implementation
-- No module should be implemented without documentation
-- No business logic should exist outside module specification
-- Engineering rules are mandatory, not optional
-- AI must NOT guess system behavior without documentation reference
-
----
-
-## Status
-
-This is an early-stage specification system.
-
-All Books are under active development.
+- Work one phase at a time, per [`PHASES.md`](./PHASES.md) — never skip or combine phases.
+- Read the relevant `specification/` document before writing code for any area.
+- Every branch follows `phase-N/description`; never commit directly to `main`.
+- See [`CLAUDE.md`](./CLAUDE.md) for the full set of working rules (this file
+  doubles as the entry point for AI coding agents working in this repo).
 
 ---
 
-## Next Step
+## License
 
-Start from:
-
-👉 `books/Book-00-Documentation-System/README.md`
-
-This is the entry point to the documentation system architecture.
+See [`LICENSE.md`](./LICENSE.md).
