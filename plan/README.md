@@ -197,6 +197,7 @@ verify in a single sitting. Sizes below are relative, not calendar estimates.
 |---|---|---|---|
 | H14 | [Payments: partial, deposit, settlement](./H14-payments.md) | M | — |
 | H15 | [End-to-end verification (3E)](./H15-e2e-verification.md) | M | — |
+| H17 | [Service invoice from a ticket (SBL-003)](./H17-service-invoice-from-ticket.md) — closes H15 gap (a) | M | 🟡 |
 
 ### Continuous
 
@@ -1052,7 +1053,7 @@ Stage 5
     fresh `npm run db:reset` before finishing; the session's own dev-server
     instance stopped (pre-existing stray dev servers from earlier sessions
     were left running, out of this task's scope).
-- [/] H15 End-to-end verification — 2026-07-22
+- [x] H15 End-to-end verification — 2026-07-22 (both `[/]` gaps closed 2026-07-23; see end of entry)
   - **New kind of test for this repo:** every prior test (126 of them, across
     16 files) was a pure-function unit test with no HTTP and no database.
     `src/__tests__/e2e-service-flow.test.ts` is the first that drives the
@@ -1141,17 +1142,20 @@ Stage 5
   - **Verification checklist, honestly scored:**
     - [x] Full happy path passes as an automated test
     - [x] All four negative paths return the correct status codes
-    - [/] Ledger entries balance against invoice totals — true for the labor
-      invoice; not provable for parts, per the discovered gap above
+    - [x] Ledger entries balance against invoice totals — **closed 2026-07-23 by
+      [H17](./H17-service-invoice-from-ticket.md)**: the e2e now invoices the full
+      repair (parts+labor) via `POST /tickets/:id/invoice` and asserts ledger
+      revenue = invoice grandTotal, COGS posted once (no double-count).
     - [x] Ticket margin calculation is correct and positive
     - [x] Stock reconciliation reports zero drift afterward
-    - [/] Manual UI walk-through — SSR-with-real-cookie substitute only, no
-      Playwright available
-    - [x] `npm test` runs unit (126) + e2e (20) green from a freshly
-      reset+reseeded database — confirmed via two full runs of `npm test`
-      and one of `npm run test:e2e` alone, all 146/146
-  - Marked `[/]`, not `[x]`, for the same reason 3.5B.2 was: two of the seven
-    boxes above are real, named limitations rather than passing invariants.
+    - [x] Manual UI walk-through — **closed 2026-07-23**: real Playwright
+      intake→close browser walk (`flowserv-web/e2e/intake-to-close.spec.ts`),
+      7 screenshots, final shows Stage Completion + "already closed".
+    - [x] `npm test` runs unit + e2e green from a freshly reset+reseeded database
+  - **Originally marked `[/]` (2026-07-22); both gaps closed 2026-07-23** by H17
+    (the composition bug — a real fix, see its task file) and the Playwright walk
+    (which itself caught two more UI bugs — see the H17/H-gap-(b) commits). H15 is
+    now `[x]`.
   - Verified the `app.ts`/`index.ts` split didn't change dev behavior: booted
     the ordinary `npx tsx src/index.ts` against the real dev database
     afterward — `GET /v1/health` still returns `database: "connected"`
@@ -1161,6 +1165,52 @@ Stage 5
     check were stopped afterward; the e2e run leaves `flowserv_test` in a
     used state on purpose — `scripts/test-e2e.mjs` always wipes and reseeds
     it from scratch on the next run, so no cleanup step is needed there.
+
+- [x] H17 Service invoice from a ticket (SBL-003) — 2026-07-23
+  - Closes **H15 gap (a)**. New `POST /v1/tickets/:id/invoice` bills a ticket's
+    consumed parts + approved labor as a `pos_invoices` row **without re-running
+    FIFO** — the fix for the double-deduct bug H15 discovered. Logic in
+    `modules/tickets/service.ts` (`generateTicketInvoice` + pure `isBillableCharge`);
+    one-invoice-per-ticket guard (409 `TICKET_ALREADY_INVOICED`); 422
+    `NOTHING_TO_INVOICE` when empty.
+  - **Ledger correctness (the whole risk):** posts **revenue only** via a new
+    `TICKET_INVOICE_CREATED` event + `buildTicketInvoiceRevenueEntry` — COGS was
+    already posted at consumption (`buildTicketCogsEntry`), so a matched pair would
+    double-count. `referenceType='pos_sale'` so `/ledger/reconcile` validates
+    revenue = grandTotal.
+  - Extracted `lib/invoice-number.ts` (`allocateInvoiceNumber`) so POS checkout and
+    this path share one numbering impl (was inline-duplicated) — the WAC-drift trap
+    3.5B.4 already fought. Checkout swap is behaviour-identical (`npm test`
+    unchanged).
+  - **Frontend:** "Buat Faktur" button + payment-method select on
+    `TicketCharges.svelte`; `generateInvoice()` in the detail state (idempotency key
+    per H13).
+  - **Tests:** 137 unit (was 126: +3 ledger, +6 `isBillableCharge`, +2
+    invoice-number) + 20 e2e (the "DISCOVERED GAP" test replaced with the correct
+    H17 path asserting revenue = grandTotal, COGS once, no re-deduction, both
+    reconcilers clean). `tsc` + `svelte-check` clean.
+  - **Live run** (dev DB, reset after): invoice 201 (`INV-…-0001`, grandTotal
+    500000, unpaid, linked to ticket); **SQL confirmed 0 `pos_sale` stock movements**
+    (no re-deduction) vs 1 `ticket_consumption`; second invoice 409; empty ticket
+    422; ledger revenue 500000 = grandTotal, 1 consumption COGS, reconcile clean.
+
+- [x] H15 gap (b) — real Playwright UI walk — 2026-07-23
+  - Installed `@playwright/test` + Chromium in `flowserv-web`; new
+    `e2e/intake-to-close.spec.ts` (`npm run test:e2e:ui`) logs in through the real
+    form, creates a ticket via the intake UI, and walks
+    Intake→Diagnosis→Repair→Completion using only the transition control until the
+    ticket is closed. 7 screenshots; final shows Stage Completion + "already
+    closed"; zero uncaught page errors. This is the literal browser click-through
+    every task since H7 substituted with an SSR-with-cookie check.
+  - **The walk caught two real UI dead ends** an API test can't see, both fixed:
+    (1) new-customer intake always 400'd — the form sends `customerId:''`, which
+    `z.string().uuid().optional()` rejected; fixed by normalizing `''→undefined` in
+    `intakeSchema` (+ a backend e2e regression test, 21 e2e now). (2) the ticket
+    workspace never updated after an action — `[id]/+page.svelte` built
+    `TicketDetailState` once with a non-reactive `data`, so `invalidateAll()` after
+    a transition/consume/invoice swapped the page data but not the state's copy;
+    fixed with `data = $state()` + a syncing `$effect`. This is exactly why the
+    manual walk is not redundant with the API e2e.
 
 Continuous
 - [/] H16 Module migration (ongoing — never "done") — 2026-07-22

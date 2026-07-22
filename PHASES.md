@@ -226,24 +226,25 @@ missing.
       **H4–H14** (`lib/__tests__/fifo.test.ts`, `modules/finance/__tests__/ledger.test.ts`,
       `lib/__tests__/stock-lifecycle.test.ts`, and more; 126 unit + 20 e2e passing).
 
-### 3E. Verify Full Flow — delivered by **H15** (see `plan/README.md` H15)
+### 3E. Verify Full Flow — delivered by **H15** (+ H17), see `plan/README.md`
 - [x] 3E.1 Test full flow: Intake → Diagnosis → Approve → Reserve Part → Repair → Invoice → Pay → Close
-      — automated integration test `src/__tests__/e2e-service-flow.test.ts` (20 tests) walks
+      — automated integration test `src/__tests__/e2e-service-flow.test.ts` (21 tests) walks
       the whole path through the real HTTP routes against a dedicated `flowserv_test`
-      database. The *automated* flow is proven; the literal in-browser UI walk is the one
-      piece still `[/]` on H15 (Playwright not yet installed) — see H15 gap (b).
+      database. Plus a real in-browser Playwright walk (`flowserv-web/e2e/intake-to-close.spec.ts`)
+      of intake→close (H15 gap b, closed 2026-07-23).
 - [x] 3E.2 Verify: stock decreased by exactly the consumed qty, ledger entries created,
       ticket closed (`status='closed'`, `closedAt` set), reconciliation clean, margin positive.
-- [/] 3E.3 Git commit — H15 landed on `phase-4/purchasing-completion` (commit `6543c07`),
-      correctly marked `[/]` not `[x]` because two documented gaps remain: billing a
-      ticket's *parts* into an invoice (blocked by a discovered double-deduct bug) and the
-      in-browser UI walk. Both are the H15-gap follow-up (H17 + Playwright).
+      Full-repair invoicing (parts+labor) via **H17** `POST /tickets/:id/invoice`, revenue = grandTotal.
+- [x] 3E.3 Git commit — H15 on `phase-4/purchasing-completion` (`6543c07`); the two follow-up
+      gaps closed by **H17** (`4c6471f`, service invoice from ticket) and the Playwright walk
+      (`667cb53`).
 
-> **Update 2026-07-22:** 3E was previously impossible (diagnosis, approval, reservation,
+> **Update 2026-07-23:** 3E was previously impossible (diagnosis, approval, reservation,
 > ticket-linked consumption, ledger posting, and closure did not exist). Phases 3.5 and the
-> Hardening Track (H9/H10/H11/H14) built all of them, and **H15** wired them into one
-> passing end-to-end test. The two remaining `[/]` gaps are tracked under H15 in
-> `plan/README.md`.
+> Hardening Track (H9/H10/H11/H14) built all of them, **H15** wired them into one passing
+> end-to-end test, and **H17** + the Playwright walk closed H15's two documented gaps
+> (parts invoicing without double-deduct; the literal in-browser click-through). 3E is now
+> fully `[x]`.
 
 ---
 
