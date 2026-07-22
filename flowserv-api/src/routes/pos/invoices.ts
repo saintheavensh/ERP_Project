@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
 import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers, customerPayments } from '../../db/schema/index';
-import { eq, and, sql, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse, getRequestId, buildSuccessEnvelope } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
@@ -13,6 +13,7 @@ import { roundMoney, toMoneyString } from '../../lib/money';
 import { findIdempotentResponse, recordIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../../lib/idempotency';
 import { posCheckoutSchema } from './types';
 import { consumeStock } from '../../modules/inventory/service';
+import { allocateInvoiceNumber } from '../../lib/invoice-number';
 import { emitEvent, AppEvent } from '../../services/event-bus';
 import type { SaleLineForLedger } from '../../modules/finance/ledger';
 import { recordCustomerPaymentInput } from '../../modules/finance/types';
@@ -136,19 +137,12 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
     // Jalankan seluruh proses checkout dalam satu database transaction
     const result = await db.transaction(async (tx) => {
 
-      // 1. Allocate the next sequence number for this tenant and day. Runs
-      // inside the checkout transaction — INSERT ... ON CONFLICT DO UPDATE ...
-      // RETURNING is atomic, so two concurrent checkouts can never receive the
-      // same number without extra row locking.
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const [{ last_number: lastNumber }] = await tx.execute<{ last_number: number }>(sql`
-        INSERT INTO invoice_sequences (tenant_id, date_key, last_number)
-        VALUES (${tenantId}, ${dateStr}, 1)
-        ON CONFLICT (tenant_id, date_key)
-        DO UPDATE SET last_number = invoice_sequences.last_number + 1
-        RETURNING last_number
-      `);
-      const invoiceNumber = `INV-${dateStr}-${String(lastNumber).padStart(4, '0')}`;
+      // 1. Allocate the next sequence number for this tenant and day. Shared
+      // with the service-invoice-from-ticket path (H17) via allocateInvoiceNumber,
+      // so there is one numbering implementation, not two that drift. Atomic
+      // (INSERT ... ON CONFLICT ... RETURNING), so concurrent checkouts never
+      // collide without extra locking.
+      const invoiceNumber = await allocateInvoiceNumber(tx, tenantId);
 
       // 2. Buat Invoice Header
       const [newInvoice] = await tx.insert(posInvoices).values({

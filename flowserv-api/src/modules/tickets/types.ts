@@ -44,3 +44,14 @@ export const assignTechnicianInput = z.object({
 });
 
 export type AssignTechnicianInput = z.infer<typeof assignTechnicianInput>;
+
+// H17 — generate a service invoice from a ticket's billable charges. The customer
+// is the ticket's own customer (not passed here), so 'tempo' always has a customer
+// link. 'split' is intentionally omitted — a service invoice is paid in full or
+// settled later via the H14 payment endpoint. See plan/H17-service-invoice-from-ticket.md.
+export const generateTicketInvoiceInput = z.object({
+  paymentMethod: z.enum(['cash', 'transfer', 'qris', 'tempo']),
+  discountAmount: z.coerce.number().min(0).default(0),
+});
+
+export type GenerateTicketInvoiceInput = z.infer<typeof generateTicketInvoiceInput>;

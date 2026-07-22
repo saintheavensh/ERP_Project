@@ -12,8 +12,8 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 import { FlowEngine } from '../flow-engine/engine';
 import { BusinessError } from '../lib/errors';
-import { createChargeInput, updateChargeInput, assignTechnicianInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge } from '../modules/tickets/service';
+import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput } from '../modules/tickets/types';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -454,6 +454,46 @@ ticketsRouter.post('/:id/quotation', requirePermission('ticket.approve_quote'), 
     }
     console.error('Failed to generate quotation:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to generate quotation', undefined, 500);
+  }
+});
+
+// H17 — SBL-003: generate a customer invoice from the ticket's billable charges
+// (consumed parts + approved labor). Creates a pos_invoices row WITHOUT re-running
+// FIFO — the fix for the double-deduct gap H15 discovered. Gated by
+// `pos.process_payment` (same as POS checkout — both create a pos_invoices row).
+const TICKET_INVOICE_ENDPOINT = 'POST /v1/tickets/:id/invoice';
+
+ticketsRouter.post('/:id/invoice', requirePermission('pos.process_payment'), zValidator('json', generateTicketInvoiceInput), auditMiddleware({ action: 'ticket.generate_invoice', entityType: 'pos_invoice', entityIdParam: 'id', bodyFields: ['paymentMethod', 'discountAmount'] }), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const input = c.req.valid('json');
+
+  const idempotencyKey = c.req.header('Idempotency-Key');
+  if (idempotencyKey) {
+    const replay = await findIdempotentResponse(tenantId, TICKET_INVOICE_ENDPOINT, idempotencyKey);
+    if (replay) return replayIdempotentResponse(c, replay);
+  }
+
+  try {
+    const invoice = await generateTicketInvoice(
+      tenantId,
+      ticketId,
+      input,
+      userId,
+      idempotencyKey ? { key: idempotencyKey, endpoint: TICKET_INVOICE_ENDPOINT } : undefined,
+      getRequestId(c)
+    );
+    return successResponse(c, invoice, undefined, 201);
+  } catch (err) {
+    if (idempotencyKey && isIdempotencyKeyConflict(err)) {
+      const replay = await findIdempotentResponse(tenantId, TICKET_INVOICE_ENDPOINT, idempotencyKey);
+      if (replay) return replayIdempotentResponse(c, replay);
+    }
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to generate ticket invoice:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to generate ticket invoice', undefined, 500);
   }
 });
 

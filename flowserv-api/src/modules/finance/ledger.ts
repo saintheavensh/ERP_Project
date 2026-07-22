@@ -198,6 +198,37 @@ export function buildArSettlementEntry(params: CustomerPaymentForLedger): Ledger
   ];
 }
 
+export interface TicketInvoiceForLedger {
+  tenantId: string;
+  branchId: string;
+  invoiceId: string;
+  grandTotal: string | number;
+}
+
+/**
+ * Pure — no database. H17: a service invoice generated from a ticket's consumed
+ * parts + approved labor. Posts REVENUE ONLY — the COGS for those parts was
+ * already posted at consumption time (buildTicketCogsEntry, referenceType
+ * 'ticket_consumption'), so posting a matched revenue+COGS pair here (as
+ * buildSaleEntries does) would double-count cost. Uses referenceType 'pos_sale'
+ * / referenceId=invoiceId so /ledger/reconcile validates revenue = grandTotal
+ * exactly as it does for a walk-in sale.
+ */
+export function buildTicketInvoiceRevenueEntry(params: TicketInvoiceForLedger): LedgerEntryInput[] {
+  const amount = roundMoney(Number(params.grandTotal));
+  if (amount <= 0) return [];
+  return [
+    {
+      tenantId: params.tenantId,
+      branchId: params.branchId,
+      entryType: 'revenue',
+      amount,
+      referenceType: 'pos_sale',
+      referenceId: params.invoiceId,
+    },
+  ];
+}
+
 // ============================================================================
 // Event subscriptions — DB writes. Registered once at startup (index.ts).
 // Every emit site fires AFTER its owning transaction has already committed —
@@ -230,6 +261,7 @@ export type TicketPartConsumedPayload = TicketConsumptionForLedger;
 export type SupplierInvoiceCreatedPayload = SupplierInvoiceForLedger;
 export type SupplierPaymentRecordedPayload = SupplierPaymentForLedger;
 export type CustomerPaymentRecordedPayload = CustomerPaymentForLedger;
+export type TicketInvoiceCreatedPayload = TicketInvoiceForLedger;
 
 async function postSaleEntries(payload: PosSaleCompletedPayload) {
   try {
@@ -279,6 +311,14 @@ async function postArSettlement(payload: CustomerPaymentRecordedPayload) {
   }
 }
 
+async function postTicketInvoiceRevenue(payload: TicketInvoiceCreatedPayload) {
+  try {
+    await insertEntries(buildTicketInvoiceRevenueEntry(payload));
+  } catch (error) {
+    console.error('Failed to post ticket invoice revenue ledger entry for invoice', payload.invoiceId, error);
+  }
+}
+
 /**
  * Wires the ledger up to the event bus. Call once at startup (index.ts).
  * A handler throwing must never propagate back into the route that emitted
@@ -292,4 +332,5 @@ export function subscribeLedger() {
   onEvent<SupplierInvoiceCreatedPayload>(AppEvent.SUPPLIER_INVOICE_CREATED, postAccountsPayable);
   onEvent<SupplierPaymentRecordedPayload>(AppEvent.SUPPLIER_PAYMENT_RECORDED, postApSettlement);
   onEvent<CustomerPaymentRecordedPayload>(AppEvent.CUSTOMER_PAYMENT_RECORDED, postArSettlement);
+  onEvent<TicketInvoiceCreatedPayload>(AppEvent.TICKET_INVOICE_CREATED, postTicketInvoiceRevenue);
 }

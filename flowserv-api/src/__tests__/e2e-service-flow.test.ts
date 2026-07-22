@@ -373,58 +373,79 @@ describe('H15 — end-to-end service flow: intake to close', () => {
   });
 
   // ==========================================================================
-  // Invoice, payment, and a real gap H15 exists to find.
+  // Invoice + payment — via the H17 service-invoice-from-ticket path (SBL-003).
   //
-  // There is no endpoint that bills an already-consumed ticket charge into a
-  // customer invoice: POS checkout's only mechanism for a 'part' line is
-  // consumeStock() (H6), the exact same FIFO deduction ticket consumption
-  // (H9) already ran. Billing a ticket's parts through the ordinary POS
-  // checkout would deduct stock a SECOND time for stock that is already gone.
-  // Labor never touches stock, so it is the only piece of this ticket that
-  // can honestly go through today's POS invoice — proven below. The
-  // composition gap itself is proven immediately after, as its own test.
+  // H15 discovered that there was no way to bill an already-consumed ticket
+  // part: POS checkout's only 'part'-line mechanism is consumeStock() (FIFO
+  // deduction), so billing the ticket's parts through checkout DOUBLE-deducts
+  // stock. H17 fixed it with POST /v1/tickets/:id/invoice, which bills the
+  // consumed parts + approved labor WITHOUT re-running FIFO. This section
+  // proves the whole repair (parts + labor) now invoices correctly — closing
+  // H15 gap (a): ledger revenue = full-repair invoice grandTotal.
   // ==========================================================================
 
   let invoiceId: string;
+  const EXPECTED_REPAIR_TOTAL = roundMoney(
+    LCD_QTY * LCD_UNIT_PRICE + STOKSATU_QTY * STOKSATU_UNIT_PRICE + LABOR_UNIT_PRICE
+  );
 
-  it('bills the labor charge via a POS invoice linked to the ticket (tempo)', async () => {
-    const res = await api('POST', '/v1/pos/invoices', {
+  it('H17: invoices the full repair (2 consumed parts + labor) with NO stock re-deduction', async () => {
+    // Stock is already gone (consumed above); invoicing must not touch it again.
+    const lcdBefore = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemLcdMultiBatch)));
+    const stokSatuBefore = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemStokSatu)));
+    expect(lcdBefore[0].quantityAvailable).toBe(23);
+    expect(stokSatuBefore[0].quantityAvailable).toBe(0);
+
+    const res = await api('POST', `/v1/tickets/${ticketId}/invoice`, {
       token,
-      body: {
-        branchId: IDS.branchPusat,
-        customerId: IDS.customerBudi,
-        serviceTicketId: ticketId,
-        paymentMethod: 'tempo',
-        items: [{ sourceType: 'labor', description: 'Jasa Servis Umum', quantity: 1, unitPrice: LABOR_UNIT_PRICE }],
-      },
+      body: { paymentMethod: 'tempo' },
     });
     expect(res.status).toBe(201);
-    expect(Number(res.body.data.grandTotal)).toBe(LABOR_UNIT_PRICE);
-    expect(res.body.data.paymentStatus).toBe('unpaid');
     expect(res.body.data.serviceTicketId).toBe(ticketId);
+    expect(res.body.data.paymentStatus).toBe('unpaid');
+    // The whole repair: both consumed parts AND the labor line.
+    expect(Number(res.body.data.grandTotal)).toBe(EXPECTED_REPAIR_TOTAL);
     invoiceId = res.body.data.id;
+
+    // The core H17 invariant: NO second deduction — both items unchanged.
+    const lcdAfter = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemLcdMultiBatch)));
+    const stokSatuAfter = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemStokSatu)));
+    expect(lcdAfter[0].quantityAvailable).toBe(23);
+    expect(stokSatuAfter[0].quantityAvailable).toBe(0);
+
+    const recon = await api('GET', '/v1/inventory/reconciliation', { token });
+    expect(recon.body.data.isClean).toBe(true);
   });
 
-  // Negative path 4/4: overpayment against that invoice.
-  it('NEGATIVE: rejects an overpayment against the labor invoice (422)', async () => {
+  it('H17 guard: a second invoice for the same ticket is rejected (409)', async () => {
+    const res = await api('POST', `/v1/tickets/${ticketId}/invoice`, {
+      token,
+      body: { paymentMethod: 'cash' },
+    });
+    expect(res.status).toBe(409);
+    expect(res.body.error?.code).toBe('TICKET_ALREADY_INVOICED');
+  });
+
+  // Negative path 4/4: overpayment against the repair invoice.
+  it('NEGATIVE: rejects an overpayment against the repair invoice (422)', async () => {
     const res = await api('POST', `/v1/pos/invoices/${invoiceId}/payments`, {
       token,
-      body: { amount: 999999, method: 'cash' },
+      body: { amount: EXPECTED_REPAIR_TOTAL + 1, method: 'cash' },
     });
     expect(res.status).toBe(422);
     expect(res.body.error?.code).toBe('OVERPAYMENT');
   });
 
-  it('settles the labor invoice in full', async () => {
+  it('settles the repair invoice in full', async () => {
     const res = await api('POST', `/v1/pos/invoices/${invoiceId}/payments`, {
       token,
-      body: { amount: LABOR_UNIT_PRICE, method: 'cash' },
+      body: { amount: EXPECTED_REPAIR_TOTAL, method: 'cash' },
     });
     expect(res.status).toBe(201);
     expect(res.body.data.invoice.paymentStatus).toBe('paid');
   });
 
-  it('ledger revenue for the labor invoice matches its grand total; reconciliation stays clean', async () => {
+  it('H15 gap (a) CLOSED: ledger revenue = full-repair invoice grandTotal, COGS not double-counted', async () => {
     await waitFor(async () => {
       const rows = await db.select().from(financeLedgerEntries).where(
         and(eq(financeLedgerEntries.entryType, 'revenue'), eq(financeLedgerEntries.referenceId, invoiceId))
@@ -432,11 +453,28 @@ describe('H15 — end-to-end service flow: intake to close', () => {
       return rows.length > 0 ? rows : null;
     });
 
+    // Revenue for the invoice = its grand total (the whole repair, not just labor).
     const revenueEntries = await db.select().from(financeLedgerEntries).where(
       and(eq(financeLedgerEntries.entryType, 'revenue'), eq(financeLedgerEntries.referenceId, invoiceId))
     );
     const totalRevenue = revenueEntries.reduce((s, e) => s + Number(e.amount), 0);
-    expect(totalRevenue).toBe(LABOR_UNIT_PRICE);
+    expect(totalRevenue).toBe(EXPECTED_REPAIR_TOTAL);
+
+    // COGS was posted ONCE, at consumption (referenceType 'ticket_consumption'),
+    // and the invoice added none — exactly 2 consumption COGS entries (one per
+    // consumed part), zero COGS on the invoice's referenceId.
+    const consumptionCogs = await db.select().from(financeLedgerEntries).where(
+      and(eq(financeLedgerEntries.entryType, 'cogs'), eq(financeLedgerEntries.referenceType, 'ticket_consumption'))
+    );
+    expect(consumptionCogs).toHaveLength(2);
+    const invoiceCogs = await db.select().from(financeLedgerEntries).where(
+      and(eq(financeLedgerEntries.entryType, 'cogs'), eq(financeLedgerEntries.referenceId, invoiceId))
+    );
+    expect(invoiceCogs).toHaveLength(0);
+
+    // The full-repair margin the app exists to answer: revenue − COGS, positive.
+    const totalCogs = consumptionCogs.reduce((s, e) => s + Number(e.amount), 0);
+    expect(totalRevenue - totalCogs).toBeGreaterThan(0);
 
     const reconcile = await api('GET', '/v1/finance/ledger/reconcile', { token });
     expect(reconcile.status).toBe(200);
@@ -449,57 +487,5 @@ describe('H15 — end-to-end service flow: intake to close', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.isClean).toBe(true);
     expect(res.body.data.drift).toEqual([]);
-  });
-
-  it('DISCOVERED GAP: invoicing an already-consumed ticket part re-runs FIFO and fails (or would silently double-deduct)', async () => {
-    // itemStokSatu's single unit was fully consumed by the ticket above — 0
-    // remain. Attempting to "invoice" it a second time through the standard
-    // POS checkout re-runs consumeStock() and finds nothing left: a hard,
-    // visible failure for this item.
-    const soldOut = await api('POST', '/v1/pos/invoices', {
-      token,
-      body: {
-        branchId: IDS.branchPusat,
-        serviceTicketId: ticketId,
-        paymentMethod: 'cash',
-        items: [{ sourceType: 'part', inventoryItemId: IDS.itemStokSatu, partBrandId: IDS.partBrandOem, quantity: 1, unitPrice: STOKSATU_UNIT_PRICE }],
-      },
-    });
-    expect(soldOut.status).toBe(422);
-    expect(soldOut.body.error?.code).toBe('INSUFFICIENT_STOCK');
-
-    // The LCD item still has 23 units left elsewhere in the catalog, so the
-    // SAME mistake for that item would NOT fail loudly — it would silently
-    // succeed and deduct 7 more units nobody actually used. Proven here
-    // without leaving corrupted state behind: assert the invoice would
-    // succeed, then immediately undo it via void so the earlier stock
-        // invariants (asserted above) remain the source of truth for this file.
-    const before = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemLcdMultiBatch)));
-    expect(before[0].quantityAvailable).toBe(23);
-
-    const doubleDeduct = await api('POST', '/v1/pos/invoices', {
-      token,
-      body: {
-        branchId: IDS.branchPusat,
-        serviceTicketId: ticketId,
-        paymentMethod: 'cash',
-        items: [{ sourceType: 'part', inventoryItemId: IDS.itemLcdMultiBatch, partBrandId: IDS.partBrandIncell, quantity: LCD_QTY, unitPrice: LCD_UNIT_PRICE }],
-      },
-    });
-    // This SUCCEEDS — the gap: nothing stops billing a part that a ticket
-    // already consumed, and doing so deducts real stock a second time.
-    expect(doubleDeduct.status).toBe(201);
-
-    const after = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemLcdMultiBatch)));
-    expect(before[0].quantityAvailable - after[0].quantityAvailable).toBe(LCD_QTY);
-
-    // Undo it — void the invoice this test created, restoring stock, so this
-    // discovered-gap test does not leave the file's earlier invariants
-    // (stock reconciliation, margin) looking violated by its own doing.
-    const voidRes = await api('DELETE', `/v1/pos/invoices/${doubleDeduct.body.data.id}`, { token });
-    expect(voidRes.status).toBe(200);
-
-    const restored = await db.select({ quantityAvailable: stockLevels.quantityAvailable }).from(stockLevels).where(and(eq(stockLevels.tenantId, IDS.tenantMain), eq(stockLevels.inventoryItemId, IDS.itemLcdMultiBatch)));
-    expect(restored[0].quantityAvailable).toBe(23);
   });
 });

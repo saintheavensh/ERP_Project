@@ -4,6 +4,7 @@ import {
   canModifyCharge,
   calculateTicketMargin,
   describeAssignment,
+  isBillableCharge,
   type ChargeCalcRow,
 } from '../service';
 
@@ -108,5 +109,33 @@ describe('describeAssignment', () => {
     const result = describeAssignment('tech-1', null, 'tech-2', 'Teknisi Budi');
     expect(result.isReassignment).toBe(true);
     expect(result.note).toBe('Dialihkan dari teknisi sebelumnya ke Teknisi Budi');
+  });
+});
+
+describe('isBillableCharge (H17)', () => {
+  it('bills a consumed part', () => {
+    expect(isBillableCharge({ sourceType: 'part', status: 'consumed' })).toBe(true);
+  });
+
+  it('does NOT bill an approved-but-unconsumed part (reserved, not yet fitted)', () => {
+    expect(isBillableCharge({ sourceType: 'part', status: 'approved' })).toBe(false);
+  });
+
+  it('does NOT bill an estimated part', () => {
+    expect(isBillableCharge({ sourceType: 'part', status: 'estimated' })).toBe(false);
+  });
+
+  it('bills approved labor and approved fee (no stock behind them)', () => {
+    expect(isBillableCharge({ sourceType: 'labor', status: 'approved' })).toBe(true);
+    expect(isBillableCharge({ sourceType: 'fee', status: 'approved' })).toBe(true);
+  });
+
+  it('does NOT bill estimated labor', () => {
+    expect(isBillableCharge({ sourceType: 'labor', status: 'estimated' })).toBe(false);
+  });
+
+  it('never bills a cancelled charge, regardless of source', () => {
+    expect(isBillableCharge({ sourceType: 'part', status: 'cancelled' })).toBe(false);
+    expect(isBillableCharge({ sourceType: 'labor', status: 'cancelled' })).toBe(false);
   });
 });

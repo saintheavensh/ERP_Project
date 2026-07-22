@@ -155,6 +155,30 @@
           Minta Persetujuan
         </button>
       </div>
+
+      <!-- H17 — generate service invoice (consumed parts + approved labor) -->
+      {#if state.canInvoice}
+        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+          <p class="text-xs text-slate-500">Buat faktur dari part yang sudah dipakai &amp; jasa yang disetujui.</p>
+          <div class="flex items-center gap-2">
+            <select bind:value={state.invoicePaymentMethod}
+              class="px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm">
+              <option value="tempo">Tempo (bayar nanti)</option>
+              <option value="cash">Tunai</option>
+              <option value="transfer">Transfer</option>
+              <option value="qris">QRIS</option>
+            </select>
+            <button onclick={() => state.generateInvoice()} disabled={state.chargeLoading}
+              class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-40">
+              Buat Faktur
+            </button>
+          </div>
+        </div>
+      {/if}
+    {/if}
+
+    {#if state.successMsg}
+      <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{state.successMsg}</p>
     {/if}
   </div>
 </div>

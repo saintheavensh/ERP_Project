@@ -23,6 +23,11 @@ export enum AppEvent {
   // posts revenue (that already happened in full at POS_SALE_COMPLETED) —
   // see ledger.ts's buildArSettlementEntry for why.
   CUSTOMER_PAYMENT_RECORDED = 'customer.payment.recorded',
+  // H17 — a service invoice generated from a ticket's consumed parts + approved
+  // labor. Posts REVENUE ONLY: COGS for those parts was already posted at
+  // consumption time (TICKET_PART_CONSUMED), so a matched revenue+COGS pair here
+  // would double-count cost. See ledger.ts's buildTicketInvoiceRevenueEntry.
+  TICKET_INVOICE_CREATED = 'ticket.invoice.created',
 }
 
 export function emitEvent(event: AppEvent, payload: unknown) {

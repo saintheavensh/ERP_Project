@@ -8,6 +8,7 @@ export class TicketDetailState {
 
   loading = $state(false);
   errorMsg = $state('');
+  successMsg = $state('');
 
   // Transition form
   selectedTransition = $state('');
@@ -163,6 +164,43 @@ export class TicketDetailState {
       const result = await res.json();
       if (res.ok) await invalidateAll();
       else this.errorMsg = result.error?.message || 'Gagal meminta persetujuan';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.chargeLoading = false; }
+  }
+
+  // H17 — service invoice from the ticket. A part is billable once consumed;
+  // labor/fee once approved. Mirrors isBillableCharge() in the backend service.
+  get canInvoice() {
+    return this.charges.some((c: any) =>
+      (c.sourceType === 'part' && c.status === 'consumed') ||
+      ((c.sourceType === 'labor' || c.sourceType === 'fee') && c.status === 'approved')
+    );
+  }
+
+  invoicePaymentMethod = $state<'cash' | 'transfer' | 'qris' | 'tempo'>('tempo');
+  // H13 pattern — minted when the invoice action starts, reused across retries,
+  // cleared on success so a later (blocked) retry doesn't replay a stale response.
+  private invoiceIdempotencyKey = '';
+
+  async generateInvoice() {
+    this.chargeLoading = true;
+    this.errorMsg = '';
+    this.successMsg = '';
+    if (!this.invoiceIdempotencyKey) this.invoiceIdempotencyKey = crypto.randomUUID();
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/invoice`, {
+        method: 'POST',
+        headers: { ...this.chargeHeaders(), 'Idempotency-Key': this.invoiceIdempotencyKey },
+        body: JSON.stringify({ paymentMethod: this.invoicePaymentMethod })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.invoiceIdempotencyKey = '';
+        this.successMsg = `Faktur dibuat: ${result.data.invoiceNumber}`;
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal membuat faktur';
+      }
     } catch { this.errorMsg = 'Network error'; }
     finally { this.chargeLoading = false; }
   }

@@ -1,18 +1,19 @@
 import { db } from '../../db/connection';
-import { serviceTickets, ticketCharges, inventoryItems, approvalRequests, ticketStageHistory, users } from '../../db/schema';
-import type { ChargeStatus } from '../../db/schema/enums';
-import { eq, and, asc } from 'drizzle-orm';
+import { serviceTickets, ticketCharges, inventoryItems, approvalRequests, ticketStageHistory, users, customers, posInvoices, posInvoiceLines } from '../../db/schema';
+import type { ChargeStatus, LineSource } from '../../db/schema/enums';
+import { eq, and, asc, ne } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { consumeStock, returnStock, reserveStock, releaseReservation } from '../inventory/service';
 import { emitEvent, AppEvent } from '../../services/event-bus';
 import { buildSuccessEnvelope } from '../../lib/response';
 import { recordIdempotentResponse, type IdempotencyRef } from '../../lib/idempotency';
+import { allocateInvoiceNumber } from '../../lib/invoice-number';
 
 // H10 — every reserve/release movement for a ticket charge shares this
 // referenceType, distinguished by movementType; referenceId is always the charge id.
 const RESERVATION_REFERENCE_TYPE = 'ticket_charge_reservation';
-import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput } from './types';
+import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput, GenerateTicketInvoiceInput } from './types';
 
 // ============================================================================
 // Pure functions — no database, no HTTP. These are what the unit tests exercise.
@@ -47,6 +48,19 @@ export function calculateTicketTotals(rows: ChargeCalcRow[]): {
 /** Only an 'estimated' charge may be edited or deleted — once quoted it is frozen. */
 export function canModifyCharge(charge: { status: ChargeStatus }): boolean {
   return charge.status === 'estimated';
+}
+
+/**
+ * H17 — which charges become invoice lines. A part is billable only once
+ * 'consumed' (its stock was physically deducted at consumption, H9); labor/fee
+ * are billable once 'approved' (they carry no stock and are never 'consumed').
+ * Everything else — estimated, an approved-but-unconsumed part (reserved, not yet
+ * fitted), or cancelled — is not billed. Pure, so it is unit-testable without a DB.
+ */
+export function isBillableCharge(charge: { sourceType: LineSource; status: ChargeStatus }): boolean {
+  if (charge.sourceType === 'part') return charge.status === 'consumed';
+  if (charge.sourceType === 'labor' || charge.sourceType === 'fee') return charge.status === 'approved';
+  return false; // 'discount' as a ticket charge is not implemented
 }
 
 /**
@@ -339,6 +353,146 @@ export async function generateQuotation(tenantId: string, ticketId: string) {
 
     return { approvalRequest, quotedAmount, approvedTotal: totals.approved };
   });
+}
+
+/**
+ * H17 — SBL-003: turn a ticket's billable charges into a customer invoice.
+ *
+ * Bills consumed parts + approved labor/fee (see isBillableCharge) as a normal
+ * pos_invoices row linked to the ticket. Crucially it does NOT re-run FIFO: the
+ * parts' stock was already deducted at consumption (H9), so re-deducting here is
+ * exactly the double-deduct bug H15 found. Each part line copies its already-known
+ * unitCost from the charge (record only).
+ *
+ * Ledger: emits TICKET_INVOICE_CREATED (revenue only) AFTER commit — the COGS for
+ * these parts was already posted at consumption time, so a matched pair here would
+ * double-count cost. See modules/finance/ledger.ts buildTicketInvoiceRevenueEntry.
+ *
+ * One invoice per ticket: a second attempt while a non-voided invoice already
+ * references this ticket is rejected (409). Incremental invoicing is future work.
+ */
+export async function generateTicketInvoice(
+  tenantId: string,
+  ticketId: string,
+  input: GenerateTicketInvoiceInput,
+  userId: string,
+  idempotency?: IdempotencyRef,
+  requestId?: string
+) {
+  const result = await db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select({ id: serviceTickets.id, branchId: serviceTickets.branchId, customerId: serviceTickets.customerId })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+
+    // One invoice per ticket (MVP): a non-voided pos_invoices row for this ticket blocks a second.
+    const [existing] = await tx
+      .select({ id: posInvoices.id })
+      .from(posInvoices)
+      .where(and(
+        eq(posInvoices.tenantId, tenantId),
+        eq(posInvoices.serviceTicketId, ticketId),
+        ne(posInvoices.status, 'voided')
+      ));
+    if (existing) {
+      throw new BusinessError('TICKET_ALREADY_INVOICED', 'This ticket already has an invoice', 409);
+    }
+
+    // The customer snapshot: a service invoice is always for the ticket's customer,
+    // so 'tempo' always has a real customer link (satisfies the tempo_requires_customer CHECK).
+    const [customer] = await tx
+      .select({ name: customers.name })
+      .from(customers)
+      .where(and(eq(customers.id, ticket.customerId), eq(customers.tenantId, tenantId)));
+
+    // Select every charge, then keep only the billable ones (pure decision).
+    const charges = await tx
+      .select({
+        id: ticketCharges.id,
+        sourceType: ticketCharges.sourceType,
+        status: ticketCharges.status,
+        description: ticketCharges.description,
+        inventoryItemId: ticketCharges.inventoryItemId,
+        partBrandId: ticketCharges.partBrandId,
+        quantity: ticketCharges.quantity,
+        unitPrice: ticketCharges.unitPrice,
+        unitCost: ticketCharges.unitCost,
+      })
+      .from(ticketCharges)
+      .where(and(eq(ticketCharges.ticketId, ticketId), eq(ticketCharges.tenantId, tenantId)));
+
+    const billable = charges.filter(isBillableCharge);
+    if (billable.length === 0) {
+      throw new BusinessError('NOTHING_TO_INVOICE', 'Ticket has no consumed parts or approved labor to invoice', 422);
+    }
+
+    const subtotal = roundMoney(
+      billable.reduce((sum, c) => sum + c.quantity * parseFloat(c.unitPrice), 0)
+    );
+    const grandTotal = roundMoney(subtotal - input.discountAmount);
+    const paymentStatus = input.paymentMethod === 'tempo' ? 'unpaid' : 'paid';
+
+    const invoiceNumber = await allocateInvoiceNumber(tx, tenantId);
+
+    const [invoice] = await tx
+      .insert(posInvoices)
+      .values({
+        tenantId,
+        branchId: ticket.branchId,
+        invoiceNumber,
+        customerName: customer?.name ?? 'Pelanggan',
+        customerId: ticket.customerId,
+        serviceTicketId: ticketId,
+        subtotal: toMoneyString(subtotal),
+        discountAmount: toMoneyString(input.discountAmount),
+        taxAmount: '0',
+        grandTotal: toMoneyString(grandTotal),
+        paymentStatus,
+        amountPaid: paymentStatus === 'paid' ? toMoneyString(grandTotal) : '0',
+        paymentMethod: input.paymentMethod,
+        createdBy: userId,
+      })
+      .returning();
+
+    // Insert lines. NO stock is touched — parts were already deducted at consumption.
+    for (const c of billable) {
+      const lineSubtotal = roundMoney(c.quantity * parseFloat(c.unitPrice));
+      await tx.insert(posInvoiceLines).values({
+        tenantId,
+        posInvoiceId: invoice.id,
+        sourceType: c.sourceType,
+        description: c.description,
+        inventoryItemId: c.sourceType === 'part' ? c.inventoryItemId : null,
+        partBrandId: c.sourceType === 'part' ? c.partBrandId : null,
+        quantity: c.quantity,
+        unitPrice: c.unitPrice,
+        subtotal: toMoneyString(lineSubtotal),
+        // Record the already-known cost on part lines (historical fact); it does NOT
+        // drive COGS here — that was posted at consumption. Labor/fee carry no cost.
+        unitCost: c.sourceType === 'part' ? c.unitCost : null,
+      });
+    }
+
+    // H13 — record the response as the last write inside this transaction.
+    const responseEnvelope = buildSuccessEnvelope(invoice, undefined, requestId);
+    await recordIdempotentResponse(tx, tenantId, idempotency, 201, responseEnvelope);
+
+    return { invoice, branchId: ticket.branchId, grandTotal };
+  });
+
+  // H17/H11 — post-commit, best-effort, REVENUE ONLY (COGS already on the
+  // consumption entries). A ledger failure must never roll back an issued invoice.
+  emitEvent(AppEvent.TICKET_INVOICE_CREATED, {
+    tenantId,
+    branchId: result.branchId,
+    invoiceId: result.invoice.id,
+    grandTotal: result.grandTotal,
+  });
+
+  return result.invoice;
 }
 
 /**

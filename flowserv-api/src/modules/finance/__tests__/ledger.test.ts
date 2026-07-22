@@ -6,6 +6,7 @@ import {
   buildApInvoiceEntry,
   buildApSettlementEntry,
   buildArSettlementEntry,
+  buildTicketInvoiceRevenueEntry,
 } from '../ledger';
 
 const invoice = { id: 'inv-1', tenantId: 'tenant-1', branchId: 'branch-1', grandTotal: 150000 };
@@ -188,5 +189,42 @@ describe('buildArSettlementEntry', () => {
     const revenueTotal = allEntries.filter((e) => e.entryType === 'revenue').reduce((sum, e) => sum + e.amount, 0);
     expect(revenueTotal).toBe(150000); // exactly the original sale — not doubled
     expect(settlementEntries.every((e) => e.entryType === 'adjustment' && e.referenceType === 'pos_invoice')).toBe(true);
+  });
+});
+
+describe('buildTicketInvoiceRevenueEntry (H17)', () => {
+  it('posts REVENUE ONLY — never COGS — on referenceType pos_sale', () => {
+    const entries = buildTicketInvoiceRevenueEntry({
+      tenantId: 'tenant-1',
+      branchId: 'branch-1',
+      invoiceId: 'ticket-inv-1',
+      grandTotal: 220000,
+    });
+
+    expect(entries).toEqual([
+      { tenantId: 'tenant-1', branchId: 'branch-1', entryType: 'revenue', amount: 220000, referenceType: 'pos_sale', referenceId: 'ticket-inv-1' },
+    ]);
+    // The critical H17 correctness point: not a matched pair — no COGS entry here.
+    expect(entries.some((e) => e.entryType === 'cogs')).toBe(false);
+  });
+
+  it('posts nothing for a zero or negative grand total', () => {
+    expect(buildTicketInvoiceRevenueEntry({ tenantId: 't', branchId: 'b', invoiceId: 'i', grandTotal: 0 })).toEqual([]);
+  });
+
+  it('does not double-count COGS: consumption posts COGS, the invoice posts only revenue', () => {
+    // A part consumed off a ticket (H9/H11) already posts COGS. When the ticket is
+    // invoiced (H17), only revenue is added — so the ledger shows one COGS and one
+    // revenue for the repair, not two of either.
+    const cogsAtConsumption = buildTicketCogsEntry({
+      tenantId: 'tenant-1', branchId: 'branch-1', chargeId: 'charge-1', unitCost: 154285.71, quantity: 7,
+    });
+    const revenueAtInvoice = buildTicketInvoiceRevenueEntry({
+      tenantId: 'tenant-1', branchId: 'branch-1', invoiceId: 'ticket-inv-1', grandTotal: 1690000,
+    });
+
+    const all = [...cogsAtConsumption, ...revenueAtInvoice];
+    expect(all.filter((e) => e.entryType === 'cogs')).toHaveLength(1);
+    expect(all.filter((e) => e.entryType === 'revenue')).toHaveLength(1);
   });
 });
