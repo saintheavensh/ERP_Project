@@ -69,10 +69,10 @@ Stage A
 - [x] 4C.5 Phase-4-complete commit — 2026-07-23 (Phase 4 fully `[x]` in PHASES.md)
 
 Stage B
-- [ ] ~~Merge phase-4 → main~~ — superseded: `track-f/honesty-fixes` merged
-      `phase-4/purchasing-completion` in on 2026-07-23 (before F4), so this specific
-      merge no longer applies. Still open: decide where Phase 5 branches from and
-      reconcile with `main`/`phase-4/purchasing-completion`.
+- [x] Branch hygiene — 2026-07-23. `main` fast-forwarded to `track-f/honesty-fixes`'s
+      tip (`60306ce`); `track-f/honesty-fixes` and `phase-4/purchasing-completion`
+      deleted (local + remote, fully contained). `phase-5/core-ui` branched fresh
+      from `main` and is the active branch.
 
 Stage C
 - [ ] P2 Ticket Kanban (3B.5 / 5.2)
