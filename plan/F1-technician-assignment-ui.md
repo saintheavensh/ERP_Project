@@ -29,11 +29,31 @@ the technician dashboard) is inert. The endpoint is orphaned.
 2. Add `assign()` to the detail state; wire the control's `onchange`.
 3. Show the current assignee name (the ticket detail already returns `assignedTechnician`).
 
-## Verification (Definition of Done)
-- Click-path walked (Playwright is now installed — extend `e2e/intake-to-close.spec.ts` or
-  add a small spec): open a ticket, pick a technician, reload → assignee shows; a stage-history
-  note "Ditugaskan ke X" appears. Reassign → "Dialihkan dari X ke Y".
-- `npx svelte-check` clean.
+## Verification (Definition of Done) — DONE 2026-07-23
+- Added `GET /v1/users?role=<name>` (`routes/users.ts`, mounted in `app.ts`) — no such
+  endpoint existed at all, so the technician picker had nothing to read from.
+  Auth-only (matches `GET /v1/branches`'s pattern — a lookup list, not a mutation),
+  tenant-scoped via a join through `user_role_assignments`/`roles`.
+- `tickets/[id]/+page.server.ts` fetches technicians in parallel with charges/inventory;
+  `ticket.detail.svelte.ts` gained `assignedTechnician`/`technicians` getters and an
+  `assign(technicianId)` method (idempotency key minted per call, `invalidateAll()` on success);
+  `TicketWorkspace.svelte` gained an "Assigned Technician" card with a picker (hidden once
+  the ticket is closed/cancelled — shows the name as plain text instead).
+- **Live API run** (seeded ticket, then DB reset back to clean state):
+  `GET /v1/users?role=Technician` → exactly "Teknisi Andi"; unfiltered → all 4 tenant users.
+  Assigned the seeded open ticket to Teknisi Andi → `GET /:id` showed
+  `assignedTechnician: {id, name: "Teknisi Andi"}` and a new history note
+  "Ditugaskan ke Teknisi Andi". Reassigned to Budi Manager → history's newest entry
+  read "Dialihkan dari Teknisi Andi ke Budi Manager", exactly per `describeAssignment()`.
+  `npm run db:reset` afterward confirmed the ticket back to `assignedTechnicianId: null`.
+- `npx tsc --noEmit` (API): clean. `npx svelte-check` (web): 0 errors, 0 warnings (696
+  files) — verified the check itself catches real errors (injected a deliberate type
+  error, confirmed it was reported, then reverted and re-ran clean).
+- `npm run test:unit`: 137/137 passing, unchanged.
+- **Not done this session:** a literal Playwright click-through of the picker (the
+  existing `e2e/intake-to-close.spec.ts` walks transitions only). The live API run above
+  covers every backend behavior the picker calls; the UI code itself was reviewed but not
+  browser-driven. Substituted per the same pattern H7–H14 used for this exact gap.
 
 ## Watch out
 - The assignee list must be **tenant-scoped** and only real users of this tenant (the backend

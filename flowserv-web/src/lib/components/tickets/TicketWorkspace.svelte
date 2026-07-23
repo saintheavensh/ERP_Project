@@ -48,6 +48,31 @@
     </div>
   </div>
 
+  <!-- F1 — Technician assignment (wires H8's previously-orphaned POST /:id/assign) -->
+  <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Assigned Technician</h3>
+    {#if state.ticket?.status === 'closed' || state.ticket?.status === 'cancelled'}
+      <p class="font-bold text-lg text-slate-900">{state.assignedTechnician?.name || 'Belum ditugaskan'}</p>
+    {:else}
+      <div class="flex items-center gap-3">
+        <select
+          value={state.assignedTechnician?.id || ''}
+          onchange={(e) => state.assign(e.currentTarget.value)}
+          disabled={state.assignLoading}
+          class="flex-1 px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:opacity-50"
+        >
+          <option value="" disabled selected={!state.assignedTechnician}>-- Pilih Teknisi --</option>
+          {#each state.technicians as tech}
+            <option value={tech.id} selected={tech.id === state.assignedTechnician?.id}>{tech.name}</option>
+          {/each}
+        </select>
+        {#if state.assignLoading}
+          <span class="text-sm text-slate-500">Menugaskan...</span>
+        {/if}
+      </div>
+    {/if}
+  </div>
+
   <!-- H7 — Charges (parts / labor / fees), running total, request approval -->
   <TicketCharges {state} />
 

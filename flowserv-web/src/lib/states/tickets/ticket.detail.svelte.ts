@@ -40,6 +40,28 @@ export class TicketDetailState {
   get currentNode() { return this.data.data?.node; }
   get template() { return this.data.template; }
 
+  // F1 — technician assignment (wires H8's previously-orphaned POST /:id/assign)
+  get assignedTechnician() { return this.data.data?.assignedTechnician; }
+  get technicians() { return this.data.technicians || []; }
+  assignLoading = $state(false);
+
+  async assign(technicianId: string) {
+    if (!technicianId) return;
+    this.assignLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}`, 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ technicianId })
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal menugaskan teknisi';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.assignLoading = false; }
+  }
+
   // H7 — Charges
   chargeForm = $state<{ sourceType: 'part' | 'labor' | 'fee'; inventoryItemId: string; description: string; quantity: number; unitPrice: string }>({
     sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: ''
