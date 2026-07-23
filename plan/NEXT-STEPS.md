@@ -41,7 +41,8 @@ first. Highest-value items, roughly in order:
 
 | # | Task | Size | Notes |
 |---|---|---|---|
-| P2 | Ticket Kanban board (PHASES.md 5.2, **closes the long-open 3B.5**) | M | columns = flow nodes, drag-drop via `svelte-dnd-action` (already in the stack); the flow engine already gives node ordering |
+| P1.5 | [Mobile shell fix](./P1.5-mobile-shell-fix.md) — responsive nav + worst-offender pages | S | prerequisite for P2+: fixes the foundation everything else renders inside |
+| P2 | Ticket Kanban board (PHASES.md 5.2, **closes the long-open 3B.5**) | M | columns = flow nodes, drag-drop via `svelte-dnd-action` (already in the stack); the flow engine already gives node ordering; **mobile-first per the updated `08-ui-ux.md`** — horizontal column scroll + tap-based transition fallback, not just drag |
 | P3 | Per-role default dashboards + widgets (5.1) | L | split further if it stalls |
 | P4 | Ticket detail polish: timeline, cost breakdown, attachments (5.3) | M | most of the data already exists (charges, ledger, stage history) |
 | P5 | Finance dashboard: Simple/Accountant toggle (5.9) | M | builds on the H11 ledger + H14 receivables |
@@ -75,6 +76,7 @@ Stage B
       from `main` and is the active branch.
 
 Stage C
+- [x] P1.5 Mobile shell fix — 2026-07-23, see [P1.5-mobile-shell-fix.md](./P1.5-mobile-shell-fix.md)
 - [ ] P2 Ticket Kanban (3B.5 / 5.2)
 - [ ] P3 Role dashboards + widgets (5.1)
 - [ ] P4 Ticket detail polish (5.3)

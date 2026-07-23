@@ -2,7 +2,7 @@
   let { pos } = $props<{ pos: any }>();
 </script>
 
-<div class="flex-1 flex flex-col overflow-hidden border-r border-slate-200 bg-slate-50/50">
+<div class="h-[45vh] shrink-0 lg:h-auto lg:flex-1 flex flex-col overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/50">
   <div class="p-4 border-b border-slate-200 bg-white/50 backdrop-blur-sm">
     <input type="text" bind:value={pos.products.searchQuery} placeholder="Cari SKU atau Nama Produk..." class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white">
   </div>

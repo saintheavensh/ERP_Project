@@ -9,8 +9,8 @@
   <title>Service Tickets | FlowServ</title>
 </svelte:head>
 
-<div class="p-6 max-w-6xl mx-auto">
-  <div class="flex justify-between items-center mb-6">
+<div class="p-4 md:p-6 max-w-6xl mx-auto">
+  <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
     <h1 class="text-2xl font-bold text-slate-900">Service Tickets</h1>
     <a href="/tickets/intake"
       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
@@ -22,7 +22,8 @@
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-    <table class="w-full text-left text-sm">
+   <div class="overflow-x-auto">
+    <table class="w-full min-w-[720px] text-left text-sm">
       <thead class="bg-slate-50 text-slate-500 border-b border-gray-200">
         <tr>
           <th class="px-6 py-4 font-medium">Customer & Device</th>
@@ -77,5 +78,6 @@
         {/each}
       </tbody>
     </table>
+   </div>
   </div>
 </div>

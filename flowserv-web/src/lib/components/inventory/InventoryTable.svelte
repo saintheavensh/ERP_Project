@@ -5,7 +5,8 @@
 </script>
 
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-  <table class="w-full text-left border-collapse">
+ <div class="overflow-x-auto">
+  <table class="w-full min-w-[900px] text-left border-collapse">
     <thead>
       <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
         <th class="p-4">SKU</th>
@@ -84,4 +85,5 @@
       {/each}
     </tbody>
   </table>
+ </div>
 </div>

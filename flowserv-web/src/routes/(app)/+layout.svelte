@@ -1,6 +1,15 @@
 <script lang="ts">
+  import { afterNavigate } from '$app/navigation';
+
   let { data, children } = $props();
   let user = $derived(data.user);
+
+  // P1.5 (mobile shell fix) — the sidebar is an off-canvas drawer below the `md`
+  // breakpoint, a static column above it. Closed by default on every viewport;
+  // `md:translate-x-0` below makes it visually always-open on desktop regardless
+  // of this flag, matching the original desktop behavior exactly.
+  let mobileNavOpen = $state(false);
+  afterNavigate(() => { mobileNavOpen = false; });
 
   // Dynamic menu based on role using $derived for reactivity
   let menuItems = $derived.by(() => {
@@ -64,11 +73,36 @@
 </script>
 
 <div class="flex h-screen w-full bg-gray-50">
-  <aside class="w-64 bg-slate-900 text-white flex flex-col">
-    <div class="h-16 flex items-center px-6 font-bold text-xl border-b border-slate-800">
+  <!-- P1.5 — mobile backdrop: tap outside the drawer to close it. Desktop never
+       shows this (mobileNavOpen only opens the drawer below the md breakpoint,
+       and this element only renders in the DOM while it's open). -->
+  {#if mobileNavOpen}
+    <button
+      type="button"
+      class="fixed inset-0 bg-slate-900/60 z-40 md:hidden"
+      onclick={() => mobileNavOpen = false}
+      aria-label="Close menu overlay"
+    ></button>
+  {/if}
+
+  <aside class="
+    fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col
+    transform transition-transform duration-200 ease-in-out
+    md:relative md:translate-x-0
+    {mobileNavOpen ? 'translate-x-0' : '-translate-x-full'}
+  ">
+    <div class="h-16 flex items-center justify-between px-6 font-bold text-xl border-b border-slate-800">
       FlowServ
+      <button
+        type="button"
+        class="md:hidden text-slate-400 hover:text-white"
+        onclick={() => mobileNavOpen = false}
+        aria-label="Close menu"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
     </div>
-    
+
     <div class="px-6 py-4 border-b border-slate-800 text-sm">
       <div class="text-slate-400">Logged in as:</div>
       <div class="font-medium truncate">{user?.name}</div>
@@ -118,11 +152,19 @@
   </aside>
 
   <!-- Main Content -->
-  <main class="flex-1 flex flex-col overflow-hidden">
-    <header class="h-16 bg-white border-b flex items-center px-6 shadow-sm">
+  <main class="flex-1 flex flex-col overflow-hidden min-w-0">
+    <header class="h-16 bg-white border-b flex items-center gap-3 px-4 md:px-6 shadow-sm shrink-0">
+      <button
+        type="button"
+        class="md:hidden text-slate-500 hover:text-slate-800 -ml-1 p-1"
+        onclick={() => mobileNavOpen = true}
+        aria-label="Open menu"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+      </button>
       <h1 class="font-semibold text-lg">System Dashboard</h1>
     </header>
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-4 md:p-6">
       {@render children()}
     </div>
   </main>

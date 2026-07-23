@@ -1,10 +1,23 @@
 # UI/UX: Design Principles & Key Screens
 
+> **Implementation status (2026-07-23):** Design principle #3 below was originally scoped
+> to "technicians" only and never made explicit that it governs the whole app shell. It
+> didn't, in practice: an audit found the core layout (`(app)/+layout.svelte`) has a fixed
+> 256px sidebar with no responsive/collapsed state at all, several list pages render wide
+> `<table>`s with no horizontal-scroll wrapper, and the POS cart panel is a fixed 384px
+> column — all effectively unusable on a ~375px phone viewport. Principle #3 is corrected
+> below to state the real, broader intent. **Decision: fix the shared app shell (sidebar
+> nav, base layout) first — everything renders inside it, so one fix cascades correctness
+> everywhere — then build new screens mobile-first from the start. Older pages (ticket/
+> customer/inventory list tables, etc.) are retrofitted incrementally as they're touched,
+> not in one big-bang pass** (same incremental-retrofit rule this codebase already applies
+> to architecture debt — see `PHASES.md` → Architecture Debt). See `plan/P1.5-mobile-shell-fix.md`.
+
 ## Design Principles
 
 1. **Dashboard = personal workbench per role** — upon login, show ONLY what's relevant to that role's work today. Technicians don't need finance reports; cashiers don't need Flow Template settings.
 2. **Real-time by default** — ticket status changes, stock levels, payments must be visible live (WebSocket), not requiring manual refresh.
-3. **Mobile-first for technicians** — technicians work on the service floor/field, not at a desk. Technician screens must be comfortable on tablet/phone.
+3. **Mobile-first, app-wide** — the app is used on the service floor, at a POS counter, and in the field, not only at a desk. This is not limited to technician screens: the app shell (navigation), every list/table, and every new screen must be built mobile-first (design for the smallest viewport, then enhance for larger ones) and be comfortable on phone/tablet. Existing desktop-only screens are retrofitted incrementally as they're touched — see the implementation-status note above.
 4. **Configuration is a first-class UI feature** — Flow Template Builder and RBAC management must have clear UIs, not "hidden settings" only changeable via database/code.
 5. **Minimal double data entry** — data entered once (e.g., during Diagnosis) must automatically appear everywhere relevant (Quote, Invoice).
 6. **Simple for non-technical users** — assume some staff (cashiers, technicians) are not tech-savvy. Big, clear buttons; everyday language (not technical terms); maximum 1 primary action per screen; flat navigation (common actions max 2 clicks from main screen).
@@ -24,6 +37,10 @@ Principle: if a role doesn't need data/feature for daily work, **DON'T show it**
 - Columns = stages from active Flow Template (dynamic, follows configuration)
 - Ticket cards show: customer, asset, assigned technician, ticket age at current stage
 - Drag-and-drop between stages (with Transition Rule + permission check behind the scenes)
+- Mobile-first (principle #3): on a phone, columns scroll horizontally (one column-width
+  snap at a time) instead of shrinking to unreadable width; drag-and-drop must have a
+  tap-based fallback (e.g. tap a card → pick a target stage) since drag gestures are
+  unreliable on touch screens.
 
 ### 3. Ticket Detail View
 - Timeline of stage change history (audit trail)
