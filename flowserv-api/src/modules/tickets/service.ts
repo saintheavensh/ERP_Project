@@ -1,6 +1,6 @@
 import { db } from '../../db/connection';
 import { serviceTickets, ticketCharges, inventoryItems, approvalRequests, ticketStageHistory, users, customers, posInvoices, posInvoiceLines } from '../../db/schema';
-import type { ChargeStatus, LineSource } from '../../db/schema/enums';
+import type { ChargeStatus, LineSource, TicketStatus } from '../../db/schema/enums';
 import { eq, and, asc, ne } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
@@ -48,6 +48,15 @@ export function calculateTicketTotals(rows: ChargeCalcRow[]): {
 /** Only an 'estimated' charge may be edited or deleted — once quoted it is frozen. */
 export function canModifyCharge(charge: { status: ChargeStatus }): boolean {
   return charge.status === 'estimated';
+}
+
+/**
+ * F3 — SVC-013: only an 'open' ticket can be cancelled. A 'closed' ticket is
+ * already done; a 'cancelled' ticket cancelling again would double-release
+ * reservations that no longer exist.
+ */
+export function canCancelTicket(status: TicketStatus): boolean {
+  return status === 'open';
 }
 
 /**
@@ -493,6 +502,88 @@ export async function generateTicketInvoice(
   });
 
   return result.invoice;
+}
+
+/**
+ * F3 — SVC-013: cancel a ticket. Every 'estimated' or 'approved' charge is
+ * marked 'cancelled' (job abandoned, per the chargeStatusEnum comment); any
+ * 'approved' *part* charge additionally releases its H10 stock reservation
+ * first, exactly like cancelCharge — this is what stops an abandoned ticket
+ * from leaking a reservation forever. A 'consumed' part is NOT auto-returned
+ * (that's a physical parts-return decision, not implied by cancelling the
+ * job) — the caller gets a count so the UI can warn instead of staying silent.
+ * No ledger event: no money moved by cancelling.
+ */
+export async function cancelTicket(
+  tenantId: string,
+  ticketId: string,
+  reason: string,
+  actorUserId: string
+) {
+  return db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select()
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
+      .for('update');
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+    if (!canCancelTicket(ticket.status)) {
+      throw new BusinessError(
+        'TICKET_NOT_CANCELLABLE',
+        `A ${ticket.status} ticket cannot be cancelled`,
+        409
+      );
+    }
+
+    const charges = await tx
+      .select()
+      .from(ticketCharges)
+      .where(and(eq(ticketCharges.ticketId, ticketId), eq(ticketCharges.tenantId, tenantId)));
+
+    let releasedPartsCount = 0;
+    let consumedPartsLeftBehind = 0;
+
+    for (const charge of charges) {
+      if (charge.status === 'approved') {
+        if (charge.sourceType === 'part') {
+          await releaseReservation(tx, {
+            tenantId,
+            branchId: ticket.branchId,
+            inventoryItemId: charge.inventoryItemId!,
+            quantity: charge.quantity,
+            referenceType: RESERVATION_REFERENCE_TYPE,
+            referenceId: charge.id,
+            serviceTicketId: ticketId,
+          });
+          releasedPartsCount++;
+        }
+        await tx.update(ticketCharges).set({ status: 'cancelled' }).where(eq(ticketCharges.id, charge.id));
+      } else if (charge.status === 'estimated') {
+        await tx.update(ticketCharges).set({ status: 'cancelled' }).where(eq(ticketCharges.id, charge.id));
+      } else if (charge.status === 'consumed' && charge.sourceType === 'part') {
+        consumedPartsLeftBehind++;
+      }
+    }
+
+    const [updated] = await tx
+      .update(serviceTickets)
+      .set({ status: 'cancelled', closedAt: new Date() })
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
+      .returning();
+
+    if (ticket.currentNodeId) {
+      await tx.insert(ticketStageHistory).values({
+        ticketId,
+        nodeId: ticket.currentNodeId,
+        actorId: actorUserId,
+        notes: `Dibatalkan: ${reason}`,
+      });
+    }
+
+    return { ...updated, releasedPartsCount, consumedPartsLeftBehind };
+  });
 }
 
 /**

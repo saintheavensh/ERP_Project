@@ -3,6 +3,7 @@
   import TicketWorkspace from '$lib/components/tickets/TicketWorkspace.svelte';
   import TicketTimeline from '$lib/components/tickets/TicketTimeline.svelte';
   import TicketCustomerModals from '$lib/components/tickets/TicketCustomerModals.svelte';
+  import TicketCancelModal from '$lib/components/tickets/TicketCancelModal.svelte';
 
   let { data } = $props();
 
@@ -33,3 +34,4 @@
 </div>
 
 <TicketCustomerModals {state} />
+<TicketCancelModal {state} />

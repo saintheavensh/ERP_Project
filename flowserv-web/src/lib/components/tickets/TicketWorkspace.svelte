@@ -13,8 +13,18 @@
       </a>
       <h1 class="text-2xl font-bold text-slate-900">Workspace</h1>
     </div>
-    <div class="px-3 py-1 bg-slate-800 text-white text-sm font-medium rounded-full">
-      {state.ticket?.status.toUpperCase()}
+    <div class="flex items-center gap-3">
+      {#if state.canCancel}
+        <button
+          onclick={() => state.openCancelModal()}
+          class="text-sm text-red-600 hover:text-red-800 font-medium px-3 py-1 rounded-full border border-red-200 hover:bg-red-50 transition-colors"
+        >
+          Batalkan Tiket
+        </button>
+      {/if}
+      <div class="px-3 py-1 bg-slate-800 text-white text-sm font-medium rounded-full">
+        {state.ticket?.status.toUpperCase()}
+      </div>
     </div>
   </div>
 

@@ -12,8 +12,8 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 import { FlowEngine } from '../flow-engine/engine';
 import { BusinessError } from '../lib/errors';
-import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice } from '../modules/tickets/service';
+import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput } from '../modules/tickets/types';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice, cancelTicket } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -282,6 +282,25 @@ ticketsRouter.post('/:id/transition', zValidator('json', transitionSchema), audi
       if (replay) return replayIdempotentResponse(c, replay);
     }
     return errorResponse(c, 'TRANSITION_FAILED', err.message, [], 500);
+  }
+});
+
+// F3 — SVC-013: cancel a ticket. Releases any reserved parts (approved charges);
+// leaves already-consumed parts alone (that's a physical return, not implied by
+// cancelling the job) and reports how many so the caller can warn.
+ticketsRouter.post('/:id/cancel', requirePermission('ticket.cancel'), zValidator('json', cancelTicketInput), auditMiddleware({ action: 'ticket.cancel', entityType: 'service_ticket', entityIdParam: 'id', bodyFields: ['reason'] }), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const { reason } = c.req.valid('json');
+  try {
+    const result = await cancelTicket(tenantId, ticketId, reason, userId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to cancel ticket:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to cancel ticket', undefined, 500);
   }
 });
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateTicketTotals,
   canModifyCharge,
+  canCancelTicket,
   calculateTicketMargin,
   describeAssignment,
   isBillableCharge,
@@ -53,6 +54,20 @@ describe('canModifyCharge', () => {
     expect(canModifyCharge({ status: 'approved' })).toBe(false);
     expect(canModifyCharge({ status: 'consumed' })).toBe(false);
     expect(canModifyCharge({ status: 'cancelled' })).toBe(false);
+  });
+});
+
+describe('canCancelTicket (F3)', () => {
+  it('allows cancelling an open ticket', () => {
+    expect(canCancelTicket('open')).toBe(true);
+  });
+
+  it('blocks cancelling an already-closed ticket', () => {
+    expect(canCancelTicket('closed')).toBe(false);
+  });
+
+  it('blocks cancelling an already-cancelled ticket', () => {
+    expect(canCancelTicket('cancelled')).toBe(false);
   });
 });
 

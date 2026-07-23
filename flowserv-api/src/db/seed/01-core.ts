@@ -46,6 +46,10 @@ const PERMISSIONS = [
   // H13 — admin-only. Deliberately NOT added to any role's grant list below,
   // so only the Super Admin bypass can reach it — "admin-only" per the task.
   { id: IDS.permAuditView, code: 'audit.view', description: 'View the cross-module audit log' },
+
+  // F3 — SVC-013 lists this as CS/Branch Mgr; Manager is this codebase's
+  // stand-in for Branch Mgr (see the H12 note on ROLE_PERMISSION_CODES).
+  { id: IDS.permTicketCancel, code: 'ticket.cancel', description: 'Cancel a service ticket and release its reserved parts' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
@@ -64,6 +68,7 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'inventory.manage_items', 'inventory.receive_stock',
     'finance.record_payment', 'catalog.manage', 'customer.manage',
     'supplier.manage', 'purchasing.manage_orders', 'purchasing.manage_invoices',
+    'ticket.cancel',
   ],
   [IDS.roleTechnician]: [
     'ticket.create', 'ticket.diagnose', 'inventory.reserve_part',

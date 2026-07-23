@@ -284,6 +284,43 @@ export class TicketDetailState {
     }
   }
 
+  // F3 — SVC-013: cancel the ticket. Mirrors canCancelTicket() in the backend
+  // service (open-only) purely for UI gating; the API is the real guard.
+  get canCancel() { return this.ticket?.status === 'open'; }
+  showCancelModal = $state(false);
+  cancelReason = $state('');
+  cancelLoading = $state(false);
+
+  openCancelModal() {
+    this.cancelReason = '';
+    this.errorMsg = '';
+    this.showCancelModal = true;
+  }
+
+  async confirmCancelTicket() {
+    if (!this.cancelReason.trim()) { this.errorMsg = 'Alasan pembatalan wajib diisi'; return; }
+    this.cancelLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({ reason: this.cancelReason })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.showCancelModal = false;
+        this.successMsg = result.data?.consumedPartsLeftBehind
+          ? `Tiket dibatalkan. Perhatian: ${result.data.consumedPartsLeftBehind} sparepart yang sudah terpasang tidak otomatis dikembalikan ke stok.`
+          : 'Tiket berhasil dibatalkan.';
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal membatalkan tiket';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.cancelLoading = false; }
+  }
+
   openEditCustomer() {
     this.editCustomerData = { name: this.customer.name, phone: this.customer.phone || '', email: this.customer.email || '' };
     this.showEditWarning = true;

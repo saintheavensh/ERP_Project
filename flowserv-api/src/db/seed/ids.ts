@@ -51,6 +51,8 @@ export const IDS = {
   permPurchasingManageInvoices: 'd1000000-0000-4000-8000-000000000020',
   // H13 — admin-only audit log viewer.
   permAuditView: 'd1000000-0000-4000-8000-000000000021',
+  // F3 — cancel a service ticket (SVC-013).
+  permTicketCancel: 'd1000000-0000-4000-8000-000000000022',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',

@@ -55,3 +55,11 @@ export const generateTicketInvoiceInput = z.object({
 });
 
 export type GenerateTicketInvoiceInput = z.infer<typeof generateTicketInvoiceInput>;
+
+// F3 — SVC-013: cancel a ticket. A reason is mandatory (surfaced on the
+// ticket_stage_history note) so an abandoned job is never silent.
+export const cancelTicketInput = z.object({
+  reason: z.string().min(1, 'Alasan pembatalan wajib diisi'),
+});
+
+export type CancelTicketInput = z.infer<typeof cancelTicketInput>;
