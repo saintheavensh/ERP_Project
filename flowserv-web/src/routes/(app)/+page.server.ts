@@ -19,6 +19,47 @@ async function safeGet(fetchFn: typeof fetch, path: string, token: string): Prom
   }
 }
 
+async function safeGetObject(fetchFn: typeof fetch, path: string, token: string): Promise<any | null> {
+  try {
+    const res = await fetchFn(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// P11 — quick actions on the Technician dashboard: which node(s) can a ticket
+// legally move to next, same edge-filter the Kanban board uses
+// (transitions.fromNodeId === ticket.currentNodeId). Fetched per distinct
+// flowTemplateId among the technician's tickets — in practice just the one
+// 'service' template (see plan/P2-ticket-kanban-board.md Decision 1), but this
+// doesn't assume that.
+async function withQuickActions(fetchFn: typeof fetch, tickets: any[], token: string): Promise<any[]> {
+  const templateIds = [...new Set(tickets.map((t) => t.flowTemplateId).filter(Boolean))];
+  const details = await Promise.all(
+    templateIds.map((id) => safeGetObject(fetchFn, `/flows/${id}`, token))
+  );
+  const transitionsByTemplate = new Map<string, any[]>();
+  const nodeNameByTemplate = new Map<string, Map<string, string>>();
+  templateIds.forEach((id, i) => {
+    transitionsByTemplate.set(id, details[i]?.transitions || []);
+    const nodeNames = new Map<string, string>();
+    for (const n of details[i]?.nodes || []) nodeNames.set(n.id, n.name);
+    nodeNameByTemplate.set(id, nodeNames);
+  });
+
+  return tickets.map((t) => {
+    const transitions = transitionsByTemplate.get(t.flowTemplateId) || [];
+    const nodeNames = nodeNameByTemplate.get(t.flowTemplateId) || new Map();
+    const quickActions = transitions
+      .filter((tr: any) => tr.fromNodeId === t.currentNodeId)
+      .map((tr: any) => ({ targetNodeId: tr.toNodeId, targetNodeName: nodeNames.get(tr.toNodeId) || 'Unknown' }));
+    return { ...t, quickActions };
+  });
+}
+
 function groupByStage(tickets: any[]) {
   const byStage: Record<string, number> = {};
   for (const t of tickets) {
@@ -42,16 +83,18 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   const token = locals.token;
   const roleName = locals.user?.roleName;
   if (!token) throw redirect(302, '/login');
-  if (!roleName) return { roleName: null };
+  if (!roleName) return { roleName: null, token };
 
   if (roleName === 'Technician') {
     const tickets = await safeGet(fetch, '/tickets?assignedTo=me&status=open&limit=200', token);
+    const recent = await withQuickActions(fetch, tickets.slice(0, 6), token);
     return {
       roleName,
+      token,
       technician: {
         total: tickets.length,
         byStage: groupByStage(tickets),
-        recent: tickets.slice(0, 6),
+        recent,
       },
     };
   }

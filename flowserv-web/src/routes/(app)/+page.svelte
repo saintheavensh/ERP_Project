@@ -1,10 +1,44 @@
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
+  import { API_BASE } from '$lib/api/config';
   import StatCard from '$lib/components/dashboard/StatCard.svelte';
 
   let { data } = $props();
 
   function formatRp(amount: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
+  }
+
+  // P11 — quick actions on the Technician dashboard. Same transition call the
+  // Kanban board's move() makes, scoped here to a single ticket row instead of
+  // a drag/tap-panel — the point of "quick" is not needing to open the board.
+  let movingTicketId = $state('');
+  let quickActionError = $state('');
+
+  async function quickMove(ticketId: string, targetNodeId: string) {
+    movingTicketId = ticketId;
+    quickActionError = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}/transition`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${data.token}`,
+          'Idempotency-Key': crypto.randomUUID(),
+        },
+        body: JSON.stringify({ targetNodeId }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        quickActionError = result.error?.message || 'Gagal memindahkan tiket';
+        return;
+      }
+      await invalidateAll();
+    } catch {
+      quickActionError = 'Network error';
+    } finally {
+      movingTicketId = '';
+    }
   }
 </script>
 
@@ -83,18 +117,42 @@
 
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       <h2 class="font-semibold text-slate-800 mb-3">Tiket Terbaru Saya</h2>
+
+      {#if quickActionError}
+        <div class="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+          {quickActionError}
+        </div>
+      {/if}
+
       {#if t.recent.length === 0}
         <p class="text-sm text-slate-400">Belum ada tiket yang ditugaskan ke Anda.</p>
       {:else}
         <div class="divide-y divide-slate-100">
           {#each t.recent as ticket}
-            <a href={`/tickets/${ticket.id}`} class="flex items-center justify-between py-2.5 hover:bg-slate-50 -mx-2 px-2 rounded transition-colors">
-              <div>
-                <div class="text-sm font-medium text-slate-800">{ticket.customerName}</div>
-                <div class="text-xs text-slate-500">{ticket.assetType} - {ticket.brand || ''} {ticket.model || ''}</div>
-              </div>
-              <span class="text-xs bg-slate-100 border border-slate-200 rounded px-2 py-1 text-slate-600">{ticket.nodeName}</span>
-            </a>
+            <div class="py-2.5" data-testid="technician-ticket-row">
+              <a href={`/tickets/${ticket.id}`} class="flex items-center justify-between gap-2 hover:bg-slate-50 -mx-2 px-2 py-1 rounded transition-colors">
+                <div class="min-w-0">
+                  <div class="text-sm font-medium text-slate-800 truncate">{ticket.customerName}</div>
+                  <div class="text-xs text-slate-500 truncate">{ticket.assetType} - {ticket.brand || ''} {ticket.model || ''}</div>
+                </div>
+                <span class="shrink-0 text-xs bg-slate-100 border border-slate-200 rounded px-2 py-1 text-slate-600">{ticket.nodeName}</span>
+              </a>
+
+              {#if ticket.quickActions?.length > 0}
+                <div class="flex flex-wrap gap-2 mt-2">
+                  {#each ticket.quickActions as action}
+                    <button
+                      type="button"
+                      disabled={movingTicketId === ticket.id}
+                      onclick={() => quickMove(ticket.id, action.targetNodeId)}
+                      class="text-xs font-medium px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+                    >
+                      {movingTicketId === ticket.id ? 'Memproses...' : `→ ${action.targetNodeName}`}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
           {/each}
         </div>
       {/if}
