@@ -23,12 +23,17 @@
   <title>Ticket Workspace | FlowServ</title>
 </svelte:head>
 
-<div class="p-6 max-w-7xl mx-auto flex gap-6">
-  <!-- Left Col: Ticket & Workspace -->
-  <TicketWorkspace {state} />
+<!-- P4 — this page had zero responsive classes (untouched by P1.5's shell +
+     worst-offender pass). Stacks below lg (workspace above timeline), unchanged
+     side-by-side fixed-w-80 layout from lg up. -->
+<div class="p-4 lg:p-6 max-w-7xl mx-auto flex flex-col lg:flex-row gap-6">
+  <!-- Workspace -->
+  <div class="min-w-0 flex-1">
+    <TicketWorkspace {state} />
+  </div>
 
-  <!-- Right Col: Timeline -->
-  <div class="w-80 space-y-6">
+  <!-- Timeline -->
+  <div class="lg:w-80 lg:shrink-0 space-y-6">
     <TicketTimeline {state} />
   </div>
 </div>

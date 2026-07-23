@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
+  import StatCard from '$lib/components/dashboard/StatCard.svelte';
 
   let { state } = $props<{ state: TicketDetailState }>();
 
@@ -33,7 +34,7 @@
 </script>
 
 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-  <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+  <div class="bg-slate-50 px-4 sm:px-6 py-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
     <h2 class="font-semibold text-slate-800">Biaya &amp; Estimasi</h2>
     <div class="text-right text-sm">
       <span class="text-slate-500">Estimasi: </span>
@@ -43,10 +44,15 @@
         <span class="text-slate-500">Disetujui: </span>
         <span class="font-bold text-blue-700">{idr(state.chargeTotals.approved)}</span>
       {/if}
+      {#if state.chargeTotals.consumed > 0}
+        <span class="text-slate-300 mx-1">|</span>
+        <span class="text-slate-500">Terpakai: </span>
+        <span class="font-bold text-green-700">{idr(state.chargeTotals.consumed)}</span>
+      {/if}
     </div>
   </div>
 
-  <div class="p-6 space-y-5">
+  <div class="p-4 sm:p-6 space-y-5">
     <!-- Charge list -->
     {#if state.charges.length === 0}
       <p class="text-center text-slate-400 py-4 text-sm">Belum ada biaya. Tambahkan sparepart atau jasa di bawah.</p>
@@ -94,11 +100,19 @@
         {/each}
       </ul>
 
-      <!-- Margin summary -->
-      <div class="flex justify-end gap-6 text-sm border-t border-slate-100 pt-3 text-slate-500">
-        <span>Pendapatan: <span class="font-medium text-slate-700">{idr(state.chargeMargin.revenue)}</span></span>
-        <span>Modal: <span class="font-medium text-slate-700">{idr(state.chargeMargin.cost)}</span></span>
-        <span>Margin: <span class="font-semibold {state.chargeMargin.margin >= 0 ? 'text-green-700' : 'text-red-600'}">{idr(state.chargeMargin.margin)}</span></span>
+      <!-- Cost breakdown — P4: was a plain text row, now reuses the StatCard
+           tile (first reuse outside the dashboard it was built for in P3). -->
+      <div class="border-t border-slate-100 pt-4">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rincian Biaya</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <StatCard title="Pendapatan" value={idr(state.chargeMargin.revenue)} />
+          <StatCard title="Modal" value={idr(state.chargeMargin.cost)} />
+          <StatCard
+            title="Margin"
+            value={idr(state.chargeMargin.margin)}
+            tone={state.chargeMargin.margin >= 0 ? 'success' : 'danger'}
+          />
+        </div>
       </div>
     {/if}
 
@@ -114,10 +128,10 @@
           {/each}
         </div>
 
-        <div class="grid grid-cols-12 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
           {#if state.chargeForm.sourceType === 'part'}
             <select bind:value={state.chargeForm.inventoryItemId} onchange={onItemSelected}
-              class="col-span-6 px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm">
+              class="sm:col-span-6 px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm">
               <option value="">-- Pilih Sparepart --</option>
               {#each state.inventoryItems as item}
                 <option value={item.id}>{item.name} ({idr(item.sellingPrice)})</option>
@@ -125,12 +139,12 @@
             </select>
           {:else}
             <input bind:value={state.chargeForm.description} placeholder={state.chargeForm.sourceType === 'labor' ? 'Deskripsi jasa' : 'Deskripsi biaya'}
-              class="col-span-6 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+              class="sm:col-span-6 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
           {/if}
           <input type="number" min="1" bind:value={state.chargeForm.quantity} placeholder="Qty"
-            class="col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            class="sm:col-span-2 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
           <input type="number" min="0" bind:value={state.chargeForm.unitPrice} placeholder="Harga satuan"
-            class="col-span-4 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+            class="sm:col-span-4 px-3 py-2 border border-slate-200 rounded-lg text-sm" />
         </div>
 
         <div class="flex justify-end">

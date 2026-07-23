@@ -10,14 +10,22 @@
     Stage History
   </h2>
   
-  <div class="relative border-l-2 border-slate-200 ml-3 space-y-8">
+  <!-- P4 — max-h + overflow-y-auto so a ticket with many transitions doesn't
+       push the page indefinitely; the outer card still sits in the page's own
+       scroll, this just caps how tall the history list itself can grow. -->
+  <div class="relative border-l-2 border-slate-200 ml-3 space-y-8 max-h-[60vh] overflow-y-auto pr-2">
     {#each state.history as h, i}
       <div class="relative pl-6">
         <!-- Timeline dot -->
         <div class={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 ${i === 0 ? 'bg-blue-600 border-blue-200' : 'bg-slate-300 border-white'}`}></div>
-        
+
         <div class="font-medium text-slate-900 text-sm">{h.nodeName}</div>
-        <div class="text-xs text-slate-500 mt-1">{new Date(h.enteredAt).toLocaleString()}</div>
+        <div class="text-xs text-slate-500 mt-1">
+          {new Date(h.enteredAt).toLocaleString()}
+          {#if h.actorName}
+            <span class="text-slate-400">&middot; oleh {h.actorName}</span>
+          {/if}
+        </div>
         {#if h.notes}
           <div class="mt-2 text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
             "{h.notes}"

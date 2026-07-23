@@ -81,5 +81,8 @@ Stage C
 - [/] P3 Role dashboards (5.1) — 2026-07-23, see [P3-role-dashboards.md](./P3-role-dashboards.md).
       Real-data dashboards done; the interactive widget framework (drag/resize/persist/
       admin catalog) deferred to a follow-up task by explicit scope decision.
-- [ ] P4 Ticket detail polish (5.3)
+- [/] P4 Ticket detail polish (5.3) — 2026-07-23, see [P4-ticket-detail-polish.md](./P4-ticket-detail-polish.md).
+      Timeline actor name + cost-breakdown tiles + mobile-responsive pass done;
+      attachments (photos) deferred to its own task by explicit scope decision
+      (spec marks it Phase 2, zero infra exists).
 - [ ] P5 Finance dashboard modes (5.9)

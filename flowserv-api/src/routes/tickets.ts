@@ -110,16 +110,20 @@ ticketsRouter.get('/:id', async (c) => {
     return errorResponse(c, 'NOT_FOUND', 'Ticket not found', [], 404);
   }
   
-  // Get stage history
+  // Get stage history. actorId is nullable (system-driven entries carry
+  // none) so this must stay a leftJoin — an innerJoin would silently drop
+  // those rows from the timeline entirely.
   const history = await db
     .select({
       id: ticketStageHistory.id,
       nodeName: flowNodes.name,
       enteredAt: ticketStageHistory.enteredAt,
-      notes: ticketStageHistory.notes
+      notes: ticketStageHistory.notes,
+      actorName: users.name,
     })
     .from(ticketStageHistory)
     .innerJoin(flowNodes, eq(ticketStageHistory.nodeId, flowNodes.id))
+    .leftJoin(users, eq(ticketStageHistory.actorId, users.id))
     .where(eq(ticketStageHistory.ticketId, ticketId))
     .orderBy(desc(ticketStageHistory.enteredAt));
     

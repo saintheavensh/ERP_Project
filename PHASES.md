@@ -613,7 +613,22 @@ missing.
       (mobile + desktop), all passing twice in a row with self-contained fixtures;
       live-verified 403 `PERMISSION_DENIED` (Cashier → Diagnosis) vs 200 (Super Admin);
       `npm test` 179 unit passing, `svelte-check` 703 files 0 errors.
-- [ ] 5.3 Ticket Detail: Timeline, cost breakdown, attachments
+- [/] 5.3 Ticket Detail: Timeline, cost breakdown, attachments — timeline +
+      cost breakdown done 2026-07-23 as P4, see
+      [`plan/P4-ticket-detail-polish.md`](plan/P4-ticket-detail-polish.md).
+      Timeline now shows the actor name per stage (backend `GET /v1/tickets/:id`
+      history query gained a `leftJoin` on `users`); cost breakdown upgraded from
+      a plain text row to `StatCard` tiles (Pendapatan/Modal/Margin), plus the
+      previously-fetched-but-never-shown `consumed` total now renders. The whole
+      detail page went from zero responsive classes to a mobile-first stack
+      (workspace above timeline below `lg`, unchanged side-by-side above it).
+      **Left `[/]` not `[x]`**: attachments (before/after photos) explicitly
+      deferred — no schema/upload/storage infra exists anywhere, and the spec
+      itself marks PLT-009 Phase 2 (🟡), not MVP; storage strategy is a real
+      decision for its own task, not something to bolt into a polish pass. 4
+      new Playwright tests; full suite (21 tests across P1.5/P2/P3/P4 +
+      intake-to-close + F7) passing together; `npm test` 179 unit passing;
+      `svelte-check` 706 files 0 errors.
 - [ ] 5.4 Inventory Dashboard: Stock levels, low-stock alerts, batch history
 - [ ] 5.5 Product Catalog: Browse by category, supplier price comparison
 - [ ] 5.6 POS/Cashier Screen: Touch-friendly, big buttons

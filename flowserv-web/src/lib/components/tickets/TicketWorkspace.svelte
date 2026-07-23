@@ -6,7 +6,7 @@
 </script>
 
 <div class="flex-1 space-y-6">
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-center justify-between gap-3">
     <div class="flex items-center gap-4">
       <a href="/tickets" class="text-slate-500 hover:text-slate-800" aria-label="Back to tickets">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -37,7 +37,7 @@
   {/if}
 
   <!-- Customer & Device Overview -->
-  <div class="grid grid-cols-2 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <!-- Customer Box -->
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group">
       <button onclick={() => state.openEditCustomer()} class="absolute top-4 right-4 text-slate-400 hover:text-blue-600 transition-colors" title="Edit Customer">
