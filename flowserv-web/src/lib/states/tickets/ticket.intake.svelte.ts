@@ -10,6 +10,7 @@ export class TicketIntakeState {
     customerName: '',
     customerPhone: '',
     customerEmail: '',
+    assetId: '',
     assetType: '',
     assetBrand: '',
     assetModel: '',
@@ -26,6 +27,23 @@ export class TicketIntakeState {
   constructor(data: any, token: string) {
     this.data = data;
     this.token = token;
+
+    // F7 — arrived via "Create Ticket" on a customer's device: pre-fill and
+    // lock the customer + device fields (IntakeForm.svelte reads assetId to
+    // decide whether to show the read-only device summary or the create-new form).
+    if (data.prefill) {
+      this.form.customerId = data.prefill.customerId ?? '';
+      this.form.customerName = data.prefill.customerName ?? '';
+      this.form.customerPhone = data.prefill.customerPhone ?? '';
+      this.form.customerEmail = data.prefill.customerEmail ?? '';
+      if (data.prefill.assetId) {
+        this.form.assetId = data.prefill.assetId;
+        this.form.assetType = data.prefill.assetType ?? '';
+        this.form.assetBrand = data.prefill.assetBrand ?? '';
+        this.form.assetModel = data.prefill.assetModel ?? '';
+        this.form.assetSn = data.prefill.assetSn ?? '';
+      }
+    }
   }
 
   get templates() { return this.data.templates; }

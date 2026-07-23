@@ -49,9 +49,12 @@
               <div class="text-sm text-slate-500 mt-1 font-mono">SN: {asset.serialNumber}</div>
             {/if}
           </div>
-          <button class="text-blue-600 hover:text-blue-800 text-sm font-medium border border-blue-200 px-3 py-1 rounded bg-blue-50">
+          <a
+            href="/tickets/intake?customerId={state.customer?.id}&assetId={asset.id}"
+            class="text-blue-600 hover:text-blue-800 text-sm font-medium border border-blue-200 px-3 py-1 rounded bg-blue-50"
+          >
             Create Ticket
-          </button>
+          </a>
         </div>
       {:else}
         <div class="px-6 py-8 text-center text-slate-500">

@@ -142,7 +142,7 @@ Track F
 - [x] F4 Inventory item edit — 2026-07-23
 - [x] F5 PO delete guard — 2026-07-23
 - [x] F6 Warranty-records decision — 2026-07-23 (deleted; see PHASES.md Architecture Debt)
-- [ ] F7 Create-Ticket button
+- [x] F7 Create-Ticket button — 2026-07-23
 - [ ] F8 Refresh spec headers
 
 Phase 4C

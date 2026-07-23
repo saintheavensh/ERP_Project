@@ -53,31 +53,49 @@
       <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">2</span>
       Device / Asset Information
     </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="type">Device Type *</label>
-        <select id="type" bind:value={state.form.assetType} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-          <option value="">Select Type...</option>
-          <option value="Smartphone">Smartphone</option>
-          <option value="Laptop">Laptop</option>
-          <option value="Tablet">Tablet</option>
-          <option value="Smartwatch">Smartwatch</option>
-          <option value="Other">Other</option>
-        </select>
+    {#if state.form.assetId}
+      <!-- F7 — arrived from a customer's device via "Create Ticket"; the device is
+           fixed (assetId is sent as-is, no new asset is created on submit). -->
+      <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+        <div class="text-xs text-green-600 mb-2 flex items-center">
+          <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+          Existing device selected
+        </div>
+        <div class="font-medium text-slate-900">
+          <span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-xs uppercase tracking-wider">{state.form.assetType}</span>
+          {state.form.assetBrand} {state.form.assetModel}
+        </div>
+        {#if state.form.assetSn}
+          <div class="text-sm text-slate-500 mt-1 font-mono">SN: {state.form.assetSn}</div>
+        {/if}
       </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Brand</label>
-        <input id="brand" type="text" bind:value={state.form.assetBrand} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+    {:else}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="type">Device Type *</label>
+          <select id="type" bind:value={state.form.assetType} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+            <option value="">Select Type...</option>
+            <option value="Smartphone">Smartphone</option>
+            <option value="Laptop">Laptop</option>
+            <option value="Tablet">Tablet</option>
+            <option value="Smartwatch">Smartwatch</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Brand</label>
+          <input id="brand" type="text" bind:value={state.form.assetBrand} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model</label>
+          <input id="model" type="text" bind:value={state.form.assetModel} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Galaxy S23">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="sn">Serial Number / IMEI</label>
+          <input id="sn" type="text" bind:value={state.form.assetSn} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="...">
+        </div>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model</label>
-        <input id="model" type="text" bind:value={state.form.assetModel} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Galaxy S23">
-      </div>
-      <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="sn">Serial Number / IMEI</label>
-        <input id="sn" type="text" bind:value={state.form.assetSn} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="...">
-      </div>
-    </div>
+    {/if}
   </div>
 
   <!-- Service Details -->
