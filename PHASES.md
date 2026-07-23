@@ -13,26 +13,31 @@
 
 ---
 
-## Current Phase: `PHASE 4.5 (Hardening Track) — effectively COMPLETE` → next: finish 4C, then Phase 5
+## Current Phase: `Hardening Track (H0–H17) — COMPLETE & merged to main` → next: Track F (honesty fixes) + Phase 4C
 
-> **⚠️ Reconciled 2026-07-22.** This file had drifted badly out of sync with the
-> **Hardening Track** (`plan/README.md`, tasks H0–H16), which built most of Phases 3.5,
-> 4.5, and the Phase 3 gaps between 2026-07-21 and 2026-07-22. Every checkbox below was
-> re-verified against `plan/README.md` and the actual code. The H-track work still lives
-> only on `phase-4/purchasing-completion` (main is behind — merge pending).
+> **⚠️ Updated 2026-07-23.** The **Hardening Track (H0–H17) is complete and merged to
+> `main`** (commits `d32e881`→`aa341c6`). It built most of Phases 3.5, 4.5, and the
+> Phase 3 gaps between 2026-07-21 and 2026-07-23. The per-task `plan/H*.md` files were
+> **deleted on completion** — their durable evidence lives in this file (Phases 3.5 /
+> 4 / 4.5 / 3E) and in git history. **Inline `plan/H*.md` links below are historical; those
+> files no longer exist.**
 >
-> **Phase 3.5 (Stabilization) completed 2026-07-20** and merged to `main`; 3.5B.2 (row
+> **Phase 3.5 (Stabilization)** completed 2026-07-20, merged to `main`; 3.5B.2 (row
 > locking) was promoted `[/]` → `[x]` on 2026-07-21 after H9/H10 concurrency-tested it.
+> **Phase 4.5 (Finance Ledger, RBAC, Audit, API Hardening)** = the H-track: 4.5A (H11),
+> 4.5B (H12), 4.5C + 4.5D (H13); **H14** added customer payments; **H15** wired the full
+> intake→close flow into an e2e test (both gaps later closed by **H17** + a Playwright
+> walk); **H16** is the ongoing module-migration rule.
 >
-> **Phase 4.5 (Finance Ledger, RBAC, Audit, API Hardening)** is the Hardening Track:
-> 4.5A (H11), 4.5B (H12), 4.5C + 4.5D (H13) are all done. **H14** added customer
-> payments, **H15** wired the full flow into an end-to-end test (`[/]` — two documented
-> gaps remain), **H16** continued the module migration.
+> **The new continuation plan is [`plan/README.md`](plan/README.md).** Immediate work:
+> **Track F** (F1–F8 — fix the flows that are wired but "lie": orphaned technician
+> assignment, "My Jobs" showing all tickets, dead `cancelled` status, no item edit,
+> unguarded PO delete, orphaned `warranty_records`, dead Create-Ticket button, stale spec
+> headers), then **Phase 4C** (margin config endpoint + server-side price validation).
 >
-> **Still open:** Phase 4C.1/4C.2 (margin config endpoint + server-side price validation —
-> never built), the two H15 `[/]` gaps (service-invoice-from-ticket + in-browser UI walk),
-> plus long-standing 2A.1 (register endpoint) and 3B.5 (Kanban board). See `plan/README.md`
-> for the full H-track evidence trail.
+> **Still open (unchanged, correctly `[/]`/`[ ]` below):** Phase 4C.1/4C.2 (margin — now
+> specced in [`plan/4C-margin-config-and-validation.md`](plan/4C-margin-config-and-validation.md)),
+> 2A.1 (register endpoint → Phase 5.10), 3B.5 (Kanban board → Phase 5.2).
 
 ---
 
@@ -61,10 +66,9 @@ missing.
 - **Before starting work:** Check current branch with `git branch`
 - **Never commit to `main` directly** — always work in a phase branch
 
-> **Branch debt (2026-07-22):** 3.5D.1 merged Phases 1–3.5 to `main` (last `main`
-> commit: "phase 3.5 complete"). Since then the entire Hardening Track (H0–H16) has
-> accumulated on `phase-4/purchasing-completion` — `main` is ~20 commits behind and a
-> merge is pending as the immediate next step.
+> **Branch debt — RESOLVED 2026-07-23:** the entire Hardening Track (H0–H17) is now
+> merged to `main` (`main` is current — the H-track commits `428d9a5`→`aa341c6` are on it).
+> The old `phase-4/purchasing-completion` branch survives only on the remote as history.
 
 ---
 
@@ -393,6 +397,7 @@ missing.
 > ⚠️ 4B.1 carries BUG-03, BUG-04, and BUG-05. Fixed in Phase 3.5.
 
 ### 4C. Dynamic Margin Pricing
+> **Specced in detail: [`plan/4C-margin-config-and-validation.md`](plan/4C-margin-config-and-validation.md)** (closes 4C.1/4C.2/4C.5).
 - [/] 4C.1 BE: Margin Config (Markup/GrossMargin, Target %) — schema columns
       `marginStrategy` / `targetMargin` exist on categories and items, but **no endpoint
       sets them**. `settings.ts` only serves payment methods.
