@@ -21,10 +21,27 @@ passes the filter**, so a technician sees every ticket in the tenant. The menu l
    list (or default to "all" with a toggle).
 3. Keep cursor pagination intact (the list is already paginated from H13).
 
-## Verification (Definition of Done)
-- Recorded API/UI check: log in as the seeded Technician ("Teknisi Andi"), assign one ticket
-  to them (via F1), open `/tickets` → only that ticket shows. Log in as Manager → all show.
-- `npx svelte-check` clean.
+## Verification (Definition of Done) — DONE 2026-07-23
+- `tickets/+page.server.ts` now checks `locals.user?.roleName === 'Technician'` and, only
+  then, appends `?assignedTo=me` to the `GET /v1/tickets` fetch — matches the same
+  `roleName` field already used by the sidebar (`(app)/+layout.svelte`) and typed in
+  `app.d.ts`. No toggle was added (Manager/Super Admin/Cashier keep the unfiltered list,
+  per the task's "optional" note).
+- **Live SSR run with real login cookies** (via the actual SvelteKit login form action,
+  not simulated): logged in as Technician ("Teknisi Andi") — `/tickets` showed
+  **"No tickets found"** before any assignment (proves the filter is real, not a no-op:
+  the seeded ticket exists but wasn't assigned yet). Assigned that ticket to Teknisi Andi
+  via `POST /:id/assign` (F1). Created a **second, unassigned** ticket via
+  `POST /tickets/intake` (a fresh customer's laptop) as a control. Re-fetched both
+  sessions: **Technician's `/tickets` showed exactly the one assigned ticket** (not the
+  second, unassigned one); **Manager's `/tickets` showed both tickets** — the definitive
+  proof that the filter only narrows for a Technician and everyone else still sees
+  everything.
+- `npm run test:unit`: 137/137 unchanged. `npx tsc --noEmit` (API) and `npx svelte-check`
+  (web) both clean (0 errors, 0 warnings, 696 files).
+- DB reset to clean seed state afterward (`npm run db:reset`); both dev-server instances
+  started for this check were stopped (a pre-existing stray instance on port 5173 from an
+  earlier session was left untouched, per the same convention H14 recorded).
 
 ## Watch out
 - Don't hardcode the role string in a way that breaks for custom roles — this is a UX filter,

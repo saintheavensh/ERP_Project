@@ -137,7 +137,7 @@ depends on 5.9/5.10).
 
 Track F
 - [x] F1 Technician assignment UI — 2026-07-23
-- [ ] F2 "My Jobs" filter
+- [x] F2 "My Jobs" filter — 2026-07-23
 - [ ] F3 Ticket cancellation
 - [ ] F4 Inventory item edit
 - [ ] F5 PO delete guard
