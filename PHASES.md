@@ -689,7 +689,26 @@ missing.
       verified via curl: case-insensitive match, cross-type grouping, 401
       without auth, empty results under the 2-char minimum. Full suite: 43
       Playwright + 183 backend unit passing; `svelte-check` 711 files 0 errors.
-- [ ] 5.8 Technician Dashboard: My Jobs, Quick Actions, Calendar/Schedule
+- [/] 5.8 Technician Dashboard: My Jobs (P3) + Quick Actions (P11) done; Calendar/Schedule
+      deferred — done 2026-07-24, see [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
+      The "Tugas Saya" list on the Technician dashboard now shows quick-action
+      buttons per ticket, computed server-side from the same fromNodeId
+      edge-filter the Kanban board's `targetsFor()` already uses (per distinct
+      `flowTemplateId` among the technician's assigned tickets, not hardcoded to
+      one template) — so advancing a ticket doesn't require opening
+      `/tickets/board`. Tapping a button calls the same `POST /:id/transition`
+      the board's `move()` uses, then `invalidateAll()` refreshes in place. No
+      backend change: `GET /v1/tickets` already returned `currentNodeId` +
+      `flowTemplateId` (P2), and `GET /v1/flows/:id` already returned the node/
+      transition graph. **Left `[/]` not `[x]`**: Calendar/Schedule (TECH-013)
+      stays deferred — no scheduling data model exists anywhere in the schema,
+      per the existing Part 3 deferred-items table; building one is a Phase 8
+      decision, not something to improvise here. 4 new Playwright tests
+      (forked-transition shows both buttons, clicking one moves the ticket and
+      updates its badge — verified via a follow-up `GET`, a role without the
+      widget never sees quick actions, mobile buttons wrap without overflow).
+      Full suite: 53 Playwright + 183 backend unit passing; `svelte-check` 717
+      files 0 errors.
 - [x] 5.9 Finance Dashboard: Simple Mode + Accountant Mode toggle — done
       2026-07-23 as P5, see [`plan/P5-finance-dashboard.md`](plan/P5-finance-dashboard.md).
       New `/finance` landing page (didn't exist before), `?mode=simple|accountant`

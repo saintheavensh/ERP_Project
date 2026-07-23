@@ -140,12 +140,23 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 `lastPrice`); `svelte-check` 717 files 0 errors; full e2e suite 49 tests green;
 `npm test` 183 backend unit passing (untouched by P10.2/P10.3).
 
-### P11 — Technician quick actions (5.8, buildable part) · FE · size **S**
-- **P11.1** Add Quick-Action buttons to the Technician dashboard (from P3's My Jobs tile):
-  jump straight to the next legal transition on an assigned ticket (reuse the board's
-  `move()`/`targetsFor()` logic). Mobile-first tiles.
-- **P11.2** `p11-technician-actions.spec.ts`.
+### P11 — Technician quick actions (5.8, buildable part) · FE · size **S** · ✅ DONE 2026-07-24
+- [x] **P11.1** Quick-action buttons on the Technician dashboard's "Tugas Saya" list —
+  same `fromNodeId` edge-filter as the board's `targetsFor()`, computed server-side in
+  `+page.server.ts` per distinct `flowTemplateId` among the technician's tickets (not
+  hardcoded to one template, even though in practice there's only one). Tapping a button
+  calls the same `POST /:id/transition` the board's `move()` uses, then `invalidateAll()`.
+  No backend change — `GET /v1/tickets` (P2) and `GET /v1/flows/:id` already returned
+  everything needed. (commit `3200791`)
+- [x] **P11.2** `e2e/p11-technician-actions.spec.ts` — 4 tests: a forked transition
+  (Diagnosis → Waiting Approval **or** Repair) shows both as separate buttons, clicking
+  one moves the ticket and updates its badge (verified via a follow-up `GET`), a role
+  without the widget never sees quick actions, mobile buttons wrap without overflow.
+  (commit `3200791`)
 - *Deferred:* Calendar / Schedule (TECH-013) — no scheduling data model exists; Phase 8.
+
+*Verification, all confirmed:* `svelte-check` 717 files 0 errors; full e2e suite 53 tests
+green; `npm test` 183 backend unit passing (untouched — FE-only task).
 
 ### P12 — POS touch polish (5.6) · FE · size **S**
 - **P12.1** Audit POS at 375px against "big buttons / touch targets" — bump tap-target
@@ -165,6 +176,6 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 | Real P&L / Chart of Accounts / journal | ledger single-sided by design | Phase 2+ |
 
 ## Suggested order
-~~P7 (mobile sweep)~~ ✅ → ~~P8 (search)~~ ✅ → ~~P10 (catalog)~~ ✅ → **P11 (tech actions, next)** →
-P12 (POS polish) → P9 (settings, largest). P9 last because it's the biggest and needs the
-most new backend.
+~~P7 (mobile sweep)~~ ✅ → ~~P8 (search)~~ ✅ → ~~P10 (catalog)~~ ✅ → ~~P11 (tech actions)~~ ✅ →
+**P12 (POS polish, next)** → P9 (settings, largest). P9 last because it's the biggest and
+needs the most new backend.

@@ -51,17 +51,19 @@ into small, individually-revertable steps, every FE step mobile-first.
   - **P10** product catalog — `/inventory/catalog` browse-by-category card grid +
     supplier price comparison on the item detail page (surfaced the previously-orphaned
     `productSuppliers` relation, no new list endpoint needed).
+  - **P11** technician quick actions — the Technician dashboard's "Tugas Saya" list now
+    shows per-ticket transition buttons (reuses the Kanban board's edge-filter logic),
+    no backend change needed.
 
-  Test baseline: **183 backend unit + 21 API e2e + 49 Playwright browser specs**, all green.
+  Test baseline: **183 backend unit + 21 API e2e + 53 Playwright browser specs**, all green.
 
 ### 🔧 In progress — Phase 5 remainder
 Detailed steps in **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**.
-Suggested order: **P11 → P12 → P9**.
+Suggested order: **P12 → P9**.
 
 | # | Task | PHASES.md | Layer | Note |
 |---|------|-----------|-------|------|
-| P11 | Technician quick actions on dashboard | 5.8 | FE | My Jobs done (P3); calendar/schedule deferred (no data model) — **do next** |
-| P12 | POS touch polish (big buttons / tap targets) | 5.6 | FE | mostly done in P1.5; targeted pass |
+| P12 | POS touch polish (big buttons / tap targets) | 5.6 | FE | mostly done in P1.5; targeted pass — **do next** |
 | P9 | Settings pages (Company / Branches / Users+Roles / Payment Methods) | 5.10 | BE+FE | **largest** — needs real CRUD; includes **2A.1 create-user**. Printer→Phase 6, RBAC matrix→Phase 7 |
 
 ### ⏳ Deferred / not built — tracked so nothing is forgotten
@@ -148,6 +150,9 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
 - [x] P10 Product Catalog (5.5) — 2026-07-24, see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
       P10.1-P10.3, 2 commits. `productSuppliers` surfaced on item detail, `/inventory/catalog`,
       `SupplierComparison.svelte`, `e2e/p10-catalog.spec.ts` (6 tests). Full suite 49 tests green.
+- [x] P11 Technician quick actions (5.8) — 2026-07-24, see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
+      1 commit. Per-ticket transition buttons on the Technician dashboard, reusing the board's
+      edge-filter logic server-side; no backend change. `e2e/p11-technician-actions.spec.ts`
+      (4 tests). Full suite 53 tests green. Calendar/schedule (TECH-013) stays deferred.
 - [ ] P9 Settings CRUD (5.10, incl. 2A.1)
-- [ ] P11 Technician quick actions (5.8)
 - [ ] P12 POS touch polish (5.6)
