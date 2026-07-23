@@ -8,7 +8,7 @@
 </svelte:head>
 
 <div class="max-w-6xl mx-auto space-y-6">
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="text-2xl font-bold text-slate-900">Purchase Invoices & Costing</h1>
       <p class="text-slate-500 mt-1">Daftar PO yang sudah diterima gudang dan membutuhkan input harga asli serta metode pembayaran (Invoice/Tempo).</p>
@@ -16,7 +16,8 @@
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-    <table class="w-full text-left border-collapse">
+   <div class="overflow-x-auto">
+    <table class="w-full min-w-[720px] text-left border-collapse">
       <thead>
         <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
           <th class="p-4">PO Number</th>
@@ -49,5 +50,6 @@
         {/each}
       </tbody>
     </table>
+   </div>
   </div>
 </div>
