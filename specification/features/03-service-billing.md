@@ -1,9 +1,16 @@
 # Service Billing Features
 
-> **Implementation status (2026-07-20):** Not started
-> No service quotation, deposit (DP), service invoice, service payment, or refund
-> exists. The POS invoice flow (`08-sales-pos.md`) is retail-only and is not wired
-> to service tickets for billing. Planned for Phase 8.
+> **Implementation status (2026-07-23, refreshed from 2026-07-20 — see F8):** Partial
+> **Built:** quotation (freezes estimated charges into an approved quote and reserves
+> their parts, H7), service invoice generation from a ticket's billable charges —
+> consumed parts + approved labor, no double-deduct (H17, closes SBL-003), and
+> payment processing including partial payments against an invoice (H14, closes
+> SBL-004). The POS invoice flow is no longer retail-only — it's the same
+> `pos_invoices` row a service ticket invoices into.
+> **Not built:** a dedicated pre-repair deposit (DP) concept distinct from a partial
+> payment against an already-generated invoice (SBL-002), and refund (SBL-005 — the
+> `finance.approve_refund` permission exists but nothing calls it). Both remain
+> Phase 8.
 
 ## Purpose
 Manage the financial lifecycle of service tickets: quotation → deposit → invoice → payment → refund.

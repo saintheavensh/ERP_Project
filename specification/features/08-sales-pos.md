@@ -1,16 +1,18 @@
 # Sales & POS Features
 
-> **Implementation status (2026-07-20):** Partial
+> **Implementation status (2026-07-23, refreshed from 2026-07-20 — see F8):** Partial
 > **Built:** POS checkout with FIFO stock deduction and row locking, insufficient-stock
 > rejection (422), invoice history, invoice detail, void with stock restoration and
 > guards against over-restoring or double-voiding, held/draft carts, flat discount
-> amount, cash/transfer/qris/split/tempo payment methods.
-> **Not built:** sales returns, discount approval thresholds, sales dashboard, and
-> POS-to-service-ticket linkage for billing (the `serviceTicketId` field is accepted
-> but nothing consumes it yet).
-> **Note:** two POS data models exist in the schema — `pos_invoices`/`pos_invoice_lines`
-> (used) and `pos_transactions`/`invoice_lines`/`payments` (dead, never written to).
-> Consolidating them is scheduled for Phase 4.5A.
+> amount, cash/transfer/qris/split/tempo payment methods, and **POS-to-service-ticket
+> billing is now real**: `POST /v1/tickets/:id/invoice` (H17) generates a
+> `pos_invoices` row from a ticket's billable charges (consumed parts + approved
+> labor) without re-running FIFO, and `serviceTicketId` is genuinely consumed, not
+> just accepted.
+> **Not built:** sales returns, discount approval thresholds, sales dashboard.
+> **Note (resolved):** the dead `pos_transactions`/`invoice_lines`/`payments` schema
+> mentioned in the 2026-07-20 header was deleted in H1 — only `pos_invoices`/
+> `pos_invoice_lines` exist now, no consolidation left to do.
 
 ## Purpose
 Process point-of-sale transactions — both linked to service tickets and standalone retail sales.

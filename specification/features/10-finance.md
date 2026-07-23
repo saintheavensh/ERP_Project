@@ -1,15 +1,19 @@
 # Finance Features
 
-> **Implementation status (2026-07-20):** Partial — accounts payable only
-> **Built:** accounts payable — outstanding payables list, invoice detail with full
-> payment history, and recording full/partial supplier payments with overpayment and
-> already-paid guards. Supplier invoices are created automatically by the purchasing
-> costing step.
-> **Not built — and this is the largest gap in the system:** the double-entry
-> accounting engine. `finance_ledger_entries` exists in the schema and is **never
-> written to by any route**, so there is no COGS posting, no revenue posting, no
-> general ledger, no P&L, and no accounts receivable — even though the FIFO code
-> already computes exact batch costs and discards them. Scheduled for Phase 4.5A.
+> **Implementation status (2026-07-23, refreshed from 2026-07-20 — see F8):** Partial — AP, AR, and an event-driven ledger now exist
+> **Built:** accounts payable (outstanding payables list, invoice detail with full
+> payment history, full/partial supplier payments with overpayment and
+> already-paid guards, supplier invoices auto-created by the purchasing costing
+> step); **the finance ledger is real (H11)** — `finance_ledger_entries` is
+> event-driven, posting revenue + COGS on POS checkout, void reversals, ticket-part
+> consumption, and supplier invoice/payment, using the FIFO code's real batch costs
+> instead of discarding them; a simple ledger view page; and **accounts receivable
+> (H14)** — customer payments (partial/deposit/settlement) with `amountPaid`
+> tracking on `pos_invoices`.
+> **Not built:** double-entry / Chart of Accounts / journal entries / a real general
+> ledger with debits and credits — today's ledger is deliberately single-sided
+> (a design decision noted in `plan/README.md`, not an oversight), so there is no
+> P&L or balance sheet yet. This remains the largest real gap.
 
 ## Purpose
 Manage the complete financial lifecycle: cash management, accounts receivable/payable, double-entry accounting, and financial reporting.

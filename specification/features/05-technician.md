@@ -1,8 +1,16 @@
 # Technician Features
 
-> **Implementation status (2026-07-20):** Not started
-> No technician profiles, skills, assignment, scheduling, performance metrics, or
-> commission logic exists. Tickets have no assignee field in use. Planned for Phase 8.
+> **Implementation status (2026-07-23, refreshed from 2026-07-20 — see F8):** Partial
+> **Built:** manual technician assignment — `service_tickets.assignedTechnicianId`/
+> `assignedAt` are genuinely written via `POST /v1/tickets/:id/assign` (H8), wired to
+> a real UI on the ticket workspace (F1), and the Technician role's "My Jobs" list
+> actually filters to the logged-in technician's own tickets instead of showing
+> everyone's (F2). A seeded Technician user exists (`technician@demo.com`).
+> **Not built:** technician profiles beyond the base user record, skill management,
+> assignment recommendation (assignment is manual-only, no scoring), execution-state
+> tracking (started/paused/resumed), waiting-parts auto-purchase-request, external
+> purchase/reimbursement, QC role, performance metrics, calendar/schedule view,
+> commission calculation. All remain Phase 8.
 
 ## Purpose
 Manage technician profiles, assignments, performance, and the technician workspace.

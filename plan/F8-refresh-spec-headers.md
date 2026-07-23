@@ -29,10 +29,22 @@ Six now understate reality; leaving them is exactly the drift that caused the Ph
   (H-track didn't touch them). For `11-warranty.md`, coordinate with **F6** (note the orphaned
   table is being removed/adopted).
 
-## Verification (Definition of Done)
-- Each edited header states what is actually built vs not, cross-checked against the real endpoint
-  inventory (see `plan/README.md`). No code change; docs only.
+## Verification (Definition of Done) — DONE 2026-07-23
+- Rewrote all 6 headers (`02-service.md`, `03-service-billing.md`, `05-technician.md`,
+  `06-inventory.md`, `08-sales-pos.md`, `10-finance.md`) per the list above, and also folded
+  in what F1–F7 (done the same day, after this task file was written) additionally made true —
+  technician assignment UI + My Jobs filter (F1/F2), ticket cancellation (F3), item edit (F4),
+  dynamic margin config (4C.1) — so the headers reflect the actual end-of-day state, not just
+  the H-track snapshot this file was drafted from.
+- `01-customer-device.md` got one clarifying line (F7's device→intake link, since it's directly
+  in this doc's scope) rather than a full rewrite, per "still-accurate, add one line if relevant."
+  `09-supplier.md` was left untouched — nothing in Track F or 4C.1 touched the supplier module
+  itself, so its 2026-07-20 header is still accurate as written.
+- `11-warranty.md` was updated by **F6**, not here (coordinated per this file's own note).
+- No code changed — docs only. `npx tsc --noEmit` / `npx svelte-check` not applicable; confirmed
+  no other file changed in this commit.
 
 ## Watch out
 - Keep the "this catalog is the vision, not current scope" framing — don't turn a status header into
-  a to-do list. State reality, briefly.
+  a to-do list. State reality, briefly. (Followed: every header still separates **Built** from
+  **Not built** in 1–2 sentences each, not a checklist.)

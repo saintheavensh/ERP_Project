@@ -1,8 +1,10 @@
 # Customer & Device Features
 
-> **Implementation status (2026-07-20):** Partial
+> **Implementation status (2026-07-20, still accurate 2026-07-23 — see F8):** Partial
 > **Built:** customer CRUD (list, detail, create, update), customer asset/device
-> list + create, customer edit from the ticket detail screen.
+> list + create, customer edit from the ticket detail screen. A customer's device
+> now also links forward into service (F7 — "Create Ticket" on a device opens
+> intake pre-filled and locked to that customer + device).
 > **Not built:** duplicate detection, communication log, customer portal,
 > device status/lifecycle management, warranty history, reporting.
 

@@ -1,14 +1,19 @@
 # Inventory Features
 
-> **Implementation status (2026-07-20):** Partial — the most complete domain
-> **Built:** item CRUD, FIFO batch architecture, batch creation via goods receipt,
-> FIFO consumption on POS sale (with `SELECT ... FOR UPDATE` row locking), stock
-> movement ledger, stock levels per branch, weighted-average cost (single shared
-> implementation in `lib/wac.ts`), brand-level pricing, device compatibility mapping,
-> initial stock upload (opname).
-> **Not built:** parts reservation / soft-lock (`quantity_reserved` exists but is only
-> ever written as 0), warranty consumption, supplier returns, customer returns,
-> stock adjustment with approval, scheduled stock opname, reorder automation.
+> **Implementation status (2026-07-23, refreshed from 2026-07-20 — see F8):** Partial — the most complete domain
+> **Built:** item CRUD including a real edit endpoint/form (F4), FIFO batch
+> architecture, batch creation via goods receipt, FIFO consumption on POS sale (with
+> `SELECT ... FOR UPDATE` row locking), stock movement ledger, stock levels per
+> branch, weighted-average cost (single shared implementation in `lib/wac.ts`),
+> brand-level pricing, device compatibility mapping, initial stock upload (opname),
+> dynamic margin config (markup/gross-margin strategy + target %, item overrides
+> category, 4C.1), and **parts reservation / soft-lock is genuinely built** —
+> `quantity_reserved` is written on quotation (H10) and released on cancel/consume/
+> ticket cancellation (F3), not stuck at 0.
+> **Not built:** server-side enforcement of the margin target on price writes (4C.2 —
+> the config exists but a below-cost/below-target price is still accepted silently),
+> warranty consumption, supplier returns, customer returns, stock adjustment with
+> approval, scheduled stock opname, reorder automation.
 
 ## Purpose
 Manage stock with FIFO batch tracking, append-only movement ledger, and automatic reservation from service tickets.

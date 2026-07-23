@@ -17,7 +17,8 @@
 
 ## Where we are
 
-The backend + a functional CRUD frontend are built and tested (137 unit + 21 e2e passing). What's
+The backend + a functional CRUD frontend are built and tested (170 unit + 21 API e2e + 2
+Playwright browser specs passing, as of Track F's completion 2026-07-23). What's
 missing splits into two kinds, and **the first kind matters more than raw missing features**:
 
 1. **Flows that are wired up but lie** — orphaned endpoints, faked steps, dead buttons/enums, and
@@ -50,10 +51,11 @@ Full detail comes from a 6-domain gap audit (2026-07-23) and is summarized inlin
 
 ---
 
-## Track F — Finishing / honesty pass  *(do first; mostly small, high value)*
+## Track F — Finishing / honesty pass — ✅ COMPLETE (2026-07-23)
 
-Make the built flows honest before layering new UI on top. Mirrors how the H-track made the
-checkboxes true before building more.
+Made the built flows honest before layering new UI on top. Mirrors how the H-track made the
+checkboxes true before building more. All 8 tasks done same-day; see the Progress section
+below for evidence links. **Next: Phase 4C** (`P1 — margin enforcement`, closes 4C.2).
 
 | # | Task | Size | Layer |
 |---|------|------|-------|
@@ -143,7 +145,7 @@ Track F
 - [x] F5 PO delete guard — 2026-07-23
 - [x] F6 Warranty-records decision — 2026-07-23 (deleted; see PHASES.md Architecture Debt)
 - [x] F7 Create-Ticket button — 2026-07-23
-- [ ] F8 Refresh spec headers
+- [x] F8 Refresh spec headers — 2026-07-23 (Track F complete)
 
 Phase 4C
 - [ ] 4C Margin config + server-side price validation
