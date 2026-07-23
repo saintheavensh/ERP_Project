@@ -140,7 +140,7 @@ Track F
 - [x] F2 "My Jobs" filter — 2026-07-23
 - [x] F3 Ticket cancellation — 2026-07-23
 - [x] F4 Inventory item edit — 2026-07-23
-- [ ] F5 PO delete guard
+- [x] F5 PO delete guard — 2026-07-23
 - [ ] F6 Warranty-records decision
 - [ ] F7 Create-Ticket button
 - [ ] F8 Refresh spec headers

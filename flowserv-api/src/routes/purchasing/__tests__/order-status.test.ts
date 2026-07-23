@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeOrderStatus, type ReceivableLine } from '../order-status';
+import { computeOrderStatus, canDeletePurchaseOrder, type ReceivableLine } from '../order-status';
 
 describe('computeOrderStatus', () => {
   it('keeps the current status when nothing has been received yet', () => {
@@ -62,5 +62,27 @@ describe('computeOrderStatus', () => {
     const result = computeOrderStatus([], 'draft');
     // Assert
     expect(result).toBe('draft');
+  });
+});
+
+describe('canDeletePurchaseOrder (F5)', () => {
+  it('allows deleting a draft order (nothing received, nothing to unwind)', () => {
+    expect(canDeletePurchaseOrder('draft')).toBe(true);
+  });
+
+  it('blocks deleting an ordered order (sent to the supplier, though nothing arrived yet)', () => {
+    expect(canDeletePurchaseOrder('ordered')).toBe(false);
+  });
+
+  it('blocks deleting a partially-received order', () => {
+    expect(canDeletePurchaseOrder('partial')).toBe(false);
+  });
+
+  it('blocks deleting a fully-received order', () => {
+    expect(canDeletePurchaseOrder('received')).toBe(false);
+  });
+
+  it('blocks deleting a completed order', () => {
+    expect(canDeletePurchaseOrder('completed')).toBe(false);
   });
 });

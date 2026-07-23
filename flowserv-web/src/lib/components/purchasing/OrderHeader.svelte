@@ -18,8 +18,16 @@
   </div>
   
   <div>
-    <button disabled={loading} onclick={onDelete} class="text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-      Delete PO
-    </button>
+    {#if order?.status === 'draft'}
+      <button disabled={loading} onclick={onDelete} class="text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+        Delete PO
+      </button>
+    {:else}
+      <!-- F5 — goods have already moved for any non-draft PO; the server rejects
+           delete with 409 PO_NOT_DELETABLE. Hidden instead of shown-then-rejected. -->
+      <span class="text-slate-400 text-sm" title="Purchase orders that have already been (partially) received cannot be deleted. Use the purchase-returns flow instead.">
+        Delete unavailable ({order?.status})
+      </span>
+    {/if}
   </div>
 </div>

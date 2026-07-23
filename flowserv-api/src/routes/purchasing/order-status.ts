@@ -25,3 +25,15 @@ export function computeOrderStatus(
   }
   return currentStatus;
 }
+
+/**
+ * F5 — pure decision: only a 'draft' PO (nothing has been received against it
+ * yet, so there are no stock_batches / stock_movements to unwind) may be
+ * deleted. 'partial'/'received'/'completed' all imply goods already moved
+ * stock — deleting the PO row would either leave those batches orphaned or
+ * require unwinding real inventory history, which is what the (future)
+ * purchase-returns flow is for, not a delete.
+ */
+export function canDeletePurchaseOrder(status: PurchaseOrderStatus): boolean {
+  return status === 'draft';
+}

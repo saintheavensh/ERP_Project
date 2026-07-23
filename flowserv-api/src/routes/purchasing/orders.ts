@@ -1,18 +1,20 @@
 import { Hono } from 'hono';
 import { db } from '../../db/connection';
-import { purchaseOrders, purchaseOrderLines, stockBatches, stockMovements, stockLevels, inventoryItems, itemBrandPricing, supplierInvoices, suppliers } from '../../db/schema/index';
+import { purchaseOrders, purchaseOrderLines, inventoryItems, itemBrandPricing, supplierInvoices, suppliers } from '../../db/schema/index';
 import { poStatusEnum, type PoStatus } from '../../db/schema/enums';
 
 function isPoStatus(value: string): value is PoStatus {
   return (poStatusEnum.enumValues as readonly string[]).includes(value);
 }
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
 import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
+import { BusinessError } from '../../lib/errors';
+import { canDeletePurchaseOrder } from './order-status';
 
 const router = new Hono();
 
@@ -152,75 +154,44 @@ router.put('/orders/:id/status', requirePermission('purchasing.manage_orders'), 
 });
 
 // DELETE /v1/purchasing/orders/:id
+// F5 — only a 'draft' PO (nothing received against it, so no batches/movements
+// exist to unwind — see canDeletePurchaseOrder) can be deleted. Anything past
+// draft must go through the purchase-returns flow (future work), not a delete.
 router.delete('/orders/:id', requirePermission('purchasing.manage_orders'), auditMiddleware({ action: 'purchase_order.delete', entityType: 'purchase_order', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const orderId = c.req.param('id');
-  
+
   try {
     await db.transaction(async (tx) => {
-      // 1. Get the order to check status
       const order = await tx.query.purchaseOrders.findFirst({
         where: and(eq(purchaseOrders.id, orderId), eq(purchaseOrders.tenantId, tenantId))
       });
-      
-      if (!order) throw new Error('Order not found');
-      
-      // TODO: In Production, prevent deletion if status is 'received' or 'completed'
-      // if (order.status === 'received' || order.status === 'completed') {
-      //   throw new Error('Cannot delete a PO that has already been received. Please use purchase returns.');
-      // }
-      
-      // 2. Find lines
-      const lines = await tx.query.purchaseOrderLines.findMany({
-        where: and(eq(purchaseOrderLines.purchaseOrderId, orderId), eq(purchaseOrderLines.tenantId, tenantId))
-      });
-      
-      const lineIds = lines.map(l => l.id);
-      
-      if (lineIds.length > 0) {
-        // Find stock batches related to these lines
-        const batches = await tx.query.stockBatches.findMany({
-          // Note: we can't easily query whereIn array in drizzle without inArray, so we loop or build query.
-          // Let's just fetch all batches for this tenant and filter, or use raw sql.
-        });
+      if (!order) throw new BusinessError('NOT_FOUND', 'Order not found', 404);
+
+      if (!canDeletePurchaseOrder(order.status)) {
+        throw new BusinessError(
+          'PO_NOT_DELETABLE',
+          `Cannot delete a purchase order with status '${order.status}' — only a draft PO can be deleted. ` +
+          (order.status === 'ordered'
+            ? 'This one has already been sent to the supplier; cancel it with the supplier instead.'
+            : 'Goods have already been received against it — use the purchase-returns flow instead.'),
+          409
+        );
       }
-      
-      // Simple dev rollback (ignoring strict consistency for now since it's requested by user for dev)
-      if (lineIds.length > 0) {
-        // Rollback stock levels manually by looking up batches
-        // This is complex, but required for the "undo" effect.
-        for (const line of lines) {
-           const relatedBatches = await tx.query.stockBatches.findMany({
-             where: eq(stockBatches.purchaseOrderLineId, line.id)
-           });
-           
-           for (const batch of relatedBatches) {
-             // delete movements
-             await tx.delete(stockMovements).where(eq(stockMovements.stockBatchId, batch.id));
-             
-             // decrement stock level
-             await tx.execute(sql`
-               UPDATE stock_levels
-               SET quantity_available = quantity_available - ${batch.quantityReceived}
-               WHERE inventory_item_id = ${batch.inventoryItemId} AND branch_id = ${batch.branchId} AND tenant_id = ${tenantId}
-             `);
-           }
-           
-           // delete batches
-           await tx.delete(stockBatches).where(eq(stockBatches.purchaseOrderLineId, line.id));
-        }
-      }
-      
-      // Delete lines
+
+      // A draft PO has never been received, so it has no stock_batches or
+      // stock_movements to unwind — just delete the lines and the order.
       await tx.delete(purchaseOrderLines).where(and(eq(purchaseOrderLines.purchaseOrderId, orderId), eq(purchaseOrderLines.tenantId, tenantId)));
-      
-      // Delete order
       await tx.delete(purchaseOrders).where(eq(purchaseOrders.id, orderId));
     });
-    
+
     return successResponse(c, null);
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete order', [err.message]);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to delete order:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete order', undefined, 500);
   }
 });
 

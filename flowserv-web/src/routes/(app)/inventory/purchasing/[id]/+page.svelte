@@ -33,15 +33,12 @@
     }
   }
 
+  // F5 — the delete button only renders for a 'draft' PO (OrderHeader.svelte), so
+  // the 409 PO_NOT_DELETABLE path below is a defensive fallback, not the normal case.
   async function deleteOrder() {
-    let warning = `Are you sure you want to delete this PO?`;
-    if (order.status === 'received' || order.status === 'completed') {
-      warning = `WARNING: This PO is already ${order.status}. Deleting it in dev-mode will rollback all stock batches and movements, which may cause negative stock levels! Do you want to proceed?`;
-    }
-    
-    if (!confirm(warning)) return;
+    if (!confirm('Are you sure you want to delete this PO?')) return;
     loading = true;
-    
+
     try {
       const res = await fetch(`${API_BASE}/purchasing/orders/${order.id}`, {
         method: 'DELETE',
@@ -49,8 +46,11 @@
           'Authorization': `Bearer ${data.token}`
         }
       });
-      
-      if (!res.ok) throw new Error('Failed to delete order');
+
+      if (!res.ok) {
+        const result = await res.json();
+        throw new Error(result.error?.message || 'Failed to delete order');
+      }
       window.location.href = '/inventory/purchasing';
     } catch (err: any) {
       alert(err.message);
