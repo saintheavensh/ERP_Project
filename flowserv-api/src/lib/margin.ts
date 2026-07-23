@@ -90,6 +90,40 @@ export function validateTargetMargin(strategy: MarginStrategy, targetMargin: num
   return null;
 }
 
+export type MarginCheckStatus = 'ok' | 'below_target' | 'below_cost' | 'unknown_cost';
+
+export interface MarginEvaluation {
+  status: MarginCheckStatus;
+  actualMargin: number; // percent, in the config's own strategy
+  targetMargin: number; // percent
+  strategy: MarginStrategy;
+  recommendedPrice: number;
+}
+
+/**
+ * P1 (4C.2) — judge a price against an item's margin config and its cost. This is
+ * what every price-write route calls before storing a `sellingPrice`.
+ *
+ * `cost <= 0` (never received stock — WAC still 0) means margin can't be judged at
+ * all: 'unknown_cost', never a block, per the task's own "skip the check" rule.
+ * Otherwise: price strictly below cost is the one truly unrecoverable mistake
+ * ('below_cost' — the caller hard-blocks this unless the request explicitly opts
+ * in with `allowBelowCost`); price at/above cost but short of the target is a soft
+ * warning only ('below_target' — always stored, never blocked); anything else is 'ok'.
+ */
+export function evaluatePriceAgainstMargin(price: number, cost: number, config: MarginConfig): MarginEvaluation {
+  if (cost <= 0) {
+    return { status: 'unknown_cost', actualMargin: 0, targetMargin: config.targetMargin, strategy: config.strategy, recommendedPrice: 0 };
+  }
+
+  const actualMargin = config.strategy === 'gross_margin' ? grossMarginPct(price, cost) : markupPct(price, cost);
+  const recommended = recommendedPrice(cost, config);
+  const status: MarginCheckStatus =
+    price < cost ? 'below_cost' : meetsTarget(price, cost, config) ? 'ok' : 'below_target';
+
+  return { status, actualMargin, targetMargin: config.targetMargin, strategy: config.strategy, recommendedPrice: recommended };
+}
+
 function normalizeStrategy(v: unknown): MarginStrategy | null {
   return v === 'markup' || v === 'gross_margin' ? v : null;
 }

@@ -63,11 +63,14 @@ installed in `flowserv-web` since H15 gap (b) — use it, no more SSR-cookie sub
 ## Progress
 
 Stage A
-- [ ] P1 Margin enforcement (4C.2)
-- [ ] 4C.5 Phase-4-complete commit
+- [x] P1 Margin enforcement (4C.2) — 2026-07-23, see [P1-margin-enforcement.md](./P1-margin-enforcement.md)
+- [x] 4C.5 Phase-4-complete commit — 2026-07-23 (Phase 4 fully `[x]` in PHASES.md)
 
 Stage B
-- [ ] Merge phase-4 → main, branch phase-5/core-ui
+- [ ] ~~Merge phase-4 → main~~ — superseded: `track-f/honesty-fixes` merged
+      `phase-4/purchasing-completion` in on 2026-07-23 (before F4), so this specific
+      merge no longer applies. Still open: decide where Phase 5 branches from and
+      reconcile with `main`/`phase-4/purchasing-completion`.
 
 Stage C
 - [ ] P2 Ticket Kanban (3B.5 / 5.2)

@@ -10,15 +10,23 @@ import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { calculateWac } from '../../lib/wac';
 import { emitEvent, AppEvent } from '../../services/event-bus';
+import { assertPriceAllowed } from '../../modules/inventory/service';
+import { BusinessError } from '../../lib/errors';
 
 const router = new Hono();
 
 // POST /v1/purchasing/orders/:id/invoice (Phase 3 - Costing/Manager)
+// P1 (4C.2) — a batch's sellingPrice is judged against the item's margin config
+// and its freshly-recalculated WAC (post this batch's actualUnitCost), not the
+// stale pre-receipt cost — a goods receipt is exactly when the cost most likely
+// just changed. allowBelowCost applies to the whole submission (one deliberate
+// clearance decision per invoice, not per line).
 const invoiceSchema = z.object({
   invoiceNumber: z.string().min(1),
   invoiceDate: z.string(),
   invoiceDueDate: z.string().optional(),
   paymentMethod: z.enum(['cash', 'transfer', 'tempo']).default('cash'),
+  allowBelowCost: z.boolean().optional().default(false),
   batches: z.array(z.object({
     batchId: z.string().uuid(),
     actualUnitCost: z.number().min(0),
@@ -39,19 +47,53 @@ router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices
       if (!order) throw new Error('Order not found');
       
       let actualTotal = 0;
-      
+      const marginWarnings: Array<{ batchId: string } & Awaited<ReturnType<typeof assertPriceAllowed>>> = [];
+
       for (const batchInput of data.batches) {
         // Fetch current batch
         const [batch] = await tx.select().from(stockBatches).where(eq(stockBatches.id, batchInput.batchId));
         if (!batch) continue;
-        
+
         actualTotal += (batchInput.actualUnitCost * batch.quantityReceived);
-        
+
         // Update batch actual unit cost
         await tx.update(stockBatches)
           .set({ unitCost: batchInput.actualUnitCost.toString() })
           .where(eq(stockBatches.id, batch.id));
-          
+
+        // Re-calculate Moving Average Cost (WAC) for the inventory item globally —
+        // moved ahead of the price write so P1 (4C.2) judges the price against the
+        // freshly-updated cost, not the stale pre-receipt one.
+        const activeBatches = await tx.select().from(stockBatches)
+          .where(and(
+            eq(stockBatches.inventoryItemId, batch.inventoryItemId),
+            sql`${stockBatches.quantityRemaining} > 0`
+          ));
+
+        const wac = calculateWac(activeBatches);
+
+        await tx.update(inventoryItems)
+          .set({ unitCostAvg: wac })
+          .where(eq(inventoryItems.id, batch.inventoryItemId));
+
+        // P1 (4C.2) — judge this batch's price against the item's margin config and
+        // the WAC just written above. Throws 422 PRICE_BELOW_COST (aborting the
+        // whole transaction — no partial invoice) unless allowBelowCost was set.
+        const itemRow = await tx.query.inventoryItems.findFirst({
+          where: and(eq(inventoryItems.id, batch.inventoryItemId), eq(inventoryItems.tenantId, tenantId)),
+        });
+        const evaluation = await assertPriceAllowed(
+          tx,
+          tenantId,
+          itemRow ?? {},
+          batchInput.sellingPrice,
+          parseFloat(wac),
+          data.allowBelowCost
+        );
+        if (evaluation.status !== 'ok' && evaluation.status !== 'unknown_cost') {
+          marginWarnings.push({ batchId: batch.id, ...evaluation });
+        }
+
         // Upsert Selling Price
         if (batch.partBrandId) {
           // Check if exists
@@ -61,7 +103,7 @@ router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices
               eq(itemBrandPricing.partBrandId, batch.partBrandId)
             )
           );
-          
+
           if (existingPricing.length > 0) {
             await tx.update(itemBrandPricing)
               .set({ sellingPrice: batchInput.sellingPrice.toString(), updatedAt: new Date() })
@@ -80,21 +122,6 @@ router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices
             .set({ sellingPrice: batchInput.sellingPrice.toString() })
             .where(eq(inventoryItems.id, batch.inventoryItemId));
         }
-          
-        // Re-calculate Moving Average Cost (WAC) for the inventory item globally
-        const activeBatches = await tx.select().from(stockBatches)
-          .where(and(
-            eq(stockBatches.inventoryItemId, batch.inventoryItemId),
-            sql`${stockBatches.quantityRemaining} > 0`
-          ));
-
-        const wac = calculateWac(activeBatches);
-
-        await tx.update(inventoryItems)
-          .set({
-            unitCostAvg: wac
-          })
-          .where(eq(inventoryItems.id, batch.inventoryItemId));
       }
       
       // Complete the order
@@ -150,7 +177,7 @@ router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices
         }).returning();
       }
 
-      return { updatedOrder, supplierInvoice };
+      return { updatedOrder, supplierInvoice, marginWarnings };
     });
 
     // H11 — post-commit, best-effort. A cash/transfer invoice is created
@@ -171,9 +198,12 @@ router.post('/orders/:id/invoice', requirePermission('purchasing.manage_invoices
       });
     }
 
-    return successResponse(c, result.updatedOrder);
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to process invoice', [err.message]);
+    return successResponse(c, { ...result.updatedOrder, marginWarnings: result.marginWarnings });
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to process invoice', undefined, 500);
   }
 });
 

@@ -9,6 +9,8 @@ import { successResponse, errorResponse } from '../lib/response';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { calculateWac } from '../lib/wac';
+import { assertPriceAllowed } from '../modules/inventory/service';
+import { BusinessError } from '../lib/errors';
 
 const opnameRouter = new Hono();
 opnameRouter.use('*', requireAuth);
@@ -21,7 +23,9 @@ const opnameSchema = z.object({
     supplierId: z.string().uuid().optional().nullable(),
     brandId: z.string().uuid().optional().nullable(),
     unitCost: z.number().min(0),
-    sellingPrice: z.number().min(0).optional()
+    sellingPrice: z.number().min(0).optional(),
+    // P1 (4C.2) — the one deliberate override for a genuine clearance price.
+    allowBelowCost: z.boolean().optional().default(false)
   })).optional().default([]),
   skippedItemIds: z.array(z.string().uuid()).optional().default([])
 });
@@ -33,6 +37,9 @@ opnameRouter.post('/', requirePermission('inventory.adjust_stock'), zValidator('
   
   try {
     let systemSupplierId: string | null = null;
+    // P1 (4C.2) — one entry per item whose price fell short of its margin target
+    // (or below cost, if allowed) so the caller can surface it, not silently pass.
+    const marginWarnings: Array<{ inventoryItemId: string } & Awaited<ReturnType<typeof assertPriceAllowed>>> = [];
 
     await db.transaction(async (tx) => {
       // 1. Process each item
@@ -121,15 +128,31 @@ opnameRouter.post('/', requirePermission('inventory.adjust_stock'), zValidator('
         ).for('update');
 
         const wac = calculateWac(allActiveBatches);
-        
-        let updateData: { unitCostAvg: string; isStockInitialized: boolean; sellingPrice?: string } = { 
-          unitCostAvg: wac, 
-          isStockInitialized: true 
+
+        let updateData: { unitCostAvg: string; isStockInitialized: boolean; sellingPrice?: string } = {
+          unitCostAvg: wac,
+          isStockInitialized: true
         };
         if (item.sellingPrice !== undefined) {
+          // P1 (4C.2) — judge the new price against the item's real margin config
+          // and the WAC just recalculated above (not the stale pre-receipt cost).
+          const itemRow = await tx.query.inventoryItems.findFirst({
+            where: and(eq(inventoryItems.id, item.inventoryItemId), eq(inventoryItems.tenantId, tenantId)),
+          });
+          const evaluation = await assertPriceAllowed(
+            tx,
+            tenantId,
+            itemRow ?? {},
+            item.sellingPrice,
+            parseFloat(wac),
+            item.allowBelowCost
+          );
+          if (evaluation.status !== 'ok' && evaluation.status !== 'unknown_cost') {
+            marginWarnings.push({ inventoryItemId: item.inventoryItemId, ...evaluation });
+          }
           updateData.sellingPrice = item.sellingPrice.toString();
         }
-        
+
         await tx.update(inventoryItems)
           .set(updateData)
           .where(eq(inventoryItems.id, item.inventoryItemId));
@@ -145,9 +168,12 @@ opnameRouter.post('/', requirePermission('inventory.adjust_stock'), zValidator('
       }
     });
 
-    return successResponse(c, { message: 'Stock opname processed successfully' });
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to process opname', [err.message]);
+    return successResponse(c, { message: 'Stock opname processed successfully', marginWarnings });
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to process opname', undefined, 500);
   }
 });
 

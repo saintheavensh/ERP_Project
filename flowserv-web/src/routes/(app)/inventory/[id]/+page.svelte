@@ -33,7 +33,11 @@
     simBrandId = null;
   }
 
-  async function handleApplyPrice(brandId: string, customPrice: number) {
+  // P1 (4C.2) — the server now judges this price against the item's margin
+  // config. A below-target price still saves (with a warning); a below-cost
+  // price is rejected (422 PRICE_BELOW_COST) unless the user deliberately
+  // confirms a clearance price, retried here with allowBelowCost: true.
+  async function handleApplyPrice(brandId: string, customPrice: number, allowBelowCost = false) {
     try {
       const res = await fetch(`${API_BASE}/inventory/${item.id}/brands/${brandId}`, {
         method: 'PUT',
@@ -41,11 +45,24 @@
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${data.token}`
         },
-        body: JSON.stringify({ sellingPrice: customPrice })
+        body: JSON.stringify({ sellingPrice: customPrice, allowBelowCost })
       });
+      const result = await res.json();
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error?.message || 'Failed to save');
+        if (result.error?.code === 'PRICE_BELOW_COST') {
+          const proceed = confirm(`${result.error.message}\n\nLanjutkan dan simpan harga ini sebagai harga cuci gudang?`);
+          if (proceed) return handleApplyPrice(brandId, customPrice, true);
+          return;
+        }
+        throw new Error(result.error?.message || 'Failed to save');
+      }
+      if (result.data?.marginWarning) {
+        const w = result.data.marginWarning;
+        alert(
+          `Harga tersimpan, tapi di bawah target margin.\n` +
+          `Margin aktual: ${w.actualMargin.toFixed(1)}% (target: ${w.targetMargin}%)\n` +
+          `Rekomendasi harga: Rp ${Math.round(w.recommendedPrice).toLocaleString('id-ID')}`
+        );
       }
       window.location.reload();
     } catch (err: any) {

@@ -72,19 +72,82 @@ one decision, not new math. Keep the evaluation in a small pure helper
 (`evaluatePriceAgainstMargin(price, cost, config) → { status, actualMargin, recommendedPrice }`)
 in `lib/margin.ts` so it's unit-tested without HTTP, matching the H-track pattern.
 
-## Verification (Definition of Done — evidence required)
+## Verification (Definition of Done — evidence required) — DONE 2026-07-23
 
-- [ ] Unit tests for `evaluatePriceAgainstMargin`: at-target, below-target-above-cost,
-      below-cost, zero-cost skip, both strategies.
-- [ ] Live: PATCH an item price below target → 200 + `marginWarning` in body (recorded).
-- [ ] Live: PATCH an item price below cost → 422 `PRICE_BELOW_COST`; with
-      `allowBelowCost:true` → 200 (recorded).
-- [ ] Live: receive a higher-cost batch → `GET /v1/inventory` shows the item's
-      `marginStatus: 'below_target'` while its stored price is unchanged (recorded).
-- [ ] Same enforcement on the brand-pricing "Apply" path, not just the item PATCH.
-- [ ] `npm test`, `tsc`, `svelte-check` all clean. FE simulator shows the server warning.
+**Decision confirmed with the developer before coding** (per the risk note above): the
+proposed warn-vs-block rule as written — below target but at/above cost = soft warn;
+below cost = hard block (422) unless `allowBelowCost: true`. No changes to the proposal.
+
+**Reference cost:** Option A (`unitCostAvg`/WAC), as recommended. `cost <= 0` (never
+received stock) → `'unknown_cost'`, never blocks, per the zero-cost edge case.
+
+**Call sites audited and wired** (all four from the "grep before building" list):
+- `PATCH /v1/inventory/:id` (`routes/inventory/items.ts`) — also fixed a latent bug
+  found while wiring this: the pre-existing `targetMargin` validation resolved the
+  item's effective strategy as `data.marginStrategy ?? existing.marginStrategy ??
+  DEFAULT_MARGIN_STRATEGY`, **skipping the category fallback entirely** — a category's
+  configured strategy was silently never consulted. The new margin-price check uses
+  the correct item→category→default resolution (`resolveItemMarginConfig`); left the
+  older, narrower `targetMargin`-format-validation as-is (out of scope for this task).
+- `PUT /v1/inventory/:id/brands/:brandId` (`routes/inventory/pricing.ts`, the
+  simulator's "Apply price" path) — same item-level config and WAC.
+- `POST /v1/purchasing/orders/:id/invoice` (`routes/purchasing/invoices.ts`, PO
+  costing) — reordered the existing code so WAC is recalculated **before** the price
+  write (previously price was written first, WAC second), so the check judges the
+  price against the freshly-updated cost, not the stale pre-receipt one.
+  `allowBelowCost` applies to the whole invoice submission (one clearance decision
+  per invoice, not per batch line). A block aborts the whole transaction — no partial
+  invoice, no orphaned batch.
+- `POST /v1/opname` (initial stock upload) — same pattern, cost = the WAC just
+  recalculated for that item.
+- `POST /v1/inventory` (create) — audited, deliberately **not** wired: a brand-new
+  item's `unitCostAvg` is always 0 (no stock yet), which `evaluatePriceAgainstMargin`
+  always treats as `'unknown_cost'` — the check would be a structural no-op. Documented
+  inline instead of adding dead code.
+
+**Shared helpers** (`modules/inventory/service.ts`, DB-touching; `lib/margin.ts` stays
+pure per its own module doc): `resolveItemMarginConfig()` (item→category fetch +
+`resolveMarginConfig`) and `assertPriceAllowed()` (resolves config, evaluates, throws
+`BusinessError('PRICE_BELOW_COST', ..., 422)` when blocked). `evaluatePriceAgainstMargin`
+itself lives in `lib/margin.ts` — pure, 9 new unit tests (at-target, below-target,
+break-even-is-below-target-not-below-cost, below-cost, zero/negative-cost skip, both
+strategies, recommendedPrice cross-check).
+
+- [x] Unit tests for `evaluatePriceAgainstMargin`: at-target, below-target-above-cost,
+      below-cost, zero-cost skip, both strategies. (9 tests, `lib/__tests__/margin.test.ts`)
+- [x] Live: PATCH an item price below target → 200 + `marginWarning` in body. Recorded:
+      cost 162500, target set to 50% markup, price 220000 → `{"status":"below_target",
+      "actualMargin":35.38...,"targetMargin":50,"recommendedPrice":243750}`.
+- [x] Live: PATCH an item price below cost → 422 `PRICE_BELOW_COST` ("Selling price
+      100000 is below cost 162500..."); retried with `allowBelowCost:true` → 200 +
+      `marginWarning.status: "below_cost"`.
+- [x] Live: opname-received a second unit of a 1-unit/200000-cost item at 400000 (no
+      `sellingPrice` in the request) → `GET /v1/inventory` on that item shows
+      `unitCostAvg: "300000.00"`, `sellingPrice` **unchanged** at `"300000.00"`,
+      `marginStatus: "below_target"` — the "new stock arrives" half, computed on read,
+      no schema/write-path change.
+- [x] Same enforcement on the brand-pricing "Apply" path: below cost → 422; below
+      target (170000 vs cost 162500, default 30% target) → 200 +
+      `marginWarning.status: "below_target"`.
+- [x] Additionally verified PO costing end-to-end: received a PO, invoiced a batch at
+      actualUnitCost 250000 with sellingPrice 200000 (now below the recalculated WAC
+      258333.33) → 422, PO stayed `'received'` (not `'completed'`), reconciliation
+      clean; re-invoiced with sellingPrice 300000 → 200, PO → `'completed'`,
+      `marginWarnings: [{ status: "below_target", actualMargin: 16.1%, ... }]`.
+- [x] `npm run test:unit`: 179/179 (was 170, +9). `npm run test:e2e`: 21/21 unchanged.
+      `npx tsc --noEmit` (API) and `npx svelte-check` (web, 698 files) both clean.
+      FE: `EditItemModal.svelte` and `[id]/+page.svelte`'s brand-price apply handler
+      both surface `marginWarning` (an `alert()` with actual/target/recommended) and
+      retry with `allowBelowCost: true` on a confirmed 422 `PRICE_BELOW_COST` — wired
+      directly against the verified API contract above, matching this codebase's
+      existing lightweight `confirm()`/`alert()` UX pattern rather than a new modal.
+- DB reset to clean seed state afterward (`npm run db:reset`); the dev server instance
+  started for this check was stopped.
 
 ## Then
 
-This closes **4C.2** and therefore **Phase 4**. Do 4C.5 (the phase-complete commit),
-then the merge decision in [NEXT-STEPS.md](./NEXT-STEPS.md).
+This closes **4C.2** and therefore **Phase 4** — `PHASES.md` updated (4C.2/4C.5 now
+`[x]`). The merge decision in [NEXT-STEPS.md](./NEXT-STEPS.md) Stage B is now stale —
+this branch (`track-f/honesty-fixes`) already merged `phase-4/purchasing-completion`
+in before F4, so there is no separate phase-4 branch left to merge; the next real step
+is deciding where Phase 5 starts from.

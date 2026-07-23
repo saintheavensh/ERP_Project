@@ -13,7 +13,7 @@
 
 ---
 
-## Current Phase: `Hardening Track (H0–H17) — COMPLETE & merged to main` → next: Track F (honesty fixes) + Phase 4C
+## Current Phase: `Phase 4 — COMPLETE` → next: Phase 5 (Core UI Polish)
 
 > **⚠️ Updated 2026-07-23.** The **Hardening Track (H0–H17) is complete and merged to
 > `main`** (commits `d32e881`→`aa341c6`). It built most of Phases 3.5, 4.5, and the
@@ -29,15 +29,23 @@
 > intake→close flow into an e2e test (both gaps later closed by **H17** + a Playwright
 > walk); **H16** is the ongoing module-migration rule.
 >
-> **The new continuation plan is [`plan/README.md`](plan/README.md).** Immediate work:
-> **Track F** (F1–F8 — fix the flows that are wired but "lie": orphaned technician
-> assignment, "My Jobs" showing all tickets, dead `cancelled` status, no item edit,
-> unguarded PO delete, orphaned `warranty_records`, dead Create-Ticket button, stale spec
-> headers), then **Phase 4C** (margin config endpoint + server-side price validation).
+> **Track F (F1–F8) is complete** (2026-07-23, all same-day — see
+> [`plan/README.md`](plan/README.md) Progress section for evidence links): fixed flows
+> that were wired but "lied" — orphaned technician assignment, "My Jobs" showing all
+> tickets, dead `cancelled` status, no item edit, unguarded PO delete, orphaned
+> `warranty_records`, dead Create-Ticket button, stale spec headers.
 >
-> **Still open (unchanged, correctly `[/]`/`[ ]` below):** Phase 4C.1/4C.2 (margin — now
-> specced in [`plan/4C-margin-config-and-validation.md`](plan/4C-margin-config-and-validation.md)),
-> 2A.1 (register endpoint → Phase 5.10), 3B.5 (Kanban board → Phase 5.2).
+> **Phase 4C is also complete** (2026-07-23): 4C.1 (margin config endpoints, merged in
+> from `phase-4/purchasing-completion`) + 4C.2 (server-side price validation, see
+> [`plan/P1-margin-enforcement.md`](plan/P1-margin-enforcement.md)). **This closes
+> Phase 4 entirely.**
+>
+> **The continuation plan is [`plan/README.md`](plan/README.md).** Next: **Phase 5**
+> (Core UI Polish) — read that file's Phase 5 table before starting; detailed `5.*.md`
+> task files are authored when that phase actually starts, same convention as Track F.
+>
+> **Still open, unrelated to Phase 4:** 2A.1 (register endpoint → Phase 5.10), 3B.5
+> (Kanban board → Phase 5.2).
 
 ---
 
@@ -376,10 +384,12 @@ missing.
 
 ---
 
-## PHASE 4 — Purchasing, Supplier Debts, & Margins
+## PHASE 4 — Purchasing, Supplier Debts, & Margins ✅ COMPLETE (2026-07-23)
 > **Goal:** Supplier Management, Purchasing (Costing), AP (Hutang), Dynamic Margin Pricing.
-> **Branch:** `phase-4/purchasing`
-> **Status:** mostly built, but was marked complete prematurely.
+> **Branch:** `phase-4/purchasing` (4C.2 landed on `track-f/honesty-fixes`, which had
+> already merged `phase-4/purchasing-completion` in — see Architecture Debt / branch notes).
+> **Status:** genuinely complete — every item below is `[x]` with live-verified evidence,
+> closing the "marked complete prematurely" problem this file used to flag.
 
 ### 4A. Supplier & Hutang (Accounts Payable)
 - [x] 4A.1 BE: Create Supplier CRUD routes & schema
@@ -410,13 +420,34 @@ missing.
       create-with-margin 201; PATCH category markup 35→gross_margin 40 200; gross_margin 100 → 400;
       non-existent id → 404; item PATCH markup 50%+price 200; item gross_margin 120 → 400; clear
       override (null,null) keeps price. `npm test` 162 passing (was 137, +25); `tsc` + `svelte-check`
-      clean. **4C.2 (enforce target on price writes) is still open** — see the plan below.
-- [ ] 4C.2 BE: Update product pricing when new stock arrives — ⚠️ **not automatic.** The
-      margin calculation lives entirely in the frontend simulator; the backend accepts
-      whatever `sellingPrice` the client sends and never validates it against `targetMargin`.
+      clean.
+- [x] 4C.2 BE: Server-side price validation on every write site — **done 2026-07-23**,
+      see [`plan/P1-margin-enforcement.md`](plan/P1-margin-enforcement.md). New pure
+      `evaluatePriceAgainstMargin()` in `lib/margin.ts` (9 tests) + DB-touching
+      `resolveItemMarginConfig()`/`assertPriceAllowed()` in `modules/inventory/service.ts`,
+      wired into all four price-write sites: `PATCH /v1/inventory/:id`,
+      `PUT /v1/inventory/:id/brands/:brandId` (the simulator's "Apply price"),
+      `POST /v1/purchasing/orders/:id/invoice` (PO costing — WAC recalculation was
+      reordered ahead of the price write so the check sees the just-updated cost),
+      and `POST /v1/opname`. Below-cost is a hard 422 `PRICE_BELOW_COST` unless
+      `allowBelowCost: true`; below-target-but-above-cost saves with a `marginWarning`
+      in the response. "New stock arrives" half: `GET /v1/inventory` (+ `/:id`) now
+      compute `marginStatus` on read from the live WAC — no schema/write-path change,
+      so a price never silently drifts out of sync with what's on screen. Verified live
+      (curl): PATCH below target → 200 + warning; PATCH below cost → 422, retried with
+      `allowBelowCost` → 200; opname-received a unit at 2× cost with no price in the
+      request → `GET` shows the unchanged price now `marginStatus: 'below_target'`;
+      brand-price PUT same enforcement; PO invoice below new WAC → 422 + PO stays
+      `'received'` (not `'completed'`), reconciliation clean throughout; valid PO
+      invoice → 200 + `marginWarnings` array. `npm test` 179 unit (+9) + 21 e2e; `tsc` +
+      `svelte-check` clean. Also fixed a latent bug found while wiring this: the
+      pre-existing `targetMargin` format-validation on item PATCH resolved the
+      effective strategy as `item ?? DEFAULT`, skipping the category fallback
+      entirely — the new price check uses the correct item→category→default
+      resolution instead.
 - [x] 4C.3 FE: Show warning if new price changes drastically or modal > margin limit
 - [x] 4C.4 FE: Inventory page enhancements (margin column, filter/sort by margin)
-- [ ] 4C.5 Git commit: `feat: phase 4 complete — purchasing & margins`
+- [x] 4C.5 Git commit — closes Phase 4 entirely.
 
 ---
 

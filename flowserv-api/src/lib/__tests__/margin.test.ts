@@ -6,6 +6,7 @@ import {
   markupPct,
   meetsTarget,
   validateTargetMargin,
+  evaluatePriceAgainstMargin,
   DEFAULT_MARGIN_STRATEGY,
   DEFAULT_TARGET_MARGIN,
 } from '../margin';
@@ -142,5 +143,60 @@ describe('validateTargetMargin', () => {
 
   it('rejects an absurdly high markup', () => {
     expect(validateTargetMargin('markup', 5000)).not.toBeNull();
+  });
+});
+
+describe('evaluatePriceAgainstMargin (P1 / 4C.2)', () => {
+  const markup30 = { strategy: 'markup' as const, targetMargin: 30 };
+  const gross40 = { strategy: 'gross_margin' as const, targetMargin: 40 };
+
+  it('reports "ok" when the price meets the target exactly', () => {
+    const result = evaluatePriceAgainstMargin(130, 100, markup30);
+    expect(result.status).toBe('ok');
+    expect(result.actualMargin).toBeCloseTo(30, 6);
+    expect(result.recommendedPrice).toBe(130);
+  });
+
+  it('reports "ok" when the price exceeds the target', () => {
+    expect(evaluatePriceAgainstMargin(150, 100, markup30).status).toBe('ok');
+  });
+
+  it('reports "below_target" when above cost but short of the target', () => {
+    const result = evaluatePriceAgainstMargin(110, 100, markup30);
+    expect(result.status).toBe('below_target');
+    expect(result.actualMargin).toBeCloseTo(10, 6);
+    expect(result.targetMargin).toBe(30);
+  });
+
+  it('treats break-even (price === cost) as "below_target", not "below_cost"', () => {
+    // Zero profit is a real shortfall, but not the "selling at a loss" mistake this
+    // status exists to catch — the caller warns on this, it does not hard-block it.
+    expect(evaluatePriceAgainstMargin(100, 100, markup30).status).toBe('below_target');
+  });
+
+  it('reports "below_cost" when the price is strictly below cost', () => {
+    const result = evaluatePriceAgainstMargin(90, 100, markup30);
+    expect(result.status).toBe('below_cost');
+  });
+
+  it('reports "unknown_cost" and never blocks when cost is 0 (never received stock)', () => {
+    const result = evaluatePriceAgainstMargin(50000, 0, markup30);
+    expect(result.status).toBe('unknown_cost');
+  });
+
+  it('reports "unknown_cost" for a negative cost too (defensive)', () => {
+    expect(evaluatePriceAgainstMargin(100, -5, markup30).status).toBe('unknown_cost');
+  });
+
+  it('works under the gross_margin strategy too', () => {
+    const target = recommendedPrice(100, gross40); // ~166.67
+    expect(evaluatePriceAgainstMargin(target, 100, gross40).status).toBe('ok');
+    expect(evaluatePriceAgainstMargin(120, 100, gross40).status).toBe('below_target');
+    expect(evaluatePriceAgainstMargin(95, 100, gross40).status).toBe('below_cost');
+  });
+
+  it('recommendedPrice in the result matches the pure recommendedPrice() for the same config', () => {
+    const result = evaluatePriceAgainstMargin(999, 100, markup30);
+    expect(result.recommendedPrice).toBe(recommendedPrice(100, markup30));
   });
 });

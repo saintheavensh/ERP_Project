@@ -7,7 +7,9 @@ import { requirePermission } from '../../middleware/rbac';
 import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../../lib/pagination';
-import { validateTargetMargin, DEFAULT_MARGIN_STRATEGY, MARGIN_STRATEGIES, type MarginStrategy } from '../../lib/margin';
+import { validateTargetMargin, DEFAULT_MARGIN_STRATEGY, MARGIN_STRATEGIES, resolveMarginConfig, evaluatePriceAgainstMargin, type MarginStrategy } from '../../lib/margin';
+import { assertPriceAllowed } from '../../modules/inventory/service';
+import { BusinessError } from '../../lib/errors';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
@@ -71,14 +73,25 @@ router.get('/', async (c) => {
         }
       }
       
+      // P1 (4C.2) — "new stock arrives" half: computed on read, not persisted, so a
+      // batch that quietly erodes margin on an unchanged price shows up here
+      // without any write-path/schema change. See lib/margin.ts's own module doc.
+      const marginConfig = resolveMarginConfig(item, item.category);
+      const marginStatus = evaluatePriceAgainstMargin(
+        parseFloat(item.sellingPrice),
+        parseFloat(item.unitCostAvg),
+        marginConfig
+      ).status;
+
       return {
         ...item,
         totalAvailable,
         totalReserved,
-        brandStock
+        brandStock,
+        marginStatus
       };
     });
-      
+
     return successResponse(c, result, { has_more: hasMore, next_cursor: nextCursor });
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch inventory', [err.message]);
@@ -86,6 +99,11 @@ router.get('/', async (c) => {
 });
 
 // POST /v1/inventory (Create New SKU)
+// P1 (4C.2) — no margin check here: a brand-new item has unitCostAvg = 0 (no
+// stock received yet), which evaluatePriceAgainstMargin always treats as
+// 'unknown_cost' (margin cannot be judged against a cost that doesn't exist yet).
+// The check becomes meaningful once the item actually has a cost — PATCH,
+// goods receipt, and opname.
 const createItemSchema = z.object({
   sku: z.string().min(1),
   universalCode: z.string().min(1),
@@ -240,7 +258,15 @@ router.get('/:id', async (c) => {
     });
 
     if (!item) return errorResponse(c, 'NOT_FOUND', 'Item not found', [], 404);
-    return successResponse(c, item);
+
+    // P1 (4C.2) — same computed-on-read marginStatus as the list endpoint.
+    const marginStatus = evaluatePriceAgainstMargin(
+      parseFloat(item.sellingPrice),
+      parseFloat(item.unitCostAvg),
+      resolveMarginConfig(item, item.category)
+    ).status;
+
+    return successResponse(c, { ...item, marginStatus });
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch item', [err.message]);
   }
@@ -262,9 +288,11 @@ const updateItemSchema = z.object({
   reorderPoint: z.number().int().min(0).optional(),
   marginStrategy: z.enum(MARGIN_STRATEGIES as unknown as [MarginStrategy, ...MarginStrategy[]]).nullish(),
   targetMargin: z.number().nullish(),
+  // P1 (4C.2) — the one deliberate override for a genuine clearance price.
+  allowBelowCost: z.boolean().optional().default(false),
 });
 
-router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('json', updateItemSchema), auditMiddleware({ action: 'inventory_item.update', entityType: 'inventory_item', entityIdParam: 'id', bodyFields: ['name', 'categoryId', 'universalCode', 'unitOfMeasure', 'sellingPrice', 'reorderPoint', 'marginStrategy', 'targetMargin'] }), async (c) => {
+router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('json', updateItemSchema), auditMiddleware({ action: 'inventory_item.update', entityType: 'inventory_item', entityIdParam: 'id', bodyFields: ['name', 'categoryId', 'universalCode', 'unitOfMeasure', 'sellingPrice', 'reorderPoint', 'marginStrategy', 'targetMargin', 'allowBelowCost'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
   const data = c.req.valid('json');
@@ -283,6 +311,29 @@ router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('js
     const marginErr = effectiveTarget == null ? null : validateTargetMargin(effectiveStrategy, effectiveTarget);
     if (marginErr) return errorResponse(c, 'VALIDATION_ERROR', marginErr, [], 400);
 
+    // P1 (4C.2) — if the price is being changed, judge it against the item's real
+    // effective margin config (item override -> category -> default) and its WAC.
+    // Uses the *post-patch* categoryId/marginStrategy/targetMargin, so changing the
+    // category or the margin config in the same request is judged consistently.
+    let marginEvaluation: Awaited<ReturnType<typeof assertPriceAllowed>> | undefined;
+    if (data.sellingPrice !== undefined) {
+      const patchedItemForMargin = {
+        categoryId: data.categoryId !== undefined ? data.categoryId : existing.categoryId,
+        marginStrategy: data.marginStrategy !== undefined ? data.marginStrategy : existing.marginStrategy,
+        targetMargin: data.targetMargin !== undefined
+          ? (data.targetMargin == null ? null : data.targetMargin.toString())
+          : existing.targetMargin,
+      };
+      marginEvaluation = await assertPriceAllowed(
+        db,
+        tenantId,
+        patchedItemForMargin,
+        data.sellingPrice,
+        parseFloat(existing.unitCostAvg),
+        data.allowBelowCost
+      );
+    }
+
     const patch: Record<string, unknown> = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.categoryId !== undefined) patch.categoryId = data.categoryId;
@@ -299,9 +350,19 @@ router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('js
       .set(patch)
       .where(and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId)))
       .returning();
-    return successResponse(c, updated);
-  } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update item', [err.message]);
+
+    // Only surface a warning when there's something to warn about — 'ok' and
+    // 'unknown_cost' (no stock received yet, margin can't be judged) are silent.
+    const marginWarning = marginEvaluation && marginEvaluation.status !== 'ok' && marginEvaluation.status !== 'unknown_cost'
+      ? marginEvaluation
+      : undefined;
+
+    return successResponse(c, { ...updated, marginWarning });
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update item', undefined, 500);
   }
 });
 

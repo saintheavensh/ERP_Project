@@ -39,7 +39,7 @@
   let loading = $state(false);
   let errorMsg = $state('');
 
-  function toPayload(f: ItemForm) {
+  function toPayload(f: ItemForm, allowBelowCost = false) {
     return {
       name: f.name,
       categoryId: f.categoryId === '' ? null : f.categoryId,
@@ -48,21 +48,41 @@
       sellingPrice: Number(f.sellingPrice),
       reorderPoint: Number(f.reorderPoint),
       marginStrategy: f.marginStrategy === '' ? null : f.marginStrategy,
-      targetMargin: f.targetMargin.trim() === '' ? null : Number(f.targetMargin)
+      targetMargin: f.targetMargin.trim() === '' ? null : Number(f.targetMargin),
+      allowBelowCost
     };
   }
 
-  async function save() {
+  // P1 (4C.2) — the server judges sellingPrice against the item's margin config.
+  // Below target still saves (warning); below cost is rejected (422
+  // PRICE_BELOW_COST) unless deliberately confirmed as a clearance price.
+  async function save(allowBelowCost = false) {
     loading = true;
     errorMsg = '';
     try {
       const res = await fetch(`${API_BASE}/inventory/${item.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify(toPayload(form))
+        body: JSON.stringify(toPayload(form, allowBelowCost))
       });
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error?.message || 'Gagal menyimpan perubahan');
+      if (!res.ok) {
+        if (result.error?.code === 'PRICE_BELOW_COST') {
+          const proceed = confirm(`${result.error.message}\n\nLanjutkan dan simpan harga ini sebagai harga cuci gudang?`);
+          if (proceed) { loading = false; return save(true); }
+          loading = false;
+          return;
+        }
+        throw new Error(result.error?.message || 'Gagal menyimpan perubahan');
+      }
+      if (result.data?.marginWarning) {
+        const w = result.data.marginWarning;
+        alert(
+          `Harga tersimpan, tapi di bawah target margin.\n` +
+          `Margin aktual: ${w.actualMargin.toFixed(1)}% (target: ${w.targetMargin}%)\n` +
+          `Rekomendasi harga: Rp ${Math.round(w.recommendedPrice).toLocaleString('id-ID')}`
+        );
+      }
       onSaved();
     } catch (err: any) {
       errorMsg = err.message;

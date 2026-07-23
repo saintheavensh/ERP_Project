@@ -75,11 +75,15 @@ below for evidence links. **Next: Phase 4C** (`P1 — margin enforcement`, close
 
 ---
 
-## Phase 4C — Dynamic margin pricing  *(the officially-current phase — close it)*
+## Phase 4C — Dynamic margin pricing — ✅ COMPLETE (2026-07-23)
 
 | # | Task | Size | Layer |
 |---|------|------|-------|
-| 4C | [Margin config endpoint + server-side price validation](./4C-margin-config-and-validation.md) — closes 4C.1/4C.2/4C.5 | M | BE+FE |
+| 4C.1 | [Margin config endpoint](./4C-margin-config-and-validation.md) | M | BE+FE |
+| 4C.2 | [Server-side price validation](./P1-margin-enforcement.md) | M | BE+FE |
+
+Closes Phase 4 entirely. **Next: Phase 5** (Core UI Polish) — see Stage B in
+[NEXT-STEPS.md](./NEXT-STEPS.md) for the open branch-hygiene question before starting it.
 
 ---
 
@@ -147,8 +151,10 @@ Track F
 - [x] F7 Create-Ticket button — 2026-07-23
 - [x] F8 Refresh spec headers — 2026-07-23 (Track F complete)
 
-Phase 4C
-- [ ] 4C Margin config + server-side price validation
+Phase 4C — ✅ COMPLETE (2026-07-23)
+- [x] 4C.1 Margin config endpoints (done on `phase-4/purchasing-completion`, merged in)
+- [x] 4C.2 Margin config + server-side price validation — see
+      [P1-margin-enforcement.md](./P1-margin-enforcement.md). Closes Phase 4.
 
 Phase 5+
 - [ ] Authored when reached (see roadmap tables above)

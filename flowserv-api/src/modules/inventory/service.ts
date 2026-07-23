@@ -1,7 +1,8 @@
 import { and, asc, eq, gt, sql } from 'drizzle-orm';
-import { stockBatches, stockMovements, stockLevels } from '../../db/schema';
+import { stockBatches, stockMovements, stockLevels, inventoryCategories } from '../../db/schema';
 import { pickFifoBatches, calculateConsumedUnitCost } from '../../lib/fifo';
 import { BusinessError } from '../../lib/errors';
+import { resolveMarginConfig, evaluatePriceAgainstMargin, type MarginEvaluation, type MarginSource } from '../../lib/margin';
 
 export interface BatchDeduction {
   batchId: string;
@@ -387,4 +388,57 @@ export async function returnStock(tx: any, params: ReturnStockParams): Promise<R
   }
 
   return { restoredQuantity };
+}
+
+/**
+ * P1 (4C.2) — item→category margin-config resolution, the DB-touching half of
+ * lib/margin.ts's pure `resolveMarginConfig`. Fetches the category only when the
+ * item actually has one; a categoryless item just falls through to the item's own
+ * override (or the system default), same as `resolveMarginConfig(item, null)`.
+ */
+export async function resolveItemMarginConfig(
+  tx: any,
+  tenantId: string,
+  item: MarginSource & { categoryId?: string | null }
+) {
+  let category: MarginSource | undefined;
+  if (item.categoryId) {
+    [category] = await tx
+      .select({ marginStrategy: inventoryCategories.marginStrategy, targetMargin: inventoryCategories.targetMargin })
+      .from(inventoryCategories)
+      .where(and(eq(inventoryCategories.id, item.categoryId), eq(inventoryCategories.tenantId, tenantId)));
+  }
+  return resolveMarginConfig(item, category);
+}
+
+/**
+ * P1 (4C.2) — the one check every price-write route calls before storing a
+ * `sellingPrice`. Resolves the item's effective margin config, evaluates `price`
+ * against `cost` (the caller decides which cost — WAC for most routes, or a
+ * freshly-recalculated WAC right after a goods receipt), and hard-blocks a
+ * below-cost price with 422 PRICE_BELOW_COST unless `allowBelowCost` was set —
+ * the one deliberate override for a genuine clearance price. A 'below_target' or
+ * 'unknown_cost' result is never blocked, only ever returned for the caller to
+ * surface as a warning.
+ */
+export async function assertPriceAllowed(
+  tx: any,
+  tenantId: string,
+  item: MarginSource & { categoryId?: string | null },
+  price: number,
+  cost: number,
+  allowBelowCost: boolean
+): Promise<MarginEvaluation> {
+  const config = await resolveItemMarginConfig(tx, tenantId, item);
+  const evaluation = evaluatePriceAgainstMargin(price, cost, config);
+
+  if (evaluation.status === 'below_cost' && !allowBelowCost) {
+    throw new BusinessError(
+      'PRICE_BELOW_COST',
+      `Selling price ${price} is below cost ${cost}. Set allowBelowCost: true to confirm a deliberate clearance price.`,
+      422
+    );
+  }
+
+  return evaluation;
 }
