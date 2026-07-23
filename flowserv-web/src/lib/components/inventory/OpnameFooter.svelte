@@ -6,7 +6,7 @@
 
 {#if state.editableItems.length > 0}
   <div class="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-slate-200 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-40">
-    <div class="max-w-5xl mx-auto flex justify-between items-center">
+    <div class="max-w-5xl mx-auto flex flex-wrap justify-between items-center gap-3">
       <div class="text-sm text-slate-500 font-medium">
         Menampilkan {state.editableItems.length} produk yang belum diinisialisasi
       </div>

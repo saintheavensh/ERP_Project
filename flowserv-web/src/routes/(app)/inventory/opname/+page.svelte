@@ -13,7 +13,7 @@
 </svelte:head>
 
 <div class="max-w-5xl mx-auto space-y-6 pb-24">
-  <div class="flex items-center justify-between">
+  <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
       <h1 class="text-2xl font-bold text-slate-900">Mass Initial Stock Wizard</h1>
       <p class="text-slate-500 mt-1">

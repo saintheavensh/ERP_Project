@@ -68,11 +68,11 @@
 </svelte:head>
 
 <div class="max-w-4xl mx-auto space-y-6">
-  <div class="flex items-center gap-4">
+  <div class="flex flex-wrap items-center gap-4">
     <a href="/inventory" class="text-slate-500 hover:text-slate-800" aria-label="Back to inventory">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
     </a>
-    <div class="flex-1">
+    <div class="flex-1 min-w-[200px]">
       <h1 class="text-2xl font-bold text-slate-900">Manage Brands & Grades</h1>
       <p class="text-slate-500 mt-1">Define global part brands and their quality grades to be used across all suppliers.</p>
     </div>
@@ -82,7 +82,8 @@
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-    <table class="w-full text-left border-collapse">
+   <div class="overflow-x-auto">
+    <table class="w-full min-w-[500px] text-left border-collapse">
       <thead>
         <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
           <th class="p-4">Brand Name</th>
@@ -112,6 +113,7 @@
         {/each}
       </tbody>
     </table>
+   </div>
   </div>
 </div>
 
