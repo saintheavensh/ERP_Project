@@ -85,11 +85,4 @@ export const approvalRequests = pgTable('approval_requests', {
   magicToken: text('magic_token').unique(), // dipakai untuk link approval customer
 });
 
-export const warrantyRecords = pgTable('warranty_records', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  ticketId: uuid('ticket_id').notNull().unique().references(() => serviceTickets.id),
-  customerAssetId: uuid('customer_asset_id').notNull().references(() => customerAssets.id),
-  warrantyStart: timestamp('warranty_start', { withTimezone: true }).notNull(),
-  warrantyEnd: timestamp('warranty_end', { withTimezone: true }).notNull(),
-});
 

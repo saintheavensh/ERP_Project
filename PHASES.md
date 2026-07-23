@@ -730,6 +730,13 @@ Revisit this decision (toward Option B) only if reconciliation keeps finding rea
 despite the constraint — that would mean something is writing to `stock_levels` without
 going through the paths this task audited.
 
+**Decision (2026-07-23, F6): deleted the orphaned `warranty_records` table** rather than
+keep it as a speculative forward-declaration. It existed in `db/schema/tickets.ts` with no
+route, service, or seed ever reading or writing it — the same dead-schema smell H1 cleaned
+up for `pos_transactions`/`invoice_lines`. Warranty (WAR-001..006) is entirely unbuilt and
+scoped to Phase 8; when that phase starts, design the table together with the feature
+instead of trying to guess its shape now. See `specification/features/11-warranty.md`.
+
 ---
 
 ## Deprecated Documentation (DO NOT use as reference)

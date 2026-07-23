@@ -26,10 +26,20 @@ Two honest options — pick one and record it in `PHASES.md` → Architecture De
 3. Update `specification/features/11-warranty.md` header to note "no schema exists yet — build with
    the feature in Phase 8" (removes the misleading orphaned-table mention).
 
-## Verification (Definition of Done)
-- `npm run db:reset` succeeds; `warranty_records` absent from the DB; `npm test` unchanged.
-- The decision is written down in PHASES.md so it isn't re-litigated.
+## Verification (Definition of Done) — DONE 2026-07-23
+- Chose **Option A (delete)**, per the recommendation. Grepped the whole repo first —
+  confirmed `warrantyRecords`/`warranty_records` appeared nowhere except the schema
+  definition itself (no route, service, seed, or FE code touched it).
+- Removed the `warrantyRecords` table from `db/schema/tickets.ts` (it flows out of the
+  barrel `db/schema/index.ts` automatically via `export * from './tickets'` — no separate
+  edit needed there). Confirmed no `relations.ts` entry referenced it either.
+- `npm run db:reset` succeeded; verified directly against Postgres
+  (`information_schema.tables`) that `warranty_records` is gone (0 rows).
+- Updated `specification/features/11-warranty.md`'s status header to say no warranty
+  schema exists at all right now, and recorded the decision in `PHASES.md` →
+  Architecture Debt (mirrors the H1 precedent for `pos_transactions`/`invoice_lines`).
+- `npm run test:unit`: 170/170, unchanged. `npx tsc --noEmit` clean.
 
 ## Watch out
 - Grep the whole repo for `warranty_records` / `warrantyRecords` before deleting to be 100% sure
-  nothing imports it (the audit says nothing does — verify).
+  nothing imports it — done; confirmed nothing did.

@@ -4,6 +4,12 @@
 > No warranty templates, activation, claims, or history exists. Supplier warranty
 > policy fields exist on the supplier record but nothing consumes them.
 > Planned for Phase 8.
+>
+> **2026-07-23 (F6):** an orphaned `warranty_records` table existed in the schema
+> with no route/service/seed ever reading or writing it — deleted (matches the H1
+> precedent for dead schema; see PHASES.md Architecture Debt). **No warranty schema
+> exists at all right now** — design it together with the feature when Phase 8 is
+> reached, not before.
 
 ## Purpose
 Manage warranty lifecycle: template definition, auto-activation after service, claim processing, and warranty service orders.
