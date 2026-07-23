@@ -7,7 +7,7 @@
 <div class="space-y-6">
   {#each state.lines as line, lineIndex}
     <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-      <div class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+      <div class="bg-slate-50 p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-2">
         <div>
           <h3 class="font-bold text-slate-900">{line.name}</h3>
           <p class="text-sm text-slate-500">SKU: {line.sku}</p>

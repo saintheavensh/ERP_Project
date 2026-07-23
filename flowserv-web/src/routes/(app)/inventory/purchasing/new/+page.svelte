@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-4 sm:p-6">
     <form onsubmit={(e) => { e.preventDefault(); state.submitOrder(); }} class="space-y-6">
       {#if state.errorMsg}
         <div class="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-100">

@@ -22,7 +22,7 @@
     </div>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-4 sm:p-6">
     <div class="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg text-blue-800 text-sm">
       <strong>Tugas Gudang:</strong> Silakan hitung fisik barang yang diterima. Anda bisa memecah 1 item pesanan menjadi beberapa merk yang berbeda jika supplier mengirimkan merk campuran.
     </div>

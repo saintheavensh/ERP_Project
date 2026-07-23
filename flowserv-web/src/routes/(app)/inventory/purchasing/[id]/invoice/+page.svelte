@@ -23,7 +23,7 @@
     </div>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-6">
+  <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden p-4 sm:p-6">
     <div class="mb-6 p-4 bg-purple-50 border border-purple-100 rounded-lg text-purple-800 text-sm">
       <strong>Manager Duty:</strong> The items have been physically received. Please enter the final prices according to the supplier's invoice. This will automatically update the Weighted Average Cost (WAC) of the inventory.
     </div>
