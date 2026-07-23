@@ -1,15 +1,49 @@
 <script lang="ts">
+  import CompanyTab from '$lib/components/settings/CompanyTab.svelte';
+  import BranchesTab from '$lib/components/settings/BranchesTab.svelte';
+  import UsersTab from '$lib/components/settings/UsersTab.svelte';
+  import PaymentMethodsTab from '$lib/components/settings/PaymentMethodsTab.svelte';
+
+  let { data } = $props();
+
+  const TABS: Array<{ id: string; label: string }> = [
+    { id: 'company', label: 'Perusahaan' },
+    { id: 'branches', label: 'Cabang' },
+    { id: 'users', label: 'Pengguna & Peran' },
+    { id: 'payment-methods', label: 'Metode Pembayaran' },
+  ];
 </script>
 
-<div class="p-6 max-w-7xl mx-auto text-center mt-20">
-  <div class="bg-white rounded-2xl p-10 shadow-sm border border-slate-200 inline-block max-w-2xl">
-    <svg class="w-16 h-16 mx-auto text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-    <h1 class="text-2xl font-bold text-slate-800 mb-2">Halaman Pengaturan</h1>
-    <p class="text-slate-600 mb-6">
-      Sesuai dengan *roadmap* pengembangan, modul Pengaturan Lengkap (Metode Pembayaran, Akses/Role, Cabang, dsb) akan dibangun sepenuhnya pada <strong>Phase 5 (Core UI Polish)</strong>.
-    </p>
-    <p class="text-sm text-slate-500 bg-slate-50 p-4 rounded-lg">
-      Saat ini *database* dan API sudah mendukung Metode Pembayaran secara dinamis. Silakan berlanjut ke tahap implementasi lainnya untuk menyelesaikan modul *core* terlebih dahulu.
-    </p>
+<svelte:head>
+  <title>Pengaturan - FlowServ</title>
+</svelte:head>
+
+<div class="max-w-5xl mx-auto space-y-6">
+  <h1 class="text-2xl font-bold text-slate-900">Pengaturan</h1>
+
+  <!-- Mobile-first: tabs scroll horizontally rather than wrapping/shrinking
+       into unreadable pills at 375px (same idiom as the ticket board's
+       horizontal-scroll columns, P2). -->
+  <div class="border-b border-slate-200 overflow-x-auto">
+    <nav class="flex gap-1 min-w-max">
+      {#each TABS as t (t.id)}
+        <a
+          href="/settings?tab={t.id}"
+          class="px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors {data.tab === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}"
+        >
+          {t.label}
+        </a>
+      {/each}
+    </nav>
   </div>
+
+  {#if data.tab === 'company'}
+    <CompanyTab {data} />
+  {:else if data.tab === 'branches'}
+    <BranchesTab {data} />
+  {:else if data.tab === 'users'}
+    <UsersTab {data} />
+  {:else if data.tab === 'payment-methods'}
+    <PaymentMethodsTab {data} />
+  {/if}
 </div>
