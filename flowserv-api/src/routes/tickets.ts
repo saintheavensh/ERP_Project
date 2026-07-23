@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches, users } from '../db/schema';
+import { ticketStatusEnum } from '../db/schema/enums';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
@@ -32,6 +33,17 @@ ticketsRouter.get('/', async (c) => {
     filters.push(eq(serviceTickets.assignedTechnicianId, assignedToId));
   }
 
+  // P2 — Kanban board filters. Lenient like ?assignedTo=: an unrecognized status is
+  // ignored rather than erroring, an unmatched flowTemplateId just yields zero rows.
+  const statusParam = c.req.query('status');
+  if (statusParam && (ticketStatusEnum.enumValues as readonly string[]).includes(statusParam)) {
+    filters.push(eq(serviceTickets.status, statusParam as typeof serviceTickets.status.enumValues[number]));
+  }
+  const flowTemplateIdParam = c.req.query('flowTemplateId');
+  if (flowTemplateIdParam) {
+    filters.push(eq(serviceTickets.flowTemplateId, flowTemplateIdParam));
+  }
+
   // H13 — cursor pagination. Previously an unbounded, un-paginated list.
   const limit = parseLimit(c.req.query('limit'));
   const cursorParam = c.req.query('cursor');
@@ -50,7 +62,9 @@ ticketsRouter.get('/', async (c) => {
       assetType: customerAssets.assetType,
       brand: customerAssets.brand,
       model: customerAssets.model,
+      flowTemplateId: serviceTickets.flowTemplateId,
       flowTemplateName: flowTemplates.name,
+      currentNodeId: serviceTickets.currentNodeId,
       nodeName: flowNodes.name,
       assignedTechnicianId: serviceTickets.assignedTechnicianId,
       assignedTechnicianName: users.name,

@@ -591,7 +591,18 @@ missing.
 > **Branch:** `phase-5/core-ui`
 
 - [ ] 5.1 Dashboard: Per-role default dashboards with widget layout
-- [ ] 5.2 Ticket Board: Kanban with status colors, filters (completes 3B.5)
+- [x] 5.2 Ticket Board: Kanban with status colors, filters (completes 3B.5) — done
+      2026-07-23 as P2, see [`plan/P2-ticket-kanban-board.md`](plan/P2-ticket-kanban-board.md).
+      Columns = flow nodes (`GET /v1/flows/:id`, ordered by `sequenceOrder`), cards =
+      open tickets grouped by `currentNodeId`. Valid moves computed from
+      `flowTransitions` edges, not column adjacency (the graph branches). Backend:
+      `GET /v1/tickets` extended with `currentNodeId`/`flowTemplateId` plus `?status=`
+      and `?flowTemplateId=` filters. Mobile-first: horizontal column scroll, tap-to-move
+      panel is the one interaction every viewport shares; native HTML5 drag-and-drop is
+      a desktop-only enhancement on top of the same `move()` call. 6 Playwright tests
+      (mobile + desktop), all passing twice in a row with self-contained fixtures;
+      live-verified 403 `PERMISSION_DENIED` (Cashier → Diagnosis) vs 200 (Super Admin);
+      `npm test` 179 unit passing, `svelte-check` 703 files 0 errors.
 - [ ] 5.3 Ticket Detail: Timeline, cost breakdown, attachments
 - [ ] 5.4 Inventory Dashboard: Stock levels, low-stock alerts, batch history
 - [ ] 5.5 Product Catalog: Browse by category, supplier price comparison

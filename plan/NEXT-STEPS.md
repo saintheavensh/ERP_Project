@@ -77,7 +77,7 @@ Stage B
 
 Stage C
 - [x] P1.5 Mobile shell fix — 2026-07-23, see [P1.5-mobile-shell-fix.md](./P1.5-mobile-shell-fix.md)
-- [ ] P2 Ticket Kanban (3B.5 / 5.2)
+- [x] P2 Ticket Kanban (3B.5 / 5.2) — 2026-07-23, see [P2-ticket-kanban-board.md](./P2-ticket-kanban-board.md)
 - [ ] P3 Role dashboards + widgets (5.1)
 - [ ] P4 Ticket detail polish (5.3)
 - [ ] P5 Finance dashboard modes (5.9)
