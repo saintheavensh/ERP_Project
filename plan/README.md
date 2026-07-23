@@ -18,10 +18,14 @@
 
 ## Current focus
 
-**Phase 5 — Core UI Polish**, on branch `phase-5/core-ui`.
-Active detailed plan: **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**
-— a full codebase audit (done / partial / needs-fix) plus the remaining Phase 5 work broken
-into small, individually-revertable steps, every FE step mobile-first.
+**Phase 5 — Core UI Polish is complete** (2026-07-24), on branch `phase-5/core-ui`.
+P9 (Settings CRUD) was the last remaining task. Its detail plan (`P7-plus-phase5-completion-plan.md`,
+which covered P7 through P9) has been **deleted on completion**, per this file's own
+convention — see the Progress log below for the full per-step evidence and commit hashes.
+
+**Next: Phase 6 (Printer Integration)** — zero code exists for it yet. No detail plan file
+exists yet either; author one (`plan/6.1-*.md` or similar) when that phase actually starts,
+same convention as every phase before it. Read "Later phases" below first.
 
 ---
 
@@ -57,15 +61,14 @@ into small, individually-revertable steps, every FE step mobile-first.
   - **P12** POS touch polish — found and fixed two real touch-target bugs (a `px-2 py-1`
     qty stepper, and drafts-modal buttons that were `opacity-0 group-hover:opacity-100`
     and therefore unreachable on any touchscreen), not just a sizing pass.
+  - **P9** Settings CRUD — closes Phase 5. Real branch/user/company CRUD (`branch.manage`/
+    `user.manage`/`settings.manage_company`, admin-only), closes **2A.1** (create-user,
+    open since Phase 2), makes `users.status` actually block login, and adds a
+    last-active-Super-Admin lockout guard. Tabbed `/settings` shell replaces the old
+    placeholder; Payment Methods stays read-only (no create/edit endpoint exists for it).
 
-  Test baseline: **183 backend unit + 21 API e2e + 58 Playwright browser specs**, all green.
-
-### 🔧 In progress — Phase 5 remainder
-Detailed steps in **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**.
-
-| # | Task | PHASES.md | Layer | Note |
-|---|------|-----------|-------|------|
-| P9 | Settings pages (Company / Branches / Users+Roles / Payment Methods) | 5.10 | BE+FE | **last remaining Phase 5 task** — needs real CRUD; includes **2A.1 create-user**. Printer→Phase 6, RBAC matrix→Phase 7 |
+  Test baseline: **183 backend unit + 21 API e2e + 65 Playwright browser specs**, all green.
+  `svelte-check` 723 files 0 errors.
 
 ### ⏳ Deferred / not built — tracked so nothing is forgotten
 | Item | Why | Lands in |
@@ -73,13 +76,23 @@ Detailed steps in **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-complet
 | Dashboard **widget framework** (drag/resize/persist/admin catalog, WDG-002..006) | P3 shipped real dashboards first | later Phase 5 or Phase 7 |
 | Ticket **attachments** (before/after photos, PLT-009) | spec Phase 2; no upload/storage infra; local-vs-cloud is a deploy decision | own task, post-MVP |
 | Technician **calendar / schedule / commission** (TECH-011/013) | no scheduling/commission data model | Phase 8 |
-| **RBAC** branch + multi-role in JWT; permission-driven sidebar | hardcoded role checks today | Phase 5.9-scope, see spec-03 |
+| **RBAC** branch + multi-role in JWT; permission-driven sidebar | hardcoded role checks today | Phase 7, alongside the RBAC management UI |
 | Real **P&L / Chart of Accounts / journal** (double-entry) | ledger single-sided by design | Phase 2+ / Phase 8 |
-| **RBAC management UI** (permission matrix) | | Phase 7.3 |
+| **RBAC management UI** (permission matrix, custom roles) | | Phase 7.3 |
 | **Printer** config UI + Python agent | | Phase 6 |
+| Settings: **Operational** (flow defaults, QC checklists, approval thresholds), **Financial** (currency/tax/fiscal year), **Document & Printing**, **Notification** (SET-004/005/006/007) | P9 scoped to Company/Branches/Users+Roles only, per the plan | Printing→Phase 6; rest→Phase 8 as their owning feature lands |
 
 ### Floating gaps (fold into whichever task touches them)
-- **2A.1 register / create-user endpoint** — still absent; now owned by **P9.2**.
+- ~~**2A.1 register / create-user endpoint**~~ — ✅ closed by **P9.2** (2026-07-24).
+- **`err.code === '23505'` inside `db.transaction()`** — Drizzle wraps a transaction
+  failure in a `DrizzleQueryError`; the real `PostgresError` (with `.code`) ends up at
+  `err.cause.code`, not `err.code`. P9.2 fixed this for the new user-create route
+  (checks both). The same latent bug still exists in `inventory/items.ts` (POST + DELETE),
+  `suppliers.ts`, and `brands.ts` — each has a `23505`/`23503` check that silently never
+  matches when the insert/delete runs inside `db.transaction()`, falling through to a
+  generic error instead of the intended 409/404. Found 2026-07-24, not fixed everywhere
+  (out of scope for P9) — fix each `err.cause?.code` alongside `err.code` next time one
+  of those routes is touched.
 - **H16 module migration** — when you touch a not-yet-migrated module (`modules/pos/`,
   `modules/purchasing/`), extract its `service.ts` + a test *then*. Never a refactor branch.
 - **`catch (err: any)` sweep** (~36 sites) → `catch (err: unknown)` + shared `toBusinessError()`.
@@ -104,7 +117,7 @@ over the existing `printer_*` schema tables + settings UI + PyInstaller packagin
 ### Phase 7 — Builder UIs
 Flow Template Builder (upgrade read-only `/flows/[id]` to a node/transition editor), Printer
 Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual permission matrix
-+ custom roles; depends on 5.9 / P9.2).
++ custom roles; builds on the Settings > Users tab and `GET /v1/roles` from 5.10 / P9.2).
 
 ### Phase 8 — Business Module Expansion *(remaining MVP, rough value order)*
 - **Customer portal + magic-link approval** (SVC-007/CUST-009) — fixes the faked-approval flow · L
@@ -160,5 +173,9 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
       drafts-modal action buttons hidden by `group-hover` (never fires on touch — a
       functional bug, not a sizing nit). `e2e/p12-pos-touch.spec.ts` (5 tests, including
       an `opacity` CSS check `toBeVisible()` alone would have missed). Full suite 58 tests green.
-- [ ] P9 Settings CRUD (5.10, incl. 2A.1) — **last remaining Phase 5 task**
-- [ ] P12 POS touch polish (5.6)
+- [x] P9 Settings CRUD (5.10, incl. 2A.1) — 2026-07-24, see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
+      **closes Phase 5.** P9.1-P9.5, 4 commits. Real branch/user/company CRUD, admin-only
+      permissions, login now checks `users.status`, last-Super-Admin lockout guard, tabbed
+      `/settings` shell. `e2e/p9-settings.spec.ts` (7 tests). Full suite 65 tests green.
+
+**Phase 5 is complete.** Next: Phase 6 (Printer Integration) — see "Later phases" below.

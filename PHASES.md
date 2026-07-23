@@ -13,8 +13,17 @@
 
 ---
 
-## Current Phase: `Phase 4 — COMPLETE` → next: Phase 5 (Core UI Polish)
+## Current Phase: `Phase 5 — COMPLETE` → next: Phase 6 (Printer Integration)
 
+> **⚠️ Updated 2026-07-24.** **Phase 5 (Core UI Polish) is complete.** P9 (Settings
+> CRUD — Company/Branches/Users & Roles, closing the long-open 2A.1 create-user
+> endpoint) was the last remaining task; see the Phase 5 section below for the full
+> per-task breakdown (P1.5 through P9, ~12 sub-tasks across BE+FE). The per-task
+> `plan/P*.md` files for this phase were **deleted on completion**, same convention as
+> the H-track and Track F — durable evidence lives in this file and in git history on
+> `phase-5/core-ui`. **Phase 6 (Printer Integration) has not been started; zero code
+> exists for it yet.** Read `plan/README.md`'s "Later phases" section before starting.
+>
 > **⚠️ Updated 2026-07-23.** The **Hardening Track (H0–H17) is complete and merged to
 > `main`** (commits `d32e881`→`aa341c6`). It built most of Phases 3.5, 4.5, and the
 > Phase 3 gaps between 2026-07-21 and 2026-07-23. The per-task `plan/H*.md` files were
@@ -592,10 +601,17 @@ missing.
 
 ---
 
-## PHASE 5 — Core UI Polish (FE)
+## PHASE 5 — Core UI Polish (FE) ✅ COMPLETE (2026-07-24)
 > **Goal:** Build remaining essential UI screens and polish the experience.
 > **Read first:** specification/08-ui-ux.md, specification/features/12-dashboard-reporting.md
 > **Branch:** `phase-5/core-ui`
+>
+> **Status:** genuinely complete — P9 (Settings CRUD, 5.10) was the last remaining task;
+> everything below is `[x]` or `[/]` with the deferral reason stated inline (widget
+> framework, ticket attachments, technician Calendar/Schedule — each tracked in
+> `plan/README.md`'s "Deferred / not built" table for the phase it actually belongs to,
+> not silently dropped). Test baseline at close: **65 Playwright + 21 API e2e + 183
+> backend unit**, all green; `svelte-check` 723 files 0 errors.
 
 - [/] 5.1 Dashboard: Per-role default dashboards with widget layout — real-data half
       done 2026-07-23 as P3, see [`plan/P3-role-dashboards.md`](plan/P3-role-dashboards.md).
@@ -743,7 +759,46 @@ missing.
       consolidation, cash/bank balance (no such tracking exists in this app) — all
       Phase-2-flavored per spec. 4 new Playwright tests; full suite (25 tests) passing
       together; `npm test` 179 unit passing; `svelte-check` 710 files 0 errors.
-- [ ] 5.10 Settings pages: Company, Branches, Roles, Printer config
+- [x] 5.10 Settings pages: Company, Branches, Users & Roles — done 2026-07-24 as
+      P9, see [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
+      The largest remaining Phase 5 task, split BE-then-FE across 4 commits:
+      **P9.1** `POST`/`PATCH /v1/branches`; **P9.2** `POST /v1/users` (closes
+      **2A.1**, absent since Phase 2), `PATCH /v1/users/:id` (status/role),
+      `GET /v1/roles`, `GET /v1/users/list` — plus two things that had to be
+      built for status/role management to be real rather than write-only:
+      login now actually checks `users.status` (previously nothing read it
+      back), and a last-active-Super-Admin guard rejects a status/role change
+      that would leave the tenant with zero admins (`422 LAST_SUPER_ADMIN`),
+      matching the RBAC break-glass doc's philosophy of preventing a lockout
+      rather than just documenting recovery from one; **P9.3**
+      `GET`/`PATCH /v1/settings/company`, scoped to what the schema actually
+      has (`tenants.name`) rather than inventing logo/address/contact columns
+      — the same restraint F6 showed deleting the speculative
+      `warranty_records` table. All three gated by new admin-only permissions
+      (`branch.manage`, `user.manage`, `settings.manage_company`, none granted
+      to Manager). Found and fixed a real bug along the way: Drizzle wraps a
+      `db.transaction()` failure in a `DrizzleQueryError`, so `err.code` on a
+      unique-constraint violation is `undefined` — the real `PostgresError`
+      is at `err.cause.code`. The same latent bug exists in a few pre-existing
+      `23505`/`23503` checks elsewhere (not fixed — out of scope for this
+      task, tracked in `plan/README.md`'s floating gaps). **P9.4/P9.5**
+      replaced the `/settings` placeholder with a tabbed shell (Company /
+      Branches / Pengguna & Peran / Metode Pembayaran), the same `?tab=`
+      URL-param pattern as the finance dashboard's `?mode=`, mobile-first
+      (tabs scroll horizontally, forms single-column). Payment Methods is
+      deliberately read-only — there is no create/edit endpoint for that
+      resource, so showing edit controls would be the exact "looks wired,
+      does nothing" bug Track F existed to fix. Printer config and the RBAC
+      permission-matrix editor stay out of scope (Phase 6 / Phase 7
+      respectively, as the plan always scoped them). Live-verified via curl
+      throughout (branch CRUD, duplicate-email 409, invalid-role 400, status
+      change blocking login, last-admin guard) plus 7 new Playwright tests
+      (company edit persists across reload, branch create+edit, user
+      create-then-deactivate verified via a real login attempt going 200 →
+      401 `ACCOUNT_INACTIVE`, payment methods render zero Edit buttons, tab
+      switching, mobile no-overflow across all four tabs, horizontal tab
+      scroll). Full suite: **65 Playwright + 183 backend unit passing**;
+      `svelte-check` 723 files 0 errors.
 - [x] **P7 (cross-cutting, not numbered above)** Mobile responsive sweep — done
       2026-07-24, see [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
       A codebase audit found every table this session hadn't already touched
@@ -757,7 +812,12 @@ missing.
       `e2e/p7-mobile-sweep.spec.ts` (7 tests, 375px + 1280px) verifies no page
       exceeds viewport width; full suite 37 tests passing; `npm test` 179 unit
       passing; `svelte-check` 710 files 0 errors.
-- [ ] 5.11 Git commit: `feat: phase 5 complete — core UI polished`
+- [x] 5.11 Git commit — closes Phase 5 entirely. P9 (5.10) was the last
+      remaining task; every other Phase 5 item above is `[x]` or `[/]` with
+      the deliberate-deferral reason stated inline (widget framework,
+      attachments, Calendar/Schedule — all tracked in `plan/README.md`'s
+      "Deferred / not built" table for their proper phase). See git log on
+      `phase-5/core-ui` for the full commit sequence (P1.5 through P9).
 
 ---
 
