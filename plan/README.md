@@ -54,17 +54,18 @@ into small, individually-revertable steps, every FE step mobile-first.
   - **P11** technician quick actions — the Technician dashboard's "Tugas Saya" list now
     shows per-ticket transition buttons (reuses the Kanban board's edge-filter logic),
     no backend change needed.
+  - **P12** POS touch polish — found and fixed two real touch-target bugs (a `px-2 py-1`
+    qty stepper, and drafts-modal buttons that were `opacity-0 group-hover:opacity-100`
+    and therefore unreachable on any touchscreen), not just a sizing pass.
 
-  Test baseline: **183 backend unit + 21 API e2e + 53 Playwright browser specs**, all green.
+  Test baseline: **183 backend unit + 21 API e2e + 58 Playwright browser specs**, all green.
 
 ### 🔧 In progress — Phase 5 remainder
 Detailed steps in **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**.
-Suggested order: **P12 → P9**.
 
 | # | Task | PHASES.md | Layer | Note |
 |---|------|-----------|-------|------|
-| P12 | POS touch polish (big buttons / tap targets) | 5.6 | FE | mostly done in P1.5; targeted pass — **do next** |
-| P9 | Settings pages (Company / Branches / Users+Roles / Payment Methods) | 5.10 | BE+FE | **largest** — needs real CRUD; includes **2A.1 create-user**. Printer→Phase 6, RBAC matrix→Phase 7 |
+| P9 | Settings pages (Company / Branches / Users+Roles / Payment Methods) | 5.10 | BE+FE | **last remaining Phase 5 task** — needs real CRUD; includes **2A.1 create-user**. Printer→Phase 6, RBAC matrix→Phase 7 |
 
 ### ⏳ Deferred / not built — tracked so nothing is forgotten
 | Item | Why | Lands in |
@@ -154,5 +155,10 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
       1 commit. Per-ticket transition buttons on the Technician dashboard, reusing the board's
       edge-filter logic server-side; no backend change. `e2e/p11-technician-actions.spec.ts`
       (4 tests). Full suite 53 tests green. Calendar/schedule (TECH-013) stays deferred.
-- [ ] P9 Settings CRUD (5.10, incl. 2A.1)
+- [x] P12 POS touch polish (5.6) — 2026-07-24, see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
+      1 commit. Fixed two real touch-target bugs: undersized qty stepper buttons, and
+      drafts-modal action buttons hidden by `group-hover` (never fires on touch — a
+      functional bug, not a sizing nit). `e2e/p12-pos-touch.spec.ts` (5 tests, including
+      an `opacity` CSS check `toBeVisible()` alone would have missed). Full suite 58 tests green.
+- [ ] P9 Settings CRUD (5.10, incl. 2A.1) — **last remaining Phase 5 task**
 - [ ] P12 POS touch polish (5.6)

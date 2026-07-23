@@ -667,7 +667,24 @@ missing.
       mobile no-overflow). Live-verified via curl: an item with two suppliers
       returns both with correct `isPrimary`/`lastPrice`. Full suite: 49
       Playwright + 183 backend unit passing; `svelte-check` 717 files 0 errors.
-- [ ] 5.6 POS/Cashier Screen: Touch-friendly, big buttons
+- [x] 5.6 POS/Cashier Screen: Touch-friendly, big buttons — done 2026-07-24 as
+      P12, see [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
+      Most of "touch-friendly" already landed in P1.5 (stacked mobile layout,
+      no fixed-width cart overflow); this targeted 375px audit over what P1.5
+      didn't check found two real problems, not just polish: `CartSidebar.svelte`'s
+      qty +/- stepper buttons were `px-2 py-1` (~24x22px, well under any
+      touch-target guideline) — bumped to 40x40px with `aria-label`s.
+      `DraftsModal.svelte`'s "Lanjutkan Pembayaran" and delete buttons were
+      `opacity-0 group-hover:opacity-100` — a pattern that **never fires on a
+      touchscreen** (no `:hover` state), making both buttons genuinely
+      unreachable on the exact device this screen is built for, not merely
+      small. Made them always-visible and bumped the delete button to 40x40px.
+      5 new Playwright tests, including one that specifically asserts
+      `toHaveCSS('opacity', '1')` rather than `toBeVisible()` — Playwright's
+      visibility check does not treat `opacity: 0` as hidden, so a naive
+      visibility assertion would have passed against the buggy code and missed
+      the regression entirely. Full suite: 58 Playwright + 183 backend unit
+      passing; `svelte-check` 717 files 0 errors.
 - [x] 5.7 Global Search: grouped results — done 2026-07-24 as P8, see
       [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
       New `GET /v1/search?q=` (`modules/search/service.ts`): tenant-scoped `ILIKE`

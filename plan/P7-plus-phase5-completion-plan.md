@@ -158,10 +158,20 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 *Verification, all confirmed:* `svelte-check` 717 files 0 errors; full e2e suite 53 tests
 green; `npm test` 183 backend unit passing (untouched — FE-only task).
 
-### P12 — POS touch polish (5.6) · FE · size **S**
-- **P12.1** Audit POS at 375px against "big buttons / touch targets" — bump tap-target
-  sizes, spacing where thin. Mostly done in P1.5; this is a targeted polish pass, likely
-  1 small commit. `p12-pos-touch.spec.ts` if anything material changes.
+### P12 — POS touch polish (5.6) · FE · size **S** · ✅ DONE 2026-07-24
+- [x] **P12.1** Audited POS at 375px against "big buttons / touch targets" — found two
+  real problems, not just thin spacing: `CartSidebar.svelte`'s qty +/- stepper was
+  `px-2 py-1` (~24x22px), and `DraftsModal.svelte`'s action buttons were
+  `opacity-0 group-hover:opacity-100` — which **never fires on a touchscreen**, making
+  "Lanjutkan Pembayaran" and delete genuinely unreachable on mobile/tablet, not just
+  small. Both fixed: stepper → 40x40px with `aria-label`s; drafts buttons → always
+  visible, delete bumped to 40x40px. `e2e/p12-pos-touch.spec.ts` — 5 tests, one of
+  which asserts `toHaveCSS('opacity', '1')` specifically because `toBeVisible()` does
+  not treat `opacity: 0` as hidden and would have passed against the buggy code.
+  (commit `d211ff5`)
+
+*Verification, all confirmed:* `svelte-check` 717 files 0 errors; full e2e suite 58 tests
+green; `npm test` 183 backend unit passing (untouched — FE-only task).
 
 ---
 
@@ -177,5 +187,4 @@ green; `npm test` 183 backend unit passing (untouched — FE-only task).
 
 ## Suggested order
 ~~P7 (mobile sweep)~~ ✅ → ~~P8 (search)~~ ✅ → ~~P10 (catalog)~~ ✅ → ~~P11 (tech actions)~~ ✅ →
-**P12 (POS polish, next)** → P9 (settings, largest). P9 last because it's the biggest and
-needs the most new backend.
+~~P12 (POS polish)~~ ✅ → **P9 (settings, next — last remaining Phase 5 task)**.
