@@ -590,7 +590,17 @@ missing.
 > **Read first:** specification/08-ui-ux.md, specification/features/12-dashboard-reporting.md
 > **Branch:** `phase-5/core-ui`
 
-- [ ] 5.1 Dashboard: Per-role default dashboards with widget layout
+- [/] 5.1 Dashboard: Per-role default dashboards with widget layout — real-data half
+      done 2026-07-23 as P3, see [`plan/P3-role-dashboards.md`](plan/P3-role-dashboards.md).
+      `/` now shows live per-role widgets (Super Admin & Manager: open tickets by stage,
+      low-stock alerts, AR/AP outstanding, today's sales; Technician: My Jobs; Cashier:
+      today's sales + AR) computed server-side from existing endpoints, no new backend
+      route. **Left `[/]` not `[x]`**: the interactive widget framework (WDG-002..006 —
+      drag-and-drop repositioning, resize/collapse, per-user persisted layout,
+      admin-controlled widget catalog) is deferred to a later task by explicit user
+      decision — there was nothing to let users rearrange until this pass built the
+      content. 5 Playwright tests (all 4 roles + mobile stacking), full e2e suite (17
+      tests across P1.5/P2/P3) passing together; `svelte-check` 706 files 0 errors.
 - [x] 5.2 Ticket Board: Kanban with status colors, filters (completes 3B.5) — done
       2026-07-23 as P2, see [`plan/P2-ticket-kanban-board.md`](plan/P2-ticket-kanban-board.md).
       Columns = flow nodes (`GET /v1/flows/:id`, ordered by `sequenceOrder`), cards =
