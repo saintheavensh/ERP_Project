@@ -247,17 +247,24 @@ router.get('/:id', async (c) => {
 });
 
 // PATCH /v1/inventory/:id — update margin config (4C.1), base selling price, and
-// light master fields. Item-level margin config overrides its category's.
+// light master fields (F4). Item-level margin config overrides its category's.
+// F4 — `sku` is deliberately NOT editable here: it is used as a stable key
+// elsewhere (batches/movements reference the item by id, but the SKU itself is
+// the human-facing stable identifier printed on receipts/labels). If it ever
+// needs to be editable, it must respect the (tenant_id, sku) unique constraint
+// the same way create's 23505 handling does.
 const updateItemSchema = z.object({
   name: z.string().min(1).optional(),
   categoryId: z.string().uuid().nullish(),
+  universalCode: z.string().min(1).nullish(),
+  unitOfMeasure: z.string().min(1).optional(),
   sellingPrice: z.number().min(0).optional(),
   reorderPoint: z.number().int().min(0).optional(),
   marginStrategy: z.enum(MARGIN_STRATEGIES as unknown as [MarginStrategy, ...MarginStrategy[]]).nullish(),
   targetMargin: z.number().nullish(),
 });
 
-router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('json', updateItemSchema), auditMiddleware({ action: 'inventory_item.update', entityType: 'inventory_item', entityIdParam: 'id', bodyFields: ['name', 'categoryId', 'sellingPrice', 'reorderPoint', 'marginStrategy', 'targetMargin'] }), async (c) => {
+router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('json', updateItemSchema), auditMiddleware({ action: 'inventory_item.update', entityType: 'inventory_item', entityIdParam: 'id', bodyFields: ['name', 'categoryId', 'universalCode', 'unitOfMeasure', 'sellingPrice', 'reorderPoint', 'marginStrategy', 'targetMargin'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
   const data = c.req.valid('json');
@@ -279,6 +286,8 @@ router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('js
     const patch: Record<string, unknown> = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.categoryId !== undefined) patch.categoryId = data.categoryId;
+    if (data.universalCode !== undefined) patch.universalCode = data.universalCode;
+    if (data.unitOfMeasure !== undefined) patch.unitOfMeasure = data.unitOfMeasure;
     if (data.sellingPrice !== undefined) patch.sellingPrice = data.sellingPrice.toString();
     if (data.reorderPoint !== undefined) patch.reorderPoint = data.reorderPoint;
     if (data.marginStrategy !== undefined) patch.marginStrategy = data.marginStrategy;

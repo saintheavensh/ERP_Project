@@ -22,6 +22,18 @@
       <dd class="font-medium text-slate-900">{item.reorderPoint}</dd>
     </div>
     <div>
+      <dt class="text-slate-500">Strategi Margin</dt>
+      <dd class="font-medium text-slate-900">
+        {#if item.marginStrategy === 'markup'}
+          Markup {item.targetMargin != null ? `(${Number(item.targetMargin)}%)` : ''}
+        {:else if item.marginStrategy === 'gross_margin'}
+          Gross Margin {item.targetMargin != null ? `(${Number(item.targetMargin)}%)` : ''}
+        {:else}
+          <span class="text-slate-400">Ikuti kategori / default</span>
+        {/if}
+      </dd>
+    </div>
+    <div>
       <dt class="text-slate-500">Status Inisialisasi</dt>
       <dd class="font-medium">
         {#if item.isStockInitialized}

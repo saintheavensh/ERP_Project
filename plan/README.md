@@ -139,7 +139,7 @@ Track F
 - [x] F1 Technician assignment UI — 2026-07-23
 - [x] F2 "My Jobs" filter — 2026-07-23
 - [x] F3 Ticket cancellation — 2026-07-23
-- [ ] F4 Inventory item edit
+- [x] F4 Inventory item edit — 2026-07-23
 - [ ] F5 PO delete guard
 - [ ] F6 Warranty-records decision
 - [ ] F7 Create-Ticket button
