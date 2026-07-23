@@ -669,6 +669,19 @@ missing.
       Phase-2-flavored per spec. 4 new Playwright tests; full suite (25 tests) passing
       together; `npm test` 179 unit passing; `svelte-check` 710 files 0 errors.
 - [ ] 5.10 Settings pages: Company, Branches, Roles, Printer config
+- [x] **P7 (cross-cutting, not numbered above)** Mobile responsive sweep — done
+      2026-07-24, see [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
+      A codebase audit found every table this session hadn't already touched
+      (P1.5/P2/P4/P6) — finance (Ledger/Payables/Receivables), purchasing (all list +
+      detail/receive/invoice/new pages, `OrderLinesTable`), inventory sub-pages
+      (receive/brands/categories/opname/suppliers), and two POS/inventory modals
+      (`InvoiceDetailModal`, `PricingSimulator`) — rendered a bare `<table>` with no
+      `overflow-x-auto` wrapper, forcing whole-page horizontal scroll on a phone.
+      Fixed all of them (6 commits, one per logical group, each independently
+      revertable) + made every touched header row `flex-wrap`. New
+      `e2e/p7-mobile-sweep.spec.ts` (7 tests, 375px + 1280px) verifies no page
+      exceeds viewport width; full suite 37 tests passing; `npm test` 179 unit
+      passing; `svelte-check` 710 files 0 errors.
 - [ ] 5.11 Git commit: `feat: phase 5 complete — core UI polished`
 
 ---

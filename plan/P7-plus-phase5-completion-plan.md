@@ -64,26 +64,28 @@
 
 ## Part 2 — The plan (ordered, each step = one revertable commit)
 
-### P7 — Mobile responsive sweep  · FE only · size **M** · **do first**
+### P7 — Mobile responsive sweep  · FE only · size **M** · ✅ DONE 2026-07-24
 Highest value / lowest risk, and directly the mobile-friendliness the whole app needs.
 Purely additive Tailwind wrapping — every step trivially revertable. Pattern per table:
 wrap in `<div class="overflow-x-auto">` nested inside the existing rounded container, add
 `min-w-[Npx]` to the `<table>`, change header rows `justify-between` → `flex flex-wrap
 gap-3 justify-between`, page padding `p-6` → `p-4 md:p-6`.
 
-- **P7.1** Finance tables — `LedgerTable`, `PayablesTable`, `ReceivablesTable`. (1 commit)
-- **P7.2** Purchasing list pages — `purchasing/+page` (All Purchases), `orders/`,
-  `receipts/`. (1 commit)
-- **P7.3** Purchasing detail/action — `[id]/`, `[id]/receive/`, `[id]/invoice/`, `new/`
-  + `OrderLinesTable`, `ReceiveLines`. (1 commit)
-- **P7.4** Inventory sub-pages — `receive/`, `brands/`, `categories/`, `opname/`,
-  `SuppliersTable`, `suppliers/[id]/`. (1 commit)
-- **P7.5** POS modals + misc — `InvoiceDetailModal` table, `PricingSimulator` table,
-  `customers/[id]` + `tickets/intake` padding. (1 commit)
-- **P7.6** One Playwright spec `p7-mobile-sweep.spec.ts` visiting each fixed page at 375px
-  asserting `documentElement.scrollWidth <= 376`. (1 commit)
+- [x] **P7.1** Finance tables — `LedgerTable`, `PayablesTable`, `ReceivablesTable`. (commit `b2a14f8`)
+- [x] **P7.2** Purchasing list pages — `purchasing/+page` (All Purchases), `orders/`,
+  `receipts/`, `invoices/`. (commit `c71d1e7`)
+- [x] **P7.3** Purchasing detail/action — `[id]/`, `[id]/receive/`, `[id]/invoice/`, `new/`
+  + `OrderLinesTable`, `OrderHeader`, `ReceiveLines`. (commit `3220c17`)
+- [x] **P7.4** Inventory sub-pages — `receive/`, `brands/`, `categories/`, `opname/`
+  (+ `OpnameFooter`), `suppliers/` (+ `SuppliersTable`). `suppliers/[id]/` audited, already
+  fine. (commit `c0bee31`)
+- [x] **P7.5** POS modals + misc — `InvoiceDetailModal` (2 tables + info grid + footer),
+  `PricingSimulator` (batch table), `customers/[id]` + `tickets/intake` padding. (commit `59c3c86`)
+- [x] **P7.6** `e2e/p7-mobile-sweep.spec.ts` — 7 tests (375px sweep of every page above +
+  1280px confirm-unchanged), all passing. (commit `658ecb4`)
 
-*Verification:* `svelte-check` 0 errors; the p7 spec + full suite green.
+*Verification, all confirmed:* `svelte-check` 710 files 0 errors after every sub-step;
+full e2e suite 37 tests green; `npm test` 179 backend unit passing (untouched, FE-only task).
 
 ### P8 — Global Search (5.7 / PLT-007) · BE + FE · size **M**
 - **P8.1** BE `GET /v1/search?q=` — tenant-scoped `ILIKE '%q%'` union across customers
@@ -142,6 +144,6 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 | Real P&L / Chart of Accounts / journal | ledger single-sided by design | Phase 2+ |
 
 ## Suggested order
-**P7 (mobile sweep) → P8 (search) → P10 (catalog) → P11 (tech actions) → P12 (POS polish)
-→ P9 (settings, largest).** P7 first because it makes everything already built usable on a
-phone; P9 last because it's the biggest and needs the most new backend.
+~~P7 (mobile sweep)~~ ✅ → **P8 (search, next)** → P10 (catalog) → P11 (tech actions) →
+P12 (POS polish) → P9 (settings, largest). P9 last because it's the biggest and needs the
+most new backend.

@@ -42,17 +42,19 @@ into small, individually-revertable steps, every FE step mobile-first.
   - **P4** ticket detail polish (timeline actor, cost-breakdown tiles, mobile layout) — *core half.*
   - **P5** finance dashboard Simple/Accountant toggle + `GET /v1/finance/ledger/summary`.
   - **P6** inventory search/low-stock filter + batch-history enrichment.
+  - **P7** mobile responsive sweep — every remaining table (finance, purchasing,
+    inventory sub-pages, 2 modals) that still forced page-wide horizontal scroll on a
+    phone, fixed across 6 individually-revertable commits.
 
-  Test baseline: **179 backend unit + 21 API e2e + 30 Playwright browser specs**, all green.
+  Test baseline: **179 backend unit + 21 API e2e + 37 Playwright browser specs**, all green.
 
 ### 🔧 In progress — Phase 5 remainder
 Detailed steps in **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**.
-Suggested order: **P7 → P8 → P10 → P11 → P12 → P9**.
+Suggested order: **P8 → P10 → P11 → P12 → P9**.
 
 | # | Task | PHASES.md | Layer | Note |
 |---|------|-----------|-------|------|
-| **P7** | Mobile responsive sweep (remaining tables) | — | FE | **do first.** finance/purchasing/inventory-sub tables still force page-wide horizontal scroll on a phone. Per-page commits. |
-| P8 | Global Search (top-bar, grouped) | 5.7 / PLT-007 | BE+FE | nothing built yet |
+| P8 | Global Search (top-bar, grouped) | 5.7 / PLT-007 | BE+FE | nothing built yet — **do next** |
 | P10 | Product Catalog (browse by category + supplier price comparison) | 5.5 | FE-mostly | data exists (`itemBrandPricing`), no view |
 | P11 | Technician quick actions on dashboard | 5.8 | FE | My Jobs done (P3); calendar/schedule deferred (no data model) |
 | P12 | POS touch polish (big buttons / tap targets) | 5.6 | FE | mostly done in P1.5; targeted pass |
@@ -134,7 +136,8 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
 - [/] P4 Ticket detail polish (5.3) — 2026-07-23 · core done; attachments deferred
 - [x] P5 Finance dashboard modes (5.9→built as DAS-004) — 2026-07-23
 - [x] P6 Inventory search + batch history (5.4) — 2026-07-23
-- [ ] P7 Mobile responsive sweep — see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
+- [x] P7 Mobile responsive sweep — 2026-07-24, see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
+      P7.1-P7.6, 6 commits. New `e2e/p7-mobile-sweep.spec.ts` (7 tests). Full suite 37 tests green.
 - [ ] P8 Global Search (5.7)
 - [ ] P9 Settings CRUD (5.10, incl. 2A.1)
 - [ ] P10 Product Catalog (5.5)
