@@ -22,6 +22,13 @@
 > 4 / 4.5 / 3E) and in git history. **Inline `plan/H*.md` links below are historical; those
 > files no longer exist.**
 >
+> **Same convention applies to every completed per-task file since** — `plan/F1..F8`,
+> `plan/4C-*`, and `plan/P1..P6` were all deleted on completion (2026-07-24 cleanup);
+> their evidence is in this file's checklist and in git. **Any `plan/…md` link below
+> pointing at an `F*`/`4C`/`P1`–`P6` file is likewise historical.** The live plan index is
+> **[`plan/README.md`](plan/README.md)**; the active Phase 5 detail is
+> **[`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md)**.
+>
 > **Phase 3.5 (Stabilization)** completed 2026-07-20, merged to `main`; 3.5B.2 (row
 > locking) was promoted `[/]` → `[x]` on 2026-07-21 after H9/H10 concurrency-tested it.
 > **Phase 4.5 (Finance Ledger, RBAC, Audit, API Hardening)** = the H-track: 4.5A (H11),

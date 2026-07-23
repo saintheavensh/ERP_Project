@@ -3,8 +3,9 @@
 > **Created 2026-07-24.** A codebase audit of what's genuinely done, what's half-built,
 > and what needs fixing across FlowServ, plus the remaining Phase 5 work broken into
 > **small, individually-revertable steps** (one commit per step). Same conventions as
-> [NEXT-STEPS.md](./NEXT-STEPS.md): one task file per P-item when it starts, self-contained,
-> marked done with evidence.
+> [README.md](./README.md): a task's `plan/*.md` file (if any) is authored when it starts and
+> deleted on completion — durable evidence moves to `PHASES.md`. Mark done in README's
+> Progress log with evidence.
 >
 > **Standing rule for every FE step below:** build/fix **mobile-first**. The app runs on
 > the service floor and at a POS counter, not only a desk (see `specification/08-ui-ux.md`

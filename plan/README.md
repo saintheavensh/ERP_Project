@@ -1,162 +1,142 @@
-# FlowServ — Continuation Plan (post-Hardening-Track)
+# FlowServ — Plan Index (master roadmap)
 
-> **Created 2026-07-23.** Replaces the Hardening Track plan (H0–H17), which is **complete
-> and merged to `main`**. The durable evidence for every H-task now lives in `PHASES.md`
-> (Phases 3.5 / 4 / 4.5 / 3E) and in git history (commits `d32e881`→`aa341c6`); the individual
-> `H*.md` task files were deleted on completion, the same way the Phase 3.5 scaffolding was.
+> **The single source for what is done, in progress, and not yet built.** `PHASES.md`
+> holds the authoritative per-task evidence; this file is the map over it. If the two ever
+> disagree, `PHASES.md` wins.
 >
-> **How to use this folder:** each `F*.md` / phase task file is self-contained — open one, do it,
-> mark it done in the Progress section below, commit. Detailed task files for Phase 5+ are authored
-> **when that phase is reached** (the H-track worked the same way: detailed files for the active
-> track, a roadmap table for what's further out).
+> **Convention (important):** a per-task `plan/*.md` file exists only while its task is
+> active. **On completion the file is deleted** — its durable evidence moves to `PHASES.md`
+> and lives forever in git history. This is how the Hardening Track (`H*.md`), Track F
+> (`F*.md`), and Phase 4C/5 task files were all handled. So: an inline `plan/…md` link in
+> `PHASES.md` pointing at a file that no longer exists is **expected** — it's a historical
+> marker, not a broken reference. Only *active* plans keep their files.
 >
-> **AI agent?** `CARA-PROMPT.md` still applies — ready-to-use prompt templates and the guardrails
-> that stop a task being marked done without evidence.
+> **AI agent?** `CARA-PROMPT.md` has ready-to-use prompt templates + the "no done without
+> evidence" guardrail.
 
 ---
 
-## Where we are
+## Current focus
 
-The backend + a functional CRUD frontend are built and tested (170 unit + 21 API e2e + 2
-Playwright browser specs passing, as of Track F's completion 2026-07-23). What's
-missing splits into two kinds, and **the first kind matters more than raw missing features**:
-
-1. **Flows that are wired up but lie** — orphaned endpoints, faked steps, dead buttons/enums, and
-   validation that only exists on the client. These make the app *look* like it does something it
-   doesn't. → **Track F** below.
-2. **Missing features** — whole MVP areas with no code. → **Phases 5–8** below.
-
-Full detail comes from a 6-domain gap audit (2026-07-23) and is summarized inline in each task file.
-
-### The dishonest flows the audit found (what Track F + 4C fix)
-- Technician assignment endpoint (H8) is **orphaned** — no UI calls it → F1.
-- "My Jobs" shows **all** tenant tickets, not the technician's → F2.
-- `cancelled` ticket status is a **dead enum** — nothing sets it, and reserved parts would leak → F3.
-- No way to **edit an inventory item** after creation → F4.
-- PO delete can corrupt stock (**guard commented out**) → F5.
-- `warranty_records` is an **orphaned table** (no code touches it) → F6.
-- Customer-detail "Create Ticket" button is **dead** (no action) → F7.
-- Six spec status headers are **stale** (understate what H8–H17 built) → F8.
-- **Margin is a frontend illusion** — columns never written, backend accepts any price → 4C.
-- (Bigger, deferred to later phases) customer approval is **faked**, refund permission is **dead**,
-  RBAC ignores **branch + multi-role**, and the sidebar uses **hardcoded role checks**.
+**Phase 5 — Core UI Polish**, on branch `phase-5/core-ui`.
+Active detailed plan: **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**
+— a full codebase audit (done / partial / needs-fix) plus the remaining Phase 5 work broken
+into small, individually-revertable steps, every FE step mobile-first.
 
 ---
 
-## Definition of Done (unchanged, applies to every task here)
+## Status at a glance
 
-> A task may be marked `[x]` only when there is **a passing automated test**, **a recorded API
-> request + response**, or **for frontend work, a click-path actually walked** (Playwright is now
-> installed — `flowserv-web/e2e/`). "I wrote the code and it looked correct" is **not** done.
+### ✅ Done — built, tested, merged/verified (evidence in `PHASES.md` + git)
+- **Foundations** — Hardening Track H0–H17 (auth, RBAC enforce/report, audit log, event-bus
+  finance ledger, idempotency, pagination, BusinessError, seed/reset). Phases 3.5 / 4.5 / 3E.
+- **Track F (F1–F8)** — made the dishonest flows honest: technician-assignment UI, "My Jobs"
+  filter, ticket cancellation (real `cancelled` + reservation release), inventory item edit,
+  PO delete guard, `warranty_records` deletion, live Create-Ticket button, spec-header refresh.
+- **Phase 4 / 4C** — purchasing, supplier AP, dynamic margin config **and** server-side price
+  enforcement (below-cost 422 / below-target warn).
+- **Phase 5 so far:**
+  - **P1.5** mobile app-shell (off-canvas drawer) + worst-offender table fixes.
+  - **P2** ticket Kanban board (columns = flow nodes, tap-to-move + desktop drag), mobile-first.
+  - **P3** per-role dashboards (Super Admin/Manager/Technician/Cashier) — *real-data half.*
+  - **P4** ticket detail polish (timeline actor, cost-breakdown tiles, mobile layout) — *core half.*
+  - **P5** finance dashboard Simple/Accountant toggle + `GET /v1/finance/ledger/summary`.
+  - **P6** inventory search/low-stock filter + batch-history enrichment.
 
----
+  Test baseline: **179 backend unit + 21 API e2e + 30 Playwright browser specs**, all green.
 
-## Track F — Finishing / honesty pass — ✅ COMPLETE (2026-07-23)
+### 🔧 In progress — Phase 5 remainder
+Detailed steps in **[P7-plus-phase5-completion-plan.md](./P7-plus-phase5-completion-plan.md)**.
+Suggested order: **P7 → P8 → P10 → P11 → P12 → P9**.
 
-Made the built flows honest before layering new UI on top. Mirrors how the H-track made the
-checkboxes true before building more. All 8 tasks done same-day; see the Progress section
-below for evidence links. **Next: Phase 4C** (`P1 — margin enforcement`, closes 4C.2).
+| # | Task | PHASES.md | Layer | Note |
+|---|------|-----------|-------|------|
+| **P7** | Mobile responsive sweep (remaining tables) | — | FE | **do first.** finance/purchasing/inventory-sub tables still force page-wide horizontal scroll on a phone. Per-page commits. |
+| P8 | Global Search (top-bar, grouped) | 5.7 / PLT-007 | BE+FE | nothing built yet |
+| P10 | Product Catalog (browse by category + supplier price comparison) | 5.5 | FE-mostly | data exists (`itemBrandPricing`), no view |
+| P11 | Technician quick actions on dashboard | 5.8 | FE | My Jobs done (P3); calendar/schedule deferred (no data model) |
+| P12 | POS touch polish (big buttons / tap targets) | 5.6 | FE | mostly done in P1.5; targeted pass |
+| P9 | Settings pages (Company / Branches / Users+Roles / Payment Methods) | 5.10 | BE+FE | **largest** — needs real CRUD; includes **2A.1 create-user**. Printer→Phase 6, RBAC matrix→Phase 7 |
 
-| # | Task | Size | Layer |
-|---|------|------|-------|
-| F1 | [Technician assignment UI](./F1-technician-assignment-ui.md) — wire the orphaned H8 endpoint | S | FE |
-| F2 | ["My Jobs" filter](./F2-my-jobs-filter.md) — technician sees only their tickets | S | FE |
-| F3 | [Ticket cancellation](./F3-ticket-cancellation.md) — real `cancelled` status + release reserved parts | M | BE+FE |
-| F4 | [Inventory item edit](./F4-inventory-item-edit.md) — `PUT /v1/inventory/:id` | S | BE+FE |
-| F5 | [PO delete guard](./F5-po-delete-guard.md) — block deleting a received/completed PO | S | BE |
-| F6 | [Warranty-records decision](./F6-warranty-records-decision.md) — adopt or delete the orphaned table | S | BE |
-| F7 | [Create-Ticket button](./F7-create-ticket-button.md) — wire the dead button → intake | S | FE |
-| F8 | [Refresh spec headers](./F8-refresh-spec-headers.md) — stop the 6 stale status headers lying | S | docs |
+### ⏳ Deferred / not built — tracked so nothing is forgotten
+| Item | Why | Lands in |
+|---|---|---|
+| Dashboard **widget framework** (drag/resize/persist/admin catalog, WDG-002..006) | P3 shipped real dashboards first | later Phase 5 or Phase 7 |
+| Ticket **attachments** (before/after photos, PLT-009) | spec Phase 2; no upload/storage infra; local-vs-cloud is a deploy decision | own task, post-MVP |
+| Technician **calendar / schedule / commission** (TECH-011/013) | no scheduling/commission data model | Phase 8 |
+| **RBAC** branch + multi-role in JWT; permission-driven sidebar | hardcoded role checks today | Phase 5.9-scope, see spec-03 |
+| Real **P&L / Chart of Accounts / journal** (double-entry) | ledger single-sided by design | Phase 2+ / Phase 8 |
+| **RBAC management UI** (permission matrix) | | Phase 7.3 |
+| **Printer** config UI + Python agent | | Phase 6 |
 
-> **Bigger "faked flow" fixes that are really features** (scheduled in later phases, not Track F
-> because of size): real customer approval portal → **Phase 8**; service refund (dead
-> `finance.approve_refund` permission) → **Phase 8**; RBAC branch/multi-role + permission-driven
-> sidebar → **Phase 5.9**.
-
----
-
-## Phase 4C — Dynamic margin pricing — ✅ COMPLETE (2026-07-23)
-
-| # | Task | Size | Layer |
-|---|------|------|-------|
-| 4C.1 | [Margin config endpoint](./4C-margin-config-and-validation.md) | M | BE+FE |
-| 4C.2 | [Server-side price validation](./P1-margin-enforcement.md) | M | BE+FE |
-
-Closes Phase 4 entirely. Branch hygiene resolved (see `NEXT-STEPS.md` Stage B): `main`
-was fast-forwarded to include everything, `track-f/honesty-fixes` and
-`phase-4/purchasing-completion` were deleted. **Next: Phase 5** (Core UI Polish),
-on a fresh `phase-5/core-ui` branch.
-
----
-
-## Phase 5 — Core UI Polish  *(the headline phase; biggest visible win)*
-> Detailed `5.*.md` task files to be authored when Phase 5 starts.
-
-| # | Task | Size | Layer | Notes |
-|---|------|------|-------|-------|
-| 5.1 | Per-role dashboards replacing the health-check landing page | L | BE+FE | Needs new KPI/count read endpoints. Spec design principle #1. |
-| 5.2 | Kanban ticket board (columns = flow stages, drag-drop → transition) | L | FE | Closes 3B.5. Add `svelte-dnd-action`. Stages: Intake→Diagnosis→Waiting Approval→Repair→Completion. |
-| 5.3 | Ticket detail polish (live cost/margin breakdown, approval panel, photo slots) | M | FE | |
-| 5.4 | Finance dashboard Simple/Accountant toggle + basic **P&L** | M | BE+FE | All data already in the ledger; aggregate it (DAS-004 / FIN-011). |
-| 5.5 | Audit-log viewer page | S | FE | Backend `GET /v1/audit-logs` already exists — pure FE win. |
-| 5.6 | Settings UIs (Company, Branches, Payment Methods) | M | BE+FE | Replaces the placeholder `/settings` page. |
-| 5.7 | Global search (top-bar; tickets/customers/inventory/invoices) | M | BE+FE | PLT-007. |
-| 5.8 | Technician dashboard + calendar/schedule | L | FE | Depends on F1/F2. Mobile-friendly (design principle #3). |
-| 5.9 | RBAC correctness: JWT carries all roles + branch scope; permission-driven sidebar | M | BE+FE | Fixes spec-03 mismatch + the hardcoded-role sidebar. |
-| 5.10 | Register / create-user endpoint (2A.1) | M | BE | Prerequisite for the RBAC management UI (Phase 7.3). |
+### Floating gaps (fold into whichever task touches them)
+- **2A.1 register / create-user endpoint** — still absent; now owned by **P9.2**.
+- **H16 module migration** — when you touch a not-yet-migrated module (`modules/pos/`,
+  `modules/purchasing/`), extract its `service.ts` + a test *then*. Never a refactor branch.
+- **`catch (err: any)` sweep** (~36 sites) → `catch (err: unknown)` + shared `toBusinessError()`.
+- **drizzle-zod adoption** (0 imports) — coding-guidelines §4 wants generated Zod schemas.
 
 ---
 
-## Phase 6 — Printer Integration (Python)
-Flask `POST /print` agent + python-escpos + per-paper-size templates (58/80mm) + printer CRUD routes
+## Definition of Done (applies to every task)
+
+> A task is `[x]` only with **a passing automated test**, **a recorded API request +
+> response**, or **for frontend work, a click-path actually walked** (Playwright is installed,
+> `flowserv-web/e2e/`). "I wrote the code and it looked correct" is **not** done.
+
+---
+
+## Later phases (roadmap — detailed task files authored when reached)
+
+### Phase 6 — Printer Integration (Python)
+Flask `POST /print` agent + python-escpos + per-paper-size templates (58/80mm) + printer CRUD
 over the existing `printer_*` schema tables + settings UI + PyInstaller packaging. Zero code today.
 
-## Phase 7 — Builder UIs
-Flow Template Builder (upgrade read-only `/flows/[id]` to a node/transition editor), Printer Template
-Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual permission matrix + custom roles;
-depends on 5.9/5.10).
+### Phase 7 — Builder UIs
+Flow Template Builder (upgrade read-only `/flows/[id]` to a node/transition editor), Printer
+Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual permission matrix
++ custom roles; depends on 5.9 / P9.2).
 
-## Phase 8 — Business Module Expansion  *(remaining MVP features, rough value order)*
+### Phase 8 — Business Module Expansion *(remaining MVP, rough value order)*
 - **Customer portal + magic-link approval** (SVC-007/CUST-009) — fixes the faked-approval flow · L
 - **Service refund** (SBL-005 — consumes the dead `finance.approve_refund` permission) · M
-- **Sales returns** (SAL-005 — void ≠ return; a paid sale can't be returned today) · L
+- **Sales returns** (SAL-005 — void ≠ return) · L
 - **Discount thresholds + approval** (SAL-006 — a cashier can currently zero out any sale) · M
 - **Service categories + labor pricing** (CAT-001) · M
-- **Stock adjustment / supplier returns / customer returns** (INV-008/009/010; opname is add-only) · M each
+- **Stock adjustment / supplier + customer returns** (INV-008/009/010; opname is add-only) · M each
 - **Stock-movement read endpoint** (INV-005 — written but never viewable) · M
 - **Customer/device service history** + duplicate detection (CUST-005/008, DEV-005) · M
-- **Warranty lifecycle** (WAR-001..006 — depends on F6) · L
+- **Warranty lifecycle** (WAR-001..006 — table was deleted in F6; design with the feature) · L
 - **Technician skills + assignment recommendation** (TECH-002/003) · L
-- **Expense + Cash management** (FIN-005/002 — without these any "profit" number overstates margin) · M/L
-- **Chart of Accounts / Journal / double-entry** (FIN-007/008/009 — currently a deliberate single-sided ledger; **design decision needed**) · L
+- **Expense + Cash management** (FIN-005/002 — without these any "profit" overstates margin) · M/L
+- **Chart of Accounts / Journal / double-entry** (FIN-007/008/009 — **design decision needed**) · L
 
-## Phase 9–11 — Testing, LAN, Production, VPS
-- **9:** integration tests beyond the one happy path, permission-matrix tests, multi-tenant isolation
-  tests, `0.0.0.0` binding, one-click launcher, realtime WebSocket (PLT-013 — declared in CLAUDE.md, not wired).
+### Phase 9–11 — Testing, LAN, Production, VPS
+- **9:** integration tests beyond the happy path, permission-matrix tests, multi-tenant isolation,
+  `0.0.0.0` binding, one-click launcher, realtime WebSocket (PLT-013 — declared, not wired).
 - **10:** real-shop onboarding, daily use, `pg_dump` backup strategy.
 - **11 — pre-VPS security debt** (confirmed live): make `JWT_SECRET` throw-on-missing
-  (`middleware/auth.ts:13`), remove the legacy SHA-256 password branch (`routes/auth.ts:30`), and
-  env-back the ~50 server-side `localhost:3001` URLs. *Recommend pulling the `JWT_SECRET` throw
-  forward — it's one line and zero-risk if `.env` already sets it.*
+  (`middleware/auth.ts`), remove the legacy SHA-256 password branch (`routes/auth.ts`), env-back
+  the ~50 server-side `localhost:3001` URLs. *Pull the `JWT_SECRET` throw forward — one line,
+  zero-risk if `.env` already sets it.*
 
 ---
 
-## Progress
+## Progress log
 
-Track F
-- [x] F1 Technician assignment UI — 2026-07-23
-- [x] F2 "My Jobs" filter — 2026-07-23
-- [x] F3 Ticket cancellation — 2026-07-23
-- [x] F4 Inventory item edit — 2026-07-23
-- [x] F5 PO delete guard — 2026-07-23
-- [x] F6 Warranty-records decision — 2026-07-23 (deleted; see PHASES.md Architecture Debt)
-- [x] F7 Create-Ticket button — 2026-07-23
-- [x] F8 Refresh spec headers — 2026-07-23 (Track F complete)
+**Track F** — ✅ COMPLETE 2026-07-23 (F1–F8). Evidence: `PHASES.md` Phase 3E/4 + git.
+**Phase 4C** — ✅ COMPLETE 2026-07-23 (4C.1 config, 4C.2 enforcement). Closes Phase 4.
 
-Phase 4C — ✅ COMPLETE (2026-07-23)
-- [x] 4C.1 Margin config endpoints (done on `phase-4/purchasing-completion`, merged in)
-- [x] 4C.2 Margin config + server-side price validation — see
-      [P1-margin-enforcement.md](./P1-margin-enforcement.md). Closes Phase 4.
-
-Phase 5+
-- [ ] Authored when reached (see roadmap tables above)
+**Phase 5** (branch `phase-5/core-ui`):
+- [x] P1.5 Mobile shell — 2026-07-23
+- [x] P2 Ticket Kanban (3B.5 / 5.2) — 2026-07-23
+- [/] P3 Role dashboards (5.1) — 2026-07-23 · real-data half done; widget framework deferred
+- [/] P4 Ticket detail polish (5.3) — 2026-07-23 · core done; attachments deferred
+- [x] P5 Finance dashboard modes (5.9→built as DAS-004) — 2026-07-23
+- [x] P6 Inventory search + batch history (5.4) — 2026-07-23
+- [ ] P7 Mobile responsive sweep — see [P7-plus plan](./P7-plus-phase5-completion-plan.md)
+- [ ] P8 Global Search (5.7)
+- [ ] P9 Settings CRUD (5.10, incl. 2A.1)
+- [ ] P10 Product Catalog (5.5)
+- [ ] P11 Technician quick actions (5.8)
+- [ ] P12 POS touch polish (5.6)
