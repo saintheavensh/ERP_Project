@@ -398,9 +398,19 @@ missing.
 
 ### 4C. Dynamic Margin Pricing
 > **Specced in detail: [`plan/4C-margin-config-and-validation.md`](plan/4C-margin-config-and-validation.md)** (closes 4C.1/4C.2/4C.5).
-- [/] 4C.1 BE: Margin Config (Markup/GrossMargin, Target %) — schema columns
-      `marginStrategy` / `targetMargin` exist on categories and items, but **no endpoint
-      sets them**. `settings.ts` only serves payment methods.
+- [x] 4C.1 BE: Margin Config (Markup/GrossMargin, Target %) — **done 2026-07-23.**
+      New pure `lib/margin.ts` (`resolveMarginConfig` item→category→default, `recommendedPrice`
+      for both strategies, `grossMarginPct`/`markupPct`, `meetsTarget`, `validateTargetMargin`),
+      25 unit tests. Config setters added: `PATCH /v1/categories/:id` (+ margin fields now
+      accepted on category create) and `PATCH /v1/inventory/:id` (margin config + sellingPrice +
+      light master fields) — both tenant-scoped, RBAC-gated (`catalog.manage` / `inventory.manage_items`),
+      audited, and reject a `gross_margin` target ≥ 100 with 400 `VALIDATION_ERROR`. FE: category
+      page now shows Margin Strategy / Target % columns and a real edit modal (the previously-dead
+      "Edit" button) plus margin fields in the create modal. Verified live (Super Admin, curl):
+      create-with-margin 201; PATCH category markup 35→gross_margin 40 200; gross_margin 100 → 400;
+      non-existent id → 404; item PATCH markup 50%+price 200; item gross_margin 120 → 400; clear
+      override (null,null) keeps price. `npm test` 162 passing (was 137, +25); `tsc` + `svelte-check`
+      clean. **4C.2 (enforce target on price writes) is still open** — see the plan below.
 - [ ] 4C.2 BE: Update product pricing when new stock arrives — ⚠️ **not automatic.** The
       margin calculation lives entirely in the frontend simulator; the backend accepts
       whatever `sellingPrice` the client sends and never validates it against `targetMargin`.

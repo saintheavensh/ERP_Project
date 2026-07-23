@@ -1,0 +1,76 @@
+# Next Steps — after the Hardening Track (P-series)
+
+> **Created 2026-07-23.** The Hardening Track (H0–H17) is complete; H16 remains a
+> standing rule, not an open task. This file is the roadmap for what comes next,
+> connecting `PHASES.md` to concrete, mentionable task files. Same conventions as
+> [README.md](./README.md): one task file per item, self-contained, marked done here
+> with evidence, committed per task.
+
+## Where we are (verified 2026-07-23)
+
+- All accumulated work is on `phase-4/purchasing-completion` and pushed to origin.
+  `origin/main` was 24 commits behind; **now synced** (pushed this session).
+- **4C.1 done** (margin config endpoints — commit `1b3ddbd`). `npm test`: 162 unit + 21 e2e.
+- Phase 4 is **one task from complete**: only 4C.2 (margin enforcement) remains.
+
+## The sequence
+
+### Stage A — Finish Phase 4 (do first, it's small and overdue)
+
+| # | Task | Size | Notes |
+|---|---|---|---|
+| P1 | [Margin enforcement on price writes](./P1-margin-enforcement.md) — closes 4C.2 | M | reuses `lib/margin.ts`; one block-vs-warn decision |
+| — | 4C.5: `feat: phase 4 complete — purchasing & margins` | S | the phase-complete commit, after P1 |
+
+### Stage B — Merge decision (branch hygiene)
+
+`phase-4/purchasing-completion` has carried the entire H-track + Phase 4. Once P1
+lands and Phase 4 is genuinely complete:
+- Merge `phase-4/purchasing-completion` → `main`, push `main`.
+- Branch fresh from `main` for Phase 5 (`phase-5/core-ui`), per the Git Workflow rule.
+
+Local `main` already points at the phase tip; the real action is a clean merge commit +
+push + a new branch. Don't start Phase 5 commits on the phase-4 branch.
+
+### Stage C — Phase 5 (Core UI Polish) — the next real phase
+
+Read `specification/08-ui-ux.md` + `specification/features/12-dashboard-reporting.md`
+first. Highest-value items, roughly in order:
+
+| # | Task | Size | Notes |
+|---|---|---|---|
+| P2 | Ticket Kanban board (PHASES.md 5.2, **closes the long-open 3B.5**) | M | columns = flow nodes, drag-drop via `svelte-dnd-action` (already in the stack); the flow engine already gives node ordering |
+| P3 | Per-role default dashboards + widgets (5.1) | L | split further if it stalls |
+| P4 | Ticket detail polish: timeline, cost breakdown, attachments (5.3) | M | most of the data already exists (charges, ledger, stage history) |
+| P5 | Finance dashboard: Simple/Accountant toggle (5.9) | M | builds on the H11 ledger + H14 receivables |
+| — | remaining 5.4–5.10 as capacity allows | — | inventory dashboard, product catalog, POS polish, global search, settings pages |
+
+### Stage D — Small floating gaps (fold into whichever phase touches them)
+
+| Item | Where it fits | Notes |
+|---|---|---|
+| 2A.1 register endpoint | Phase 5 settings / user mgmt, or Phase 8 | genuinely absent; only needed once multi-user self-signup matters. Low priority — a seeded admin creates users today. |
+| H16 module migration | every task, forever | when you touch a not-yet-migrated module (`modules/pos/`, `modules/purchasing/`), extract its `service.ts` + a test *then*. Never a dedicated refactor branch. |
+| `catch (err: any)` sweep (~36 sites) | per-module, as touched | → `catch (err: unknown)` + a shared `toBusinessError()`. |
+| drizzle-zod adoption (0 imports) | per-module, as touched | coding-guidelines §4 wants generated Zod schemas; hand-written today. |
+
+## Definition of Done (unchanged, applies to every P-task)
+
+A task is `[x]` only with **a passing automated test**, **a recorded API request +
+response**, or **for frontend work, a click-path actually walked** (Playwright is now
+installed in `flowserv-web` since H15 gap (b) — use it, no more SSR-cookie substitutes).
+
+## Progress
+
+Stage A
+- [ ] P1 Margin enforcement (4C.2)
+- [ ] 4C.5 Phase-4-complete commit
+
+Stage B
+- [ ] Merge phase-4 → main, branch phase-5/core-ui
+
+Stage C
+- [ ] P2 Ticket Kanban (3B.5 / 5.2)
+- [ ] P3 Role dashboards + widgets (5.1)
+- [ ] P4 Ticket detail polish (5.3)
+- [ ] P5 Finance dashboard modes (5.9)

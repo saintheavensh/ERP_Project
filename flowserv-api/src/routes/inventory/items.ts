@@ -7,6 +7,7 @@ import { requirePermission } from '../../middleware/rbac';
 import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../../lib/pagination';
+import { validateTargetMargin, DEFAULT_MARGIN_STRATEGY, MARGIN_STRATEGIES, type MarginStrategy } from '../../lib/margin';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 
@@ -242,6 +243,56 @@ router.get('/:id', async (c) => {
     return successResponse(c, item);
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch item', [err.message]);
+  }
+});
+
+// PATCH /v1/inventory/:id — update margin config (4C.1), base selling price, and
+// light master fields. Item-level margin config overrides its category's.
+const updateItemSchema = z.object({
+  name: z.string().min(1).optional(),
+  categoryId: z.string().uuid().nullish(),
+  sellingPrice: z.number().min(0).optional(),
+  reorderPoint: z.number().int().min(0).optional(),
+  marginStrategy: z.enum(MARGIN_STRATEGIES as unknown as [MarginStrategy, ...MarginStrategy[]]).nullish(),
+  targetMargin: z.number().nullish(),
+});
+
+router.patch('/:id', requirePermission('inventory.manage_items'), zValidator('json', updateItemSchema), auditMiddleware({ action: 'inventory_item.update', entityType: 'inventory_item', entityIdParam: 'id', bodyFields: ['name', 'categoryId', 'sellingPrice', 'reorderPoint', 'marginStrategy', 'targetMargin'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
+
+  try {
+    const existing = await db.query.inventoryItems.findFirst({
+      where: and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId)),
+    });
+    if (!existing) return errorResponse(c, 'NOT_FOUND', 'Item not found', [], 404);
+
+    // Validate targetMargin against the item's effective strategy after the update.
+    const effectiveStrategy = (data.marginStrategy ?? existing.marginStrategy ?? DEFAULT_MARGIN_STRATEGY) as MarginStrategy;
+    const effectiveTarget = data.targetMargin !== undefined
+      ? data.targetMargin
+      : (existing.targetMargin == null ? null : parseFloat(existing.targetMargin));
+    const marginErr = effectiveTarget == null ? null : validateTargetMargin(effectiveStrategy, effectiveTarget);
+    if (marginErr) return errorResponse(c, 'VALIDATION_ERROR', marginErr, [], 400);
+
+    const patch: Record<string, unknown> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.categoryId !== undefined) patch.categoryId = data.categoryId;
+    if (data.sellingPrice !== undefined) patch.sellingPrice = data.sellingPrice.toString();
+    if (data.reorderPoint !== undefined) patch.reorderPoint = data.reorderPoint;
+    if (data.marginStrategy !== undefined) patch.marginStrategy = data.marginStrategy;
+    if (data.targetMargin !== undefined) patch.targetMargin = data.targetMargin == null ? null : data.targetMargin.toString();
+
+    if (Object.keys(patch).length === 0) return successResponse(c, existing);
+
+    const [updated] = await db.update(inventoryItems)
+      .set(patch)
+      .where(and(eq(inventoryItems.id, id), eq(inventoryItems.tenantId, tenantId)))
+      .returning();
+    return successResponse(c, updated);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update item', [err.message]);
   }
 });
 
