@@ -53,6 +53,12 @@ export const IDS = {
   permAuditView: 'd1000000-0000-4000-8000-000000000021',
   // F3 — cancel a service ticket (SVC-013).
   permTicketCancel: 'd1000000-0000-4000-8000-000000000022',
+  // P9 — Settings CRUD (5.10). Admin-only per specification/features/13-settings.md
+  // (SET-001 "Admin access only"; SET-002/003/004 "Admin manages") — deliberately
+  // NOT granted to Manager below, same pattern as permAuditView.
+  permBranchManage: 'd1000000-0000-4000-8000-000000000023',
+  permUserManage: 'd1000000-0000-4000-8000-000000000024',
+  permSettingsManageCompany: 'd1000000-0000-4000-8000-000000000025',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',

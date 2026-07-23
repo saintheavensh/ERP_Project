@@ -50,6 +50,11 @@ const PERMISSIONS = [
   // F3 — SVC-013 lists this as CS/Branch Mgr; Manager is this codebase's
   // stand-in for Branch Mgr (see the H12 note on ROLE_PERMISSION_CODES).
   { id: IDS.permTicketCancel, code: 'ticket.cancel', description: 'Cancel a service ticket and release its reserved parts' },
+
+  // P9 — Settings CRUD (5.10). Admin-only, see the IDS.permBranchManage comment.
+  { id: IDS.permBranchManage, code: 'branch.manage', description: 'Create or edit branches' },
+  { id: IDS.permUserManage, code: 'user.manage', description: 'Create users and change their status/role' },
+  { id: IDS.permSettingsManageCompany, code: 'settings.manage_company', description: 'Edit the company/tenant profile' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
