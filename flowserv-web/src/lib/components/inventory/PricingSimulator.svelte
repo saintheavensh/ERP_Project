@@ -114,7 +114,8 @@
         <div>
           <h3 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Rincian Penjualan per Batch (Urutan FIFO)</h3>
           <div class="border border-slate-200 rounded-lg overflow-hidden">
-            <table class="w-full text-left text-sm">
+           <div class="overflow-x-auto">
+            <table class="w-full min-w-[560px] text-left text-sm">
               <thead class="bg-slate-50 text-slate-500 font-medium">
                 <tr>
                   <th class="p-3">Tanggal Diterima</th>
@@ -145,6 +146,7 @@
                 {/each}
               </tbody>
             </table>
+           </div>
           </div>
         </div>
       </div>

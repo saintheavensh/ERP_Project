@@ -12,7 +12,7 @@
   <title>New Intake | FlowServ</title>
 </svelte:head>
 
-<div class="p-6 max-w-4xl mx-auto">
+<div class="p-4 md:p-6 max-w-4xl mx-auto">
   <div class="mb-6 flex items-center gap-4">
     <a href="/tickets" class="text-slate-500 hover:text-slate-800 transition-colors" aria-label="Back to tickets">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

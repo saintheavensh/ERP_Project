@@ -15,7 +15,7 @@
       </div>
       
       <div class="p-6 overflow-y-auto">
-        <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-sm">
           <div>
             <p class="text-slate-500">Tanggal Transaksi</p>
             <p class="font-medium text-slate-800">{state.formatDate(state.selectedInvoiceDetail.createdAt)}</p>
@@ -52,7 +52,8 @@
         {#if state.selectedInvoiceDetail.payments && state.selectedInvoiceDetail.payments.length > 0}
           <h4 class="font-semibold text-slate-800 mb-3 border-b pb-2">Riwayat Pembayaran</h4>
           <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden mb-6">
-            <table class="w-full text-left text-sm">
+           <div class="overflow-x-auto">
+            <table class="w-full min-w-[500px] text-left text-sm">
               <thead class="bg-slate-100 border-b border-slate-200">
                 <tr>
                   <th class="p-3 font-medium text-slate-600">Tanggal</th>
@@ -72,6 +73,7 @@
                 {/each}
               </tbody>
             </table>
+           </div>
           </div>
         {/if}
 
@@ -84,7 +86,8 @@
           </div>
         {:else if state.selectedInvoiceDetail.lines && state.selectedInvoiceDetail.lines.length > 0}
           <div class="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
-            <table class="w-full text-left text-sm">
+           <div class="overflow-x-auto">
+            <table class="w-full min-w-[500px] text-left text-sm">
               <thead class="bg-slate-100 border-b border-slate-200">
                 <tr>
                   <th class="p-3 font-medium text-slate-600">Item</th>
@@ -111,6 +114,7 @@
                 {/each}
               </tbody>
             </table>
+           </div>
           </div>
           
           <div class="mt-4 space-y-1 text-sm flex flex-col items-end border-t border-dashed pt-4">
@@ -132,8 +136,8 @@
         {/if}
       </div>
       
-      <div class="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
-        <div>
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex flex-wrap justify-between items-center gap-2">
+        <div class="flex flex-wrap gap-2">
           {#if state.selectedInvoiceDetail.status !== 'voided'}
             {#if state.selectedInvoiceDetail.paymentStatus !== 'paid'}
               <button onclick={() => state.openPayModal(state.selectedInvoiceDetail)} class="px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 font-medium rounded-lg transition-colors border border-green-200 mr-2">
