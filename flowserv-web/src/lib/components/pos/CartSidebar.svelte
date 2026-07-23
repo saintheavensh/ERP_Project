@@ -84,10 +84,18 @@
             </div>
             <div class="flex justify-between items-center">
               <span class="text-xs text-slate-500">{pos.formatRp(item.unitPrice)} /pcs</span>
-              <div class="flex items-center space-x-3 bg-white border border-slate-200 rounded-md">
-                <button class="px-2 py-1 text-slate-500 hover:bg-slate-100 rounded-l-md" onclick={() => pos.cart.updateQty(i, -1)}>-</button>
-                <span class="text-sm font-medium w-4 text-center">{item.quantity}</span>
-                <button class="px-2 py-1 text-slate-500 hover:bg-slate-100 rounded-r-md" onclick={() => pos.cart.updateQty(i, 1)}>+</button>
+              <div class="flex items-center bg-white border border-slate-200 rounded-md">
+                <button
+                  aria-label="Kurangi jumlah"
+                  class="w-10 h-10 flex items-center justify-center text-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 rounded-l-md"
+                  onclick={() => pos.cart.updateQty(i, -1)}
+                >-</button>
+                <span class="text-sm font-medium w-6 text-center">{item.quantity}</span>
+                <button
+                  aria-label="Tambah jumlah"
+                  class="w-10 h-10 flex items-center justify-center text-lg text-slate-500 hover:bg-slate-100 active:bg-slate-200 rounded-r-md"
+                  onclick={() => pos.cart.updateQty(i, 1)}
+                >+</button>
               </div>
             </div>
           </div>
