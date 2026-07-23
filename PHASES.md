@@ -74,9 +74,16 @@ missing.
 - **Before starting work:** Check current branch with `git branch`
 - **Never commit to `main` directly** — always work in a phase branch
 
-> **Branch debt — RESOLVED 2026-07-23:** the entire Hardening Track (H0–H17) is now
-> merged to `main` (`main` is current — the H-track commits `428d9a5`→`aa341c6` are on it).
-> The old `phase-4/purchasing-completion` branch survives only on the remote as history.
+> **Branch debt — RESOLVED 2026-07-23 (again).** After the H-track merge above, `main`
+> diverged a second time: `phase-4/purchasing-completion` picked up 4C.1, while a
+> separate `track-f/honesty-fixes` branch (forked from the same H-track tip) did
+> Track F (F1–F8) and later merged `phase-4/purchasing-completion` into itself before
+> finishing 4C.2. Both were strict ancestors of `track-f/honesty-fixes` with zero
+> unique commits of their own by the time Phase 4 closed, so `main` was fast-forwarded
+> straight to `track-f/honesty-fixes`'s tip (`60306ce`) — a real merge was never
+> needed. Both `phase-4/purchasing-completion` and `track-f/honesty-fixes` were then
+> deleted (local + remote) since nothing in them exists outside `main`'s history now.
+> **Phase 5 work starts on `phase-5/core-ui`, branched fresh from this `main`.**
 
 ---
 

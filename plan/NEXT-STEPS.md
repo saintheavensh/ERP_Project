@@ -22,15 +22,17 @@
 | P1 | [Margin enforcement on price writes](./P1-margin-enforcement.md) — closes 4C.2 | M | reuses `lib/margin.ts`; one block-vs-warn decision |
 | — | 4C.5: `feat: phase 4 complete — purchasing & margins` | S | the phase-complete commit, after P1 |
 
-### Stage B — Merge decision (branch hygiene)
+### Stage B — Merge decision (branch hygiene) — ✅ RESOLVED 2026-07-23
 
-`phase-4/purchasing-completion` has carried the entire H-track + Phase 4. Once P1
-lands and Phase 4 is genuinely complete:
-- Merge `phase-4/purchasing-completion` → `main`, push `main`.
-- Branch fresh from `main` for Phase 5 (`phase-5/core-ui`), per the Git Workflow rule.
-
-Local `main` already points at the phase tip; the real action is a clean merge commit +
-push + a new branch. Don't start Phase 5 commits on the phase-4 branch.
+What actually happened (this section's original plan assumed a merge that turned out
+not to be necessary): Track F (F1–F8) landed on a separate `track-f/honesty-fixes`
+branch, which merged `phase-4/purchasing-completion` into itself partway through
+(before F4) rather than the other way around. By the time P1/4C.2 landed,
+`track-f/honesty-fixes` was a strict superset of both `main` and
+`phase-4/purchasing-completion` — zero unique commits on either side — so `main` was
+**fast-forwarded** straight to `track-f/honesty-fixes`'s tip (`60306ce`), pushed, and
+both now-fully-contained branches were deleted (local + remote). `phase-5/core-ui`
+is branched fresh from this `main`.
 
 ### Stage C — Phase 5 (Core UI Polish) — the next real phase
 

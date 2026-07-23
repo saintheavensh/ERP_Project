@@ -82,8 +82,10 @@ below for evidence links. **Next: Phase 4C** (`P1 — margin enforcement`, close
 | 4C.1 | [Margin config endpoint](./4C-margin-config-and-validation.md) | M | BE+FE |
 | 4C.2 | [Server-side price validation](./P1-margin-enforcement.md) | M | BE+FE |
 
-Closes Phase 4 entirely. **Next: Phase 5** (Core UI Polish) — see Stage B in
-[NEXT-STEPS.md](./NEXT-STEPS.md) for the open branch-hygiene question before starting it.
+Closes Phase 4 entirely. Branch hygiene resolved (see `NEXT-STEPS.md` Stage B): `main`
+was fast-forwarded to include everything, `track-f/honesty-fixes` and
+`phase-4/purchasing-completion` were deleted. **Next: Phase 5** (Core UI Polish),
+on a fresh `phase-5/core-ui` branch.
 
 ---
 
