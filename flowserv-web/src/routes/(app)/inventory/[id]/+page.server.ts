@@ -7,6 +7,7 @@ export const load = async ({ locals, params }) => {
   let item = null;
   let allModels = [];
   let categories = [];
+  let branches = [];
 
   try {
     const res = await fetch(`http://localhost:3001/v1/inventory/${params.id}`, {
@@ -33,9 +34,20 @@ export const load = async ({ locals, params }) => {
       const result = await categoriesRes.json();
       categories = result.data || [];
     }
+
+    // P6 — batch history shows which branch each batch was received into.
+    // stockBatches has no `branch` relation (only a raw branchId), and with
+    // just 2 branches in practice a lookup list is simpler than a schema change.
+    const branchesRes = await fetch('http://localhost:3001/v1/branches', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (branchesRes.ok) {
+      const result = await branchesRes.json();
+      branches = result.data || [];
+    }
   } catch (err) {
     console.error('Failed to load product details', err);
   }
 
-  return { token, item, allModels, categories };
+  return { token, item, allModels, categories, branches };
 };

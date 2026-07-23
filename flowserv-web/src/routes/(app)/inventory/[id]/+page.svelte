@@ -11,6 +11,7 @@
   let item = $derived(data.item);
   let allModels = $derived(data.allModels || []);
   let categories = $derived(data.categories || []);
+  let branches = $derived(data.branches || []);
 
   // F4 — edit master data (name, category, universal code, unit, price, reorder point, margin)
   let showEditModal = $state(false);
@@ -102,7 +103,7 @@
       <!-- Kolom Kiri: Info Dasar & Stok -->
       <div class="lg:col-span-1 space-y-6">
         <InventoryHeader {item} />
-        <StockBatches batches={item.stockBatches} />
+        <StockBatches batches={item.stockBatches} {branches} />
       </div>
       
       <!-- Kolom Kanan: Kompatibilitas & Harga Merk -->

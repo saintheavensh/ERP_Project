@@ -1,5 +1,13 @@
 <script lang="ts">
-  let { batches } = $props<{ batches: any[] }>();
+  let { batches, branches = [] }: { batches: any[]; branches?: any[] } = $props();
+
+  function branchName(branchId: string) {
+    return branches.find((b: any) => b.id === branchId)?.name || '-';
+  }
+
+  function formatDate(d: string) {
+    return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
 </script>
 
 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
@@ -15,7 +23,12 @@
             </span>
           </div>
           <div class="text-xs text-slate-500">
-            HPP: Rp {parseFloat(batch.unitCost).toLocaleString('id-ID')}
+            HPP: Rp {parseFloat(batch.unitCost).toLocaleString('id-ID')} &bull; Diterima: {batch.quantityReceived}
+          </div>
+          <!-- P6 — the API already returns supplier + receivedAt + branchId per
+               batch; this was previously unrendered (INV-004 batch history gap). -->
+          <div class="text-xs text-slate-400 mt-1">
+            {batch.supplier?.name || 'Tanpa Supplier'} &bull; {branchName(batch.branchId)} &bull; {formatDate(batch.receivedAt)}
           </div>
         </div>
       {/each}

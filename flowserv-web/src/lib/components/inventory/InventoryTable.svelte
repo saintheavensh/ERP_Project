@@ -19,7 +19,7 @@
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
-      {#each inv.inventory as item}
+      {#each inv.filteredInventory as item}
         {@const margin = inv.getMarginInfo(item)}
         <tr class="hover:bg-slate-50 transition-colors">
           <td class="p-4 font-mono text-sm text-slate-500">{item.sku}</td>

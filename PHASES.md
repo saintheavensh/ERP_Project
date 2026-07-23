@@ -629,7 +629,17 @@ missing.
       new Playwright tests; full suite (21 tests across P1.5/P2/P3/P4 +
       intake-to-close + F7) passing together; `npm test` 179 unit passing;
       `svelte-check` 706 files 0 errors.
-- [ ] 5.4 Inventory Dashboard: Stock levels, low-stock alerts, batch history
+- [x] 5.4 Inventory Dashboard: Stock levels, low-stock alerts, batch history — done
+      2026-07-23 as P6, see [`plan/P6-inventory-dashboard-gaps.md`](plan/P6-inventory-dashboard-gaps.md).
+      Not a new page — stock levels + low-stock badges already existed on `/inventory`,
+      and P3 already had a low-stock tile; the real gaps were narrow. Added: search +
+      "Stok Menipis" filter on `/inventory` (client-side, full list already fetched);
+      P3's dashboard tile now deep-links to `/inventory?lowStock=true` (previously went
+      to a generic unfiltered page despite implying otherwise); batch history
+      (`StockBatches.svelte`, INV-004) now shows supplier name, branch, received date,
+      and quantity received — all already returned by the API, just unrendered before
+      this. Frontend-only change. 5 new Playwright tests; full suite (30 tests) passing
+      together; `svelte-check` 710 files 0 errors.
 - [ ] 5.5 Product Catalog: Browse by category, supplier price comparison
 - [ ] 5.6 POS/Cashier Screen: Touch-friendly, big buttons
 - [ ] 5.7 Global Search: Typo-tolerant, grouped results

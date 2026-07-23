@@ -3,6 +3,10 @@ import { API_BASE } from '$lib/api/config';
 export class InventoryState {
   data: any = $state({});
   showAddModal = $state(false);
+  // P6 — client-side filters. The full list is already fetched via
+  // fetchAllPages server-side, so no new backend query is needed.
+  searchQuery = $state('');
+  lowStockOnly = $state(false);
   form = $state({
     sku: `SKU-${Math.floor(Math.random() * 100000)}`,
     universalCode: '',
@@ -18,11 +22,29 @@ export class InventoryState {
 
   constructor(data: any) {
     this.data = data;
+    // P6 — deep-link support: P3's "Stok Menipis" dashboard tile links to
+    // /inventory?lowStock=true, so the filter should already be applied on
+    // arrival, not require a second click.
+    this.lowStockOnly = data.initialLowStockOnly === true;
   }
 
   get inventory() { return this.data.inventory || []; }
   get categories() { return this.data.categories || []; }
   get brands() { return this.data.brands || []; }
+
+  get filteredInventory() {
+    let items = this.inventory;
+    if (this.lowStockOnly) {
+      items = items.filter((i: any) => i.totalAvailable <= i.reorderPoint);
+    }
+    const q = this.searchQuery.trim().toLowerCase();
+    if (q) {
+      items = items.filter(
+        (i: any) => i.name?.toLowerCase().includes(q) || i.sku?.toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }
 
   resetForm() {
     this.form = {

@@ -1,9 +1,12 @@
 import { redirect } from '@sveltejs/kit';
 import { fetchAllPages } from '$lib/api/pagination';
 
-export const load = async ({ locals }) => {
+export const load = async ({ locals, url }) => {
   const token = locals.token;
   if (!token) throw redirect(302, '/login');
+
+  // P6 — deep-link from the dashboard's "Stok Menipis" tile.
+  const initialLowStockOnly = url.searchParams.get('lowStock') === 'true';
 
   let inventory = [];
   let categories = [];
@@ -33,5 +36,5 @@ export const load = async ({ locals }) => {
     console.error('Failed to load inventory data', err);
   }
 
-  return { token, inventory, categories, brands };
+  return { token, inventory, categories, brands, initialLowStockOnly };
 };

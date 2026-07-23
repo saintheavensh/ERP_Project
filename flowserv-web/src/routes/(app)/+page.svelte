@@ -24,7 +24,7 @@
         value={String(o.lowStockCount)}
         subtitle={o.lowStockCount > 0 ? 'Perlu perhatian' : 'Aman'}
         tone={o.lowStockCount > 0 ? 'warning' : 'success'}
-        href="/inventory"
+        href="/inventory?lowStock=true"
       />
       <StatCard title="Piutang (AR)" value={formatRp(o.arTotal)} subtitle={`${o.arCount} faktur belum lunas`} href="/finance/receivables" />
       <StatCard title="Hutang (AP)" value={formatRp(o.apTotal)} subtitle={`${o.apCount} tagihan belum lunas`} href="/finance/payables" />

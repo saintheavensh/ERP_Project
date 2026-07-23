@@ -46,7 +46,8 @@ first. Highest-value items, roughly in order:
 | P3 | Per-role default dashboards + widgets (5.1) | L | split further if it stalls |
 | P4 | Ticket detail polish: timeline, cost breakdown, attachments (5.3) | M | most of the data already exists (charges, ledger, stage history) |
 | P5 | Finance dashboard: Simple/Accountant toggle (5.9) | M | builds on the H11 ledger + H14 receivables |
-| — | remaining 5.4–5.10 as capacity allows | — | inventory dashboard, product catalog, POS polish, global search, settings pages |
+| P6 | [Inventory dashboard gaps](./P6-inventory-dashboard-gaps.md) (5.4) | S | turned out narrow — search/filter + batch-history enrichment, not a new page |
+| — | remaining 5.5–5.8, 5.10 as capacity allows | — | product catalog, POS polish, global search, technician quick-actions/calendar, settings pages |
 
 ### Stage D — Small floating gaps (fold into whichever phase touches them)
 
@@ -88,3 +89,6 @@ Stage C
 - [x] P5 Finance dashboard modes (5.9) — 2026-07-23, see [P5-finance-dashboard.md](./P5-finance-dashboard.md).
       New /finance page, Simple/Accountant mode toggle, small backend ledger-summary
       aggregation endpoint. COA/journal entries/exports explicitly out of scope.
+- [x] P6 Inventory dashboard gaps (5.4) — 2026-07-23, see [P6-inventory-dashboard-gaps.md](./P6-inventory-dashboard-gaps.md).
+      Search + low-stock filter on /inventory, dashboard tile deep-link, batch history
+      enriched with supplier/branch/date. Frontend-only, no new page needed.
