@@ -121,13 +121,24 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 - *Out of scope here:* Printer config (Phase 6), RBAC permission-matrix editor (Phase 7) —
   link to them as "coming in Phase 6/7" placeholders.
 
-### P10 — Product Catalog (5.5 / SUP-009) · FE-mostly · size **M**
-- **P10.1** BE (only if needed) — a supplier-price-comparison read endpoint, or confirm
-  the existing item + `itemBrandPricing` + `supplierBrands` data is enough client-side.
-- **P10.2** FE `/inventory/catalog` — browse grouped by category, card grid (mobile:
-  1-col → `sm:2` → `lg:3`), each card linking to the item detail.
-- **P10.3** FE price-comparison view per item (brands/suppliers side by side) +
-  `p10-catalog.spec.ts`.
+### P10 — Product Catalog (5.5 / SUP-009) · FE-mostly · size **M** · ✅ DONE 2026-07-24
+- [x] **P10.1** BE — no new endpoint needed. `GET /v1/inventory/:id` gained
+  `productSuppliers` (with `supplier`): the relation already existed
+  (`relations.ts`) and was already seeded with real data, but had zero
+  consumers — the audit in Part 1 missed this one because it doesn't show up
+  as a broken UI, just a table nobody reads. (commit `cdb4668`)
+- [x] **P10.2** FE `/inventory/catalog` — browse grouped by category, card grid
+  (mobile 1-col → `sm:2` → `lg:3`), reusing the same list data `/inventory`
+  already fetches. Search + category-select filter, linked from the sidebar
+  and a new button on `/inventory`. (commit `1d4bf2c`)
+- [x] **P10.3** FE `SupplierComparison.svelte` on the item detail page — supplier
+  name, last price, "Utama" badge on the primary supplier, next to the
+  existing `BrandPricing` table (brand comparison already existed there).
+  `e2e/p10-catalog.spec.ts` — 6 tests. (commit `1d4bf2c`)
+
+*Verification, all confirmed:* live curl (two suppliers, correct `isPrimary`/
+`lastPrice`); `svelte-check` 717 files 0 errors; full e2e suite 49 tests green;
+`npm test` 183 backend unit passing (untouched by P10.2/P10.3).
 
 ### P11 — Technician quick actions (5.8, buildable part) · FE · size **S**
 - **P11.1** Add Quick-Action buttons to the Technician dashboard (from P3's My Jobs tile):
@@ -154,6 +165,6 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 | Real P&L / Chart of Accounts / journal | ledger single-sided by design | Phase 2+ |
 
 ## Suggested order
-~~P7 (mobile sweep)~~ ✅ → ~~P8 (search)~~ ✅ → **P10 (catalog, next)** → P11 (tech actions) →
+~~P7 (mobile sweep)~~ ✅ → ~~P8 (search)~~ ✅ → ~~P10 (catalog)~~ ✅ → **P11 (tech actions, next)** →
 P12 (POS polish) → P9 (settings, largest). P9 last because it's the biggest and needs the
 most new backend.

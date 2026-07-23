@@ -647,7 +647,26 @@ missing.
       and quantity received — all already returned by the API, just unrendered before
       this. Frontend-only change. 5 new Playwright tests; full suite (30 tests) passing
       together; `svelte-check` 710 files 0 errors.
-- [ ] 5.5 Product Catalog: Browse by category, supplier price comparison
+- [x] 5.5 Product Catalog: Browse by category, supplier price comparison — done
+      2026-07-24 as P10, see [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
+      No new list endpoint: `GET /v1/inventory/:id` gained `productSuppliers`
+      (with `supplier`) — the item↔supplier price-comparison relation already
+      existed in the schema, was already seeded with real data ("supaya
+      katalog & batch tidak saling bertentangan" — the seed comment itself
+      anticipated this feature), but had zero routes or FE reading it, the
+      same orphaned-data shape as the `warranty_records` table F6 deleted.
+      New `/inventory/catalog`: browse-by-category card grid over the same
+      list data the main table already fetches (category, brandPricing,
+      totalAvailable), client-side search + category filter, linked from the
+      sidebar and a new button on `/inventory`. Item detail page gained a
+      `SupplierComparison.svelte` section next to the existing `BrandPricing`
+      table — supplier name, last price, an "Utama" badge on the primary
+      supplier — so brand and supplier price comparisons are both visible
+      without leaving the page. 6 new Playwright tests (grouping, search,
+      category filter, supplier-comparison content, list↔catalog cross-link,
+      mobile no-overflow). Live-verified via curl: an item with two suppliers
+      returns both with correct `isPrimary`/`lastPrice`. Full suite: 49
+      Playwright + 183 backend unit passing; `svelte-check` 717 files 0 errors.
 - [ ] 5.6 POS/Cashier Screen: Touch-friendly, big buttons
 - [x] 5.7 Global Search: grouped results — done 2026-07-24 as P8, see
       [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
