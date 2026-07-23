@@ -26,6 +26,13 @@ authRouter.post('/login', zValidator('json', loginSchema), async (c) => {
     return errorResponse(c, 'AUTH_FAILED', 'Invalid email or password', [], 401);
   }
 
+  // P9.2 — the Settings > Users "Nonaktifkan" action (users.status) was
+  // previously write-only: nothing ever read it back, so deactivating a user
+  // there would not actually have stopped them from logging in.
+  if (user.status !== 'active') {
+    return errorResponse(c, 'ACCOUNT_INACTIVE', 'This account has been deactivated', [], 401);
+  }
+
   let isMatch = false;
   if (user.passwordHash.length === 64) {
     const crypto = await import('node:crypto');

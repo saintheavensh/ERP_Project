@@ -47,7 +47,7 @@ branchesRouter.post('/', requirePermission('branch.manage'), zValidator('json', 
 
     return successResponse(c, branch, undefined, 201);
   } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to create branch', [err.message]);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to create branch', [err.message], 500);
   }
 });
 
@@ -80,6 +80,6 @@ branchesRouter.patch('/:id', requirePermission('branch.manage'), zValidator('jso
 
     return successResponse(c, updated);
   } catch (err: any) {
-    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update branch', [err.message]);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update branch', [err.message], 500);
   }
 });
