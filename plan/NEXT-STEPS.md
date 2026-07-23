@@ -85,4 +85,6 @@ Stage C
       Timeline actor name + cost-breakdown tiles + mobile-responsive pass done;
       attachments (photos) deferred to its own task by explicit scope decision
       (spec marks it Phase 2, zero infra exists).
-- [ ] P5 Finance dashboard modes (5.9)
+- [x] P5 Finance dashboard modes (5.9) — 2026-07-23, see [P5-finance-dashboard.md](./P5-finance-dashboard.md).
+      New /finance page, Simple/Accountant mode toggle, small backend ledger-summary
+      aggregation endpoint. COA/journal entries/exports explicitly out of scope.

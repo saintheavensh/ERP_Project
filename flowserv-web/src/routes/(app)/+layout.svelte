@@ -43,6 +43,7 @@
         label: 'Finance', 
         path: '/finance',
         subItems: [
+          { label: 'Ringkasan', path: '/finance' },
           { label: 'Accounts Payable', path: '/finance/payables' },
           { label: 'Accounts Receivable', path: '/finance/receivables' },
           { label: 'Ledger', path: '/finance/ledger' }
@@ -59,6 +60,7 @@
         label: 'Finance',
         path: '/finance',
         subItems: [
+          { label: 'Ringkasan', path: '/finance' },
           { label: 'Accounts Payable', path: '/finance/payables' },
           { label: 'Accounts Receivable', path: '/finance/receivables' },
           { label: 'Ledger', path: '/finance/ledger' }

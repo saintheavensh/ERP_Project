@@ -634,7 +634,23 @@ missing.
 - [ ] 5.6 POS/Cashier Screen: Touch-friendly, big buttons
 - [ ] 5.7 Global Search: Typo-tolerant, grouped results
 - [ ] 5.8 Technician Dashboard: My Jobs, Quick Actions, Calendar/Schedule
-- [ ] 5.9 Finance Dashboard: Simple Mode + Accountant Mode toggle
+- [x] 5.9 Finance Dashboard: Simple Mode + Accountant Mode toggle — done
+      2026-07-23 as P5, see [`plan/P5-finance-dashboard.md`](plan/P5-finance-dashboard.md).
+      New `/finance` landing page (didn't exist before), `?mode=simple|accountant`
+      toggle, both reading the same single-sided ledger — no Chart of Accounts,
+      per `10-finance.md`'s own scope note. Simple Mode: plain-language `StatCard`
+      tiles (Today's Income, Est. Profit This Month, AR/AP outstanding).
+      Accountant Mode: a revenue/COGS/gross-profit P&L table for the month, linking
+      out to the existing raw ledger page. New backend `GET /v1/finance/ledger/summary`
+      (SQL-side date-range sum by `entryType`, deliberately excluding `adjustment`
+      rows — those are AP/AR cash movement, not income/expense) so period totals
+      are correct beyond the raw ledger endpoint's 200-row cap. Live-verified with a
+      real POS-adjacent invoice (labor-only ticket invoice, pure revenue no COGS):
+      summary endpoint returned exactly the posted amount. Explicitly not built:
+      Chart of Accounts, journal entries, job-costing, Excel/PDF export, multi-branch
+      consolidation, cash/bank balance (no such tracking exists in this app) — all
+      Phase-2-flavored per spec. 4 new Playwright tests; full suite (25 tests) passing
+      together; `npm test` 179 unit passing; `svelte-check` 710 files 0 errors.
 - [ ] 5.10 Settings pages: Company, Branches, Roles, Printer config
 - [ ] 5.11 Git commit: `feat: phase 5 complete — core UI polished`
 

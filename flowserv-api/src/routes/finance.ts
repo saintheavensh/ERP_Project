@@ -1,13 +1,14 @@
 import { Hono } from 'hono';
 import { db } from '../db/connection';
 import { supplierInvoices, suppliers, purchaseOrders, posInvoices, financeLedgerEntries } from '../db/schema';
-import { eq, desc, and, ne, sql } from 'drizzle-orm';
+import { eq, desc, and, ne, sql, gte, lte } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse, getRequestId } from '../lib/response';
 import { BusinessError } from '../lib/errors';
+import { roundMoney } from '../lib/money';
 import { recordPaymentInput } from '../modules/finance/types';
 import { recordPayment, getPayableDetail, getReceivables } from '../modules/finance/service';
 import { reconcileSaleLedger } from '../lib/ledger-reconciliation';
@@ -128,6 +129,62 @@ financeRouter.get('/ledger', async (c) => {
     return successResponse(c, entries);
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch ledger', [err.message]);
+  }
+});
+
+// GET /v1/finance/ledger/summary — P5 (DAS-004): period revenue/COGS totals for
+// the Simple/Accountant dashboard. Computed in SQL over the full date range, not
+// by summing /ledger's capped 200-row list (which silently under-counts once a
+// branch has more than 200 lifetime entries).
+financeRouter.get('/ledger/summary', async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const branchId = c.req.query('branchId');
+  const fromParam = c.req.query('from');
+  const toParam = c.req.query('to');
+
+  const now = new Date();
+  const defaultFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+  const from = fromParam ? new Date(fromParam) : defaultFrom;
+  const to = toParam ? new Date(toParam) : now;
+
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+    return errorResponse(c, 'VALIDATION_ERROR', 'Invalid from/to date', [], 400);
+  }
+
+  try {
+    const filters = [
+      eq(financeLedgerEntries.tenantId, tenantId),
+      gte(financeLedgerEntries.postedAt, from),
+      lte(financeLedgerEntries.postedAt, to),
+    ];
+    if (branchId) filters.push(eq(financeLedgerEntries.branchId, branchId));
+
+    // entryType='adjustment' (AP/AR cash movement, see modules/finance/ledger.ts)
+    // and the unused 'loss' type are deliberately excluded — only revenue/cogs
+    // are income-statement rows. Summing 'adjustment' in here would silently
+    // misstate profit with unrelated cash-movement entries.
+    const [row] = await db
+      .select({
+        revenue: sql<string>`COALESCE(SUM(CASE WHEN ${financeLedgerEntries.entryType} = 'revenue' THEN ${financeLedgerEntries.amount} ELSE 0 END), 0)`,
+        cogs: sql<string>`COALESCE(SUM(CASE WHEN ${financeLedgerEntries.entryType} = 'cogs' THEN ${financeLedgerEntries.amount} ELSE 0 END), 0)`,
+        entryCount: sql<string>`COUNT(*)`,
+      })
+      .from(financeLedgerEntries)
+      .where(and(...filters));
+
+    const revenue = roundMoney(Number(row?.revenue || 0));
+    const cogs = roundMoney(Number(row?.cogs || 0));
+
+    return successResponse(c, {
+      revenue,
+      cogs,
+      estimatedProfit: roundMoney(revenue - cogs),
+      entryCount: Number(row?.entryCount || 0),
+      from: from.toISOString(),
+      to: to.toISOString(),
+    });
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to summarize ledger', [err.message]);
   }
 });
 
