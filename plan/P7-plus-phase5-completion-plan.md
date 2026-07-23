@@ -87,16 +87,26 @@ gap-3 justify-between`, page padding `p-6` → `p-4 md:p-6`.
 *Verification, all confirmed:* `svelte-check` 710 files 0 errors after every sub-step;
 full e2e suite 37 tests green; `npm test` 179 backend unit passing (untouched, FE-only task).
 
-### P8 — Global Search (5.7 / PLT-007) · BE + FE · size **M**
-- **P8.1** BE `GET /v1/search?q=` — tenant-scoped `ILIKE '%q%'` union across customers
-  (name/phone), tickets (id/customer), inventory (name/sku), suppliers (name); capped,
-  grouped by type in the response. (Substring first; real typo-tolerance is optional /
-  Phase-2 — note it, don't block on it.) + unit test on the pure query-builder.
-- **P8.2** FE search box in the app-shell header — **mobile: a search icon that expands**
-  to a full-width overlay input; desktop: inline. Grouped dropdown results, each linking to
-  its detail page.
-- **P8.3** `p8-global-search.spec.ts` — type a known customer/SKU, see grouped results,
-  click through; mobile overlay opens/closes.
+### P8 — Global Search (5.7 / PLT-007) · BE + FE · size **M** · ✅ DONE 2026-07-24
+- [x] **P8.1** BE `GET /v1/search?q=` — tenant-scoped `ILIKE '%q%'` across customers
+  (name/phone), tickets (via joined customer name/phone + device brand/model/serial —
+  tickets have no own free-text field), inventory (name/sku/universal code), suppliers
+  (name/contact); capped at 5 per type, grouped in the response. Substring only —
+  typo-tolerance explicitly deferred (noted, not silently dropped). `modules/search/
+  service.ts` keeps `buildLikePattern()` pure and separate from the DB-touching
+  `searchAll()`, 4 unit tests. (commit `1581786`)
+- [x] **P8.2** FE `GlobalSearch.svelte` in the app-shell header — desktop: inline input +
+  dropdown (centered, closes on outside click); mobile: icon that opens a full-screen
+  overlay (no room for inline next to the hamburger at 375px). Debounced 250ms, 2-char
+  minimum, each result links to its detail page. (commit `3b099f7`)
+- [x] **P8.3** `e2e/p8-global-search.spec.ts` — 6 tests: customer/inventory/supplier
+  lookups, sub-2-char hint, outside-click close, mobile overlay open/navigate/close.
+  Caught a real bug pre-merge: the desktop dropdown was opening (hidden, but still in
+  the DOM) even when the *mobile* input triggered the search, duplicating every result
+  node. Fixed in the same commit. (commit `3b099f7`)
+
+*Verification, all confirmed:* `svelte-check` 711 files 0 errors; full e2e suite 43 tests
+green; `npm test` 183 backend unit passing (179 + 4 new).
 
 ### P9 — Settings pages (5.10) · BE + FE · size **L** (split hard)
 Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proof.
@@ -144,6 +154,6 @@ Real CRUD is the bulk here. Each BE step is its own commit with a live-curl proo
 | Real P&L / Chart of Accounts / journal | ledger single-sided by design | Phase 2+ |
 
 ## Suggested order
-~~P7 (mobile sweep)~~ ✅ → **P8 (search, next)** → P10 (catalog) → P11 (tech actions) →
+~~P7 (mobile sweep)~~ ✅ → ~~P8 (search)~~ ✅ → **P10 (catalog, next)** → P11 (tech actions) →
 P12 (POS polish) → P9 (settings, largest). P9 last because it's the biggest and needs the
 most new backend.

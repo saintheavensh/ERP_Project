@@ -649,7 +649,27 @@ missing.
       together; `svelte-check` 710 files 0 errors.
 - [ ] 5.5 Product Catalog: Browse by category, supplier price comparison
 - [ ] 5.6 POS/Cashier Screen: Touch-friendly, big buttons
-- [ ] 5.7 Global Search: Typo-tolerant, grouped results
+- [x] 5.7 Global Search: grouped results — done 2026-07-24 as P8, see
+      [`plan/P7-plus-phase5-completion-plan.md`](plan/P7-plus-phase5-completion-plan.md).
+      New `GET /v1/search?q=` (`modules/search/service.ts`): tenant-scoped `ILIKE`
+      across customers (name/phone), tickets (via joined customer name/phone +
+      device brand/model/serial — tickets have no own free-text field), inventory
+      items (name/sku/universal code), suppliers (name/contact); capped at 5 per
+      type, grouped in the response. Substring match only — real typo-tolerance
+      (fuzzy/trigram) explicitly deferred, noted so it isn't mistaken for scope
+      creep later. FE: `GlobalSearch.svelte` in the app-shell header — desktop
+      gets an inline input + dropdown, mobile (no room next to the hamburger at
+      375px) gets an icon that opens a full-screen overlay; both debounced
+      250ms, 2-char minimum, each result linking straight to its detail page.
+      A bug where the hidden desktop dropdown silently duplicated the mobile
+      overlay's results in the DOM (both driven by one shared `results` state)
+      was caught by the e2e suite itself, not manual testing, and fixed before
+      landing. 4 new backend unit tests (pure `buildLikePattern` helper) + 6
+      new Playwright tests (customer/inventory/supplier lookups, sub-2-char
+      hint, outside-click close, mobile overlay open/navigate/close). Live-
+      verified via curl: case-insensitive match, cross-type grouping, 401
+      without auth, empty results under the 2-char minimum. Full suite: 43
+      Playwright + 183 backend unit passing; `svelte-check` 711 files 0 errors.
 - [ ] 5.8 Technician Dashboard: My Jobs, Quick Actions, Calendar/Schedule
 - [x] 5.9 Finance Dashboard: Simple Mode + Accountant Mode toggle — done
       2026-07-23 as P5, see [`plan/P5-finance-dashboard.md`](plan/P5-finance-dashboard.md).
