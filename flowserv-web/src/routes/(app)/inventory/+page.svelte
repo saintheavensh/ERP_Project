@@ -20,6 +20,9 @@
       <p class="text-slate-500 mt-1">Manage parts, stock levels, and reorder points.</p>
     </div>
     <div class="flex flex-wrap gap-3">
+      <a href="/inventory/catalog" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium transition-colors">
+        Lihat sebagai Katalog
+      </a>
       <a href="/inventory/categories" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium transition-colors">
         Manage Categories
       </a>

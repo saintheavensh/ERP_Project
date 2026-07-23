@@ -25,6 +25,7 @@
         path: '/inventory',
         subItems: [
           { label: 'Master Catalog', path: '/inventory' },
+          { label: 'Katalog Produk', path: '/inventory/catalog' },
           { label: 'Suppliers', path: '/inventory/suppliers' },
           { label: 'Initial Stock Upload', path: '/inventory/opname' }
         ]

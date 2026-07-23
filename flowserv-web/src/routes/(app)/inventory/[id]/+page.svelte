@@ -3,6 +3,7 @@
   import InventoryHeader from '$lib/components/inventory/InventoryHeader.svelte';
   import StockBatches from '$lib/components/inventory/StockBatches.svelte';
   import BrandPricing from '$lib/components/inventory/BrandPricing.svelte';
+  import SupplierComparison from '$lib/components/inventory/SupplierComparison.svelte';
   import CompatibilityManager from '$lib/components/inventory/CompatibilityManager.svelte';
   import PricingSimulator from '$lib/components/inventory/PricingSimulator.svelte';
   import EditItemModal from '$lib/components/inventory/EditItemModal.svelte';
@@ -111,10 +112,12 @@
         <BrandPricing 
           {item} 
           token={data.token} 
-          onOpenSimulator={handleOpenSimulator} 
+          onOpenSimulator={handleOpenSimulator}
         />
-        
-        <CompatibilityManager 
+
+        <SupplierComparison {item} />
+
+        <CompatibilityManager
           {item} 
           token={data.token} 
           {allModels} 
