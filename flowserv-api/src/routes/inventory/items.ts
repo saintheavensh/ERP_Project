@@ -253,6 +253,13 @@ router.get('/:id', async (c) => {
           with: {
             partBrand: true
           }
+        },
+        // P10 — supplier price comparison (SUP-009). `lastPrice` was seeded
+        // alongside stock_batches.unitCost for these same items ("supaya
+        // katalog & batch tidak saling bertentangan" — see 03-suppliers.ts)
+        // but had zero routes/FE reading it until now.
+        productSuppliers: {
+          with: { supplier: true }
         }
       }
     });
