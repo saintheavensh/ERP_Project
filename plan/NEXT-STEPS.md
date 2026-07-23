@@ -47,7 +47,7 @@ first. Highest-value items, roughly in order:
 | P4 | Ticket detail polish: timeline, cost breakdown, attachments (5.3) | M | most of the data already exists (charges, ledger, stage history) |
 | P5 | Finance dashboard: Simple/Accountant toggle (5.9) | M | builds on the H11 ledger + H14 receivables |
 | P6 | [Inventory dashboard gaps](./P6-inventory-dashboard-gaps.md) (5.4) | S | turned out narrow — search/filter + batch-history enrichment, not a new page |
-| — | remaining 5.5–5.8, 5.10 as capacity allows | — | product catalog, POS polish, global search, technician quick-actions/calendar, settings pages |
+| P7+ | [Phase 5 completion audit & plan](./P7-plus-phase5-completion-plan.md) | — | **codebase audit (done/partial/needs-fix) + step-by-step plan** for the rest of Phase 5: P7 mobile sweep, P8 search (5.7), P9 settings (5.10), P10 catalog (5.5), P11 technician actions (5.8), P12 POS polish (5.6) |
 
 ### Stage D — Small floating gaps (fold into whichever phase touches them)
 
