@@ -146,6 +146,43 @@ cd flowserv-api
 npm test
 ```
 
+### 9. Printer agent (optional — only needed to test printing)
+
+A separate local Python service bridges the browser to a physical thermal
+printer (`printer-agent/`, see [`specification/09-printer-integration.md`](./specification/09-printer-integration.md)).
+It is **not** started by `npm run dev` — it's a different process, and most
+day-to-day work on the API/web app doesn't need it running at all.
+
+Requires Python 3.14. First-time setup on a machine (once only):
+
+```bash
+cd printer-agent
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+python -m PyInstaller --onefile --name printer-agent --collect-data escpos printer_agent.py
+```
+
+This produces `printer-agent\dist\printer-agent.exe` — the packaged build
+`start-agent.bat`/`stop-agent.bat` expect. `dist/` is git-ignored (build
+output + per-machine printer config, not source), so this compile step must
+be repeated once per machine, and again only if `printer-agent/*.py` itself
+changes.
+
+Day to day, once it's compiled:
+
+```bash
+printer-agent\start-agent.bat   # starts it (double-click also works)
+printer-agent\stop-agent.bat    # stops it
+```
+
+Both are manual only — neither registers anything with Windows Startup or
+Task Scheduler. Verify it's up: `curl http://127.0.0.1:9100/health` →
+`{"status":"ok"}`. With no `config.json` present it defaults to a `dummy`
+printer (every request "succeeds", nothing physically prints) — see
+[`printer-agent/README.md`](./printer-agent/README.md) for configuring a
+real printer, the scan-and-pick flow, and full architecture notes.
+
 ---
 
 ## Documentation Map
