@@ -23,9 +23,11 @@ P9 (Settings CRUD) was the last remaining task. Its detail plan (`P7-plus-phase5
 which covered P7 through P9) has been **deleted on completion**, per this file's own
 convention — see the Progress log below for the full per-step evidence and commit hashes.
 
-**Next: Phase 6 (Printer Integration)** — zero code exists for it yet. No detail plan file
-exists yet either; author one (`plan/6.1-*.md` or similar) when that phase actually starts,
-same convention as every phase before it. Read "Later phases" below first.
+**Next: Phase 6 (Printer Integration)** — zero code exists for it yet, but the detail plan is
+now written: **[`plan/phase-6-printer.md`](./phase-6-printer.md)** (task breakdown 6A–6D, the
+shared-render-engine decision D1, and three open decisions Q1–Q3 awaiting the user's answer).
+Coding has **not** started — no `phase-6/printer` branch yet. Read that plan + "Later phases"
+below before starting.
 
 ---
 
