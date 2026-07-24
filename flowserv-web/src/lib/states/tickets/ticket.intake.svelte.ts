@@ -15,6 +15,10 @@ export class TicketIntakeState {
     assetBrand: '',
     assetModel: '',
     assetSn: '',
+    // Tahap A — device catalog. Set only when the autocomplete below matched
+    // an existing device_models row; cleared the instant the user edits
+    // brand/model text manually (searchDeviceModel resets it first).
+    deviceModelId: '',
     // Tahap A — go-live gap Tier-1 #2. Optional; recorded at intake, given
     // back at handover (QC Akhir).
     devicePasscode: '',
@@ -29,6 +33,48 @@ export class TicketIntakeState {
   errorMsg = $state('');
 
   showDropdown = $state(false);
+
+  // Tahap A — device catalog autocomplete (brand/model → image/specs/saran
+  // servis). Live backend search (debounced), unlike the customer dropdown
+  // above which filters an already-fetched list — the catalog isn't preloaded
+  // on this page.
+  deviceModelResults = $state<any[]>([]);
+  showDeviceDropdown = $state(false);
+  selectedDeviceModel = $state<any | null>(null);
+  private deviceSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  searchDeviceModel() {
+    this.form.deviceModelId = '';
+    this.selectedDeviceModel = null;
+    this.showDeviceDropdown = true;
+    if (this.deviceSearchTimer) clearTimeout(this.deviceSearchTimer);
+    const q = `${this.form.assetBrand} ${this.form.assetModel}`.trim();
+    if (q.length < 2) { this.deviceModelResults = []; return; }
+    this.deviceSearchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/device-catalog/models?q=${encodeURIComponent(q)}`, {
+          headers: { Authorization: `Bearer ${this.token}` },
+        });
+        if (res.ok) this.deviceModelResults = (await res.json()).data || [];
+      } catch {
+        // Catalog search failing must never block manual brand/model entry.
+      }
+    }, 250);
+  }
+
+  selectDeviceModel(m: any) {
+    this.form.deviceModelId = m.id;
+    this.form.assetBrand = m.brandName;
+    this.form.assetModel = m.name;
+    this.selectedDeviceModel = m;
+    this.showDeviceDropdown = false;
+  }
+
+  appendSuggestedService(text: string) {
+    this.form.reportedComplaint = this.form.reportedComplaint
+      ? `${this.form.reportedComplaint}, ${text}`
+      : text;
+  }
 
   constructor(data: any, token: string) {
     this.data = data;

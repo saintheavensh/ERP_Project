@@ -29,11 +29,31 @@ export interface InvoiceBundle {
  * and the A4 Svelte component both consume this — neither re-reads
  * layoutConfig on its own.
  */
+/**
+ * Tahap A — collapses every line into a single combined row for "Summary"
+ * invoice display mode. Pure derivation from the line list, no tenant-setting
+ * awareness — that resolution belongs to the caller (document.ts).
+ */
+export function summarizeItems(
+  items: DocumentData['items']
+): NonNullable<DocumentData['summaryItems']> {
+  if (items.length === 0) return [];
+  const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
+  return [{ description: `${items.length} item/jasa`, quantity: 1, unitPrice: subtotal, subtotal }];
+}
+
 export function buildDocumentData(
   documentType: DocumentType,
   layoutConfig: LayoutConfig,
   bundle: InvoiceBundle
 ): DocumentData {
+  const items = bundle.lines.map((l) => ({
+    description: l.description,
+    quantity: l.quantity,
+    unitPrice: l.unitPrice,
+    subtotal: l.subtotal,
+  }));
+
   return {
     documentType,
     header: {
@@ -41,12 +61,8 @@ export function buildDocumentData(
       address: layoutConfig.header.showAddress ? bundle.branch.address : undefined,
       phone: layoutConfig.header.showPhone ? bundle.branch.phone : undefined,
     },
-    items: bundle.lines.map((l) => ({
-      description: l.description,
-      quantity: l.quantity,
-      unitPrice: l.unitPrice,
-      subtotal: l.subtotal,
-    })),
+    items,
+    summaryItems: summarizeItems(items),
     totals: {
       subtotal: bundle.subtotal,
       discountAmount: bundle.discountAmount,

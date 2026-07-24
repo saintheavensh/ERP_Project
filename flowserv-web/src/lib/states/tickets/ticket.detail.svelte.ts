@@ -143,6 +143,10 @@ export class TicketDetailState {
 
   get invoice() { return this.data.data?.invoice ?? null; }
 
+  // Tahap A — device catalog. Null when the asset isn't linked to a catalog
+  // entry (the common case: freeform brand/model text with no match yet).
+  get deviceModel() { return this.data.data?.deviceModel ?? null; }
+
   // H7 — Charges
   chargeForm = $state<{ sourceType: 'part' | 'labor' | 'fee'; inventoryItemId: string; description: string; quantity: number; unitPrice: string }>({
     sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: ''

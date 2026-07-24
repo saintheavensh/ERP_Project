@@ -82,19 +82,65 @@
             <option value="Other">Other</option>
           </select>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Brand</label>
-          <input id="brand" type="text" bind:value={state.form.assetBrand} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+          <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model</label>
-          <input id="model" type="text" bind:value={state.form.assetModel} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Galaxy S23">
+          <input id="model" type="text" bind:value={state.form.assetModel} oninput={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Galaxy S23">
+
+          {#if state.showDeviceDropdown && state.deviceModelResults.length > 0}
+            <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {#each state.deviceModelResults as m}
+                <li>
+                  <button type="button" class="w-full text-left px-4 py-2 hover:bg-slate-50 border-b last:border-0" onclick={() => state.selectDeviceModel(m)}>
+                    <div class="font-medium text-slate-900">{m.brandName} {m.name}</div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="sn">Serial Number / IMEI</label>
           <input id="sn" type="text" bind:value={state.form.assetSn} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="...">
         </div>
       </div>
+
+      <!-- Tahap A — device catalog match: gambar/spesifikasi + saran servis.
+           Cuma tampil kalau autocomplete di atas match ke katalog. -->
+      {#if state.selectedDeviceModel}
+        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg flex gap-4" data-testid="device-catalog-preview">
+          {#if state.selectedDeviceModel.imageUrl}
+            <img src={state.selectedDeviceModel.imageUrl} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0">
+          {/if}
+          <div class="flex-1 min-w-0 space-y-2">
+            {#if state.selectedDeviceModel.specs && Object.keys(state.selectedDeviceModel.specs).length > 0}
+              <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5">
+                {#each Object.entries(state.selectedDeviceModel.specs) as [key, value]}
+                  <div class="contents">
+                    <dt class="text-slate-400">{key}</dt>
+                    <dd class="text-slate-700">{value}</dd>
+                  </div>
+                {/each}
+              </dl>
+            {/if}
+            {#if state.selectedDeviceModel.suggestedServices?.length}
+              <div>
+                <p class="text-xs text-slate-500 mb-1">Saran servis (klik untuk isi ke Keluhan/Kerusakan):</p>
+                <div class="flex flex-wrap gap-1.5">
+                  {#each state.selectedDeviceModel.suggestedServices as service}
+                    <button type="button" class="px-2 py-1 text-xs bg-white border border-slate-200 rounded-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors" onclick={() => state.appendSuggestedService(service)}>
+                      {service}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+      {/if}
     {/if}
     <!-- Tahap A — go-live gap Tier-1 #2. Optional; recorded now, given back at
          handover (QC Akhir). Shown for both new and pre-selected devices. -->

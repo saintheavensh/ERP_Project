@@ -6,7 +6,7 @@ import type { PageServerLoad } from './$types';
 // `?mode=simple|accountant`) rather than all four up front — branches/users/
 // payment-methods lists are small, but there's no reason to fetch three of
 // them on every load when only one tab is visible at a time.
-const VALID_TABS = ['company', 'branches', 'users', 'payment-methods', 'printers'] as const;
+const VALID_TABS = ['company', 'branches', 'users', 'payment-methods', 'printers', 'sales'] as const;
 type Tab = (typeof VALID_TABS)[number];
 
 const API = 'http://localhost:3001/v1';
@@ -27,6 +27,7 @@ export const load: PageServerLoad = async ({ locals, url, fetch }) => {
   let printerDevices: any[] = [];
   let printerTemplates: any[] = [];
   let printerAssignments: any[] = [];
+  let salesSettings: any = null;
 
   try {
     if (tab === 'company') {
@@ -61,10 +62,13 @@ export const load: PageServerLoad = async ({ locals, url, fetch }) => {
       if (tRes.ok) printerTemplates = (await tRes.json()).data || [];
       if (aRes.ok) printerAssignments = (await aRes.json()).data || [];
       if (bRes.ok) branches = (await bRes.json()).data || [];
+    } else if (tab === 'sales') {
+      const res = await fetch(`${API}/settings/sales`, { headers });
+      if (res.ok) salesSettings = (await res.json()).data;
     }
   } catch (err) {
     console.error('Failed to load settings tab data', err);
   }
 
-  return { token, tab, company, branches, users, roles, paymentMethods, printerDevices, printerTemplates, printerAssignments };
+  return { token, tab, company, branches, users, roles, paymentMethods, printerDevices, printerTemplates, printerAssignments, salesSettings };
 };

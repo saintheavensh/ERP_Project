@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDocumentData, renderThermalBlocks, truncate, padRow, formatMoney, THERMAL_CHAR_WIDTH } from '../render';
+import { buildDocumentData, renderThermalBlocks, summarizeItems, truncate, padRow, formatMoney, THERMAL_CHAR_WIDTH } from '../render';
 import type { LayoutConfig } from '../types';
 import type { InvoiceBundle } from '../render';
 
@@ -94,6 +94,31 @@ describe('buildDocumentData — "detail increases with paper size" (data-inclusi
     const doc = buildDocumentData('receipt', fullLayout, bundle);
     expect(doc.totals.grandTotal).toBe(bundle.grandTotal);
     expect(doc.items[0].description).toBe(bundle.lines[0].description);
+  });
+});
+
+describe('summarizeItems — Tahap A invoice display mode', () => {
+  it('returns an empty array for no lines', () => {
+    expect(summarizeItems([])).toEqual([]);
+  });
+
+  it('collapses multiple lines into one row summing their subtotals', () => {
+    const items = [
+      { description: 'LCD Samsung A10', quantity: 1, unitPrice: 220000, subtotal: 220000 },
+      { description: 'Jasa Pasang LCD', quantity: 1, unitPrice: 50000, subtotal: 50000 },
+    ];
+    const summary = summarizeItems(items);
+    expect(summary).toHaveLength(1);
+    expect(summary[0].description).toBe('2 item/jasa');
+    expect(summary[0].quantity).toBe(1);
+    expect(summary[0].subtotal).toBe(270000);
+    expect(summary[0].unitPrice).toBe(270000);
+  });
+
+  it('buildDocumentData always computes summaryItems alongside the full items array', () => {
+    const doc = buildDocumentData('invoice_a4', fullLayout, bundle);
+    expect(doc.items).toHaveLength(1);
+    expect(doc.summaryItems).toEqual(summarizeItems(doc.items));
   });
 });
 

@@ -125,6 +125,15 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
    bind ke `id`. 85 Playwright + 198 unit hijau.
 5. **Change order** (konfirmasi ulang harga saat ada kerusakan tambahan di tengah pengerjaan).
 
+> **Di luar Tier-1, dikerjakan 2026-07-25 karena diminta langsung dari mockup
+> pemilik:** [`plan/tahap-a-device-catalog-invoice-mode.md`](tahap-a-device-catalog-invoice-mode.md)
+> — katalog device (gambar/spesifikasi/saran servis, memperluas tabel
+> `device_models`/`device_brands` yang sudah ada untuk DEV-008 tapi sebelumnya tanpa
+> CRUD sama sekali) + mode tampilan invoice Detailed/Summary/Flexible
+> (`tenants.settings.invoiceDisplayMode`). Keputusan penting: katalog device tetap
+> **per-tenant** (bukan digeneralisir ke dashboard SaaS lintas-tenant) — lihat file
+> tsb untuk alasan lengkapnya.
+
 **TIER 2 — dibangun dari gesekan Tahap pilot**
 6. **Batas diskon per peran** (owner/manager set batas; kasir tak bisa diskon terlalu besar) — SAL-006.
 7. **Retur / tukar barang** — SAL-005.

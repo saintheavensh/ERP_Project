@@ -18,6 +18,7 @@ import { tenants, branches, users } from './core';
 import { flowTemplates, flowNodes } from './flow';
 import { ticketStatusEnum } from './enums';
 import { money } from './columns';
+import { deviceModels } from './product_catalog';
 
 
 export const customers = pgTable('customers', {
@@ -38,6 +39,10 @@ export const customerAssets = pgTable('customer_assets', {
   brand: text('brand'),
   model: text('model'),
   serialNumber: text('serial_number'),
+  // Tahap A — katalog device (gambar/spesifikasi/saran servis). Nullable: device
+  // yang belum ada di katalog tetap bisa diinput bebas (brand/model text di atas),
+  // sama semangatnya dengan unresolvedCompatibility yang sudah ada untuk sparepart.
+  deviceModelId: uuid('device_model_id').references(() => deviceModels.id),
 });
 
 export const serviceTickets = pgTable('service_tickets', {

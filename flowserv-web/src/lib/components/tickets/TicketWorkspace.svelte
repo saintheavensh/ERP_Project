@@ -57,6 +57,26 @@
       </p>
       <p class="text-slate-600 text-sm mt-1 font-mono">SN: {state.asset?.serialNumber || 'N/A'}</p>
 
+      <!-- Tahap A — katalog device (gambar/spesifikasi). Cuma tampil kalau asset
+           ini match ke entri katalog (deviceModelId terisi saat intake). -->
+      {#if state.deviceModel}
+        <div class="mt-3 pt-3 border-t border-slate-100 flex gap-3" data-testid="device-catalog-card">
+          {#if state.deviceModel.imageUrl}
+            <img src={state.deviceModel.imageUrl} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0" />
+          {/if}
+          {#if state.deviceModel.specs && Object.keys(state.deviceModel.specs).length > 0}
+            <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5 content-start">
+              {#each Object.entries(state.deviceModel.specs) as [key, value]}
+                <div class="contents">
+                  <dt class="text-slate-400">{key}</dt>
+                  <dd class="text-slate-700">{value}</dd>
+                </div>
+              {/each}
+            </dl>
+          {/if}
+        </div>
+      {/if}
+
       <!-- Tahap A — go-live gap Tier-1 #2. Sandi/pola: dicatat di intake,
            dikembalikan ke pelanggan saat serah-terima (QC Akhir). -->
       <div class="mt-3 pt-3 border-t border-slate-100">

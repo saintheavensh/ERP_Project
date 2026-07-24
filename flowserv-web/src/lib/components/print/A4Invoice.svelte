@@ -12,9 +12,25 @@
     extra: { cashierName?: string; customerName?: string; invoiceNumber?: string; createdAt?: string; technicianName?: string };
     footer: { note?: string; warrantyPolicy?: string };
     display: { showLineSubtotal: boolean; showLogo: boolean; showSignature: boolean };
+    // Tahap A — invoice display mode. Only receipt/invoice_a4 (pos_invoice-
+    // sourced) documents carry this; undefined elsewhere.
+    displayMode?: 'detailed' | 'summary' | 'flexible';
+    summaryItems?: Array<{ description: string; quantity: number; unitPrice: number; subtotal: number }>;
   }
 
   let { data }: { data: DocumentData } = $props();
+
+  // Tahap A — 'flexible' tenants get an on-screen toggle (client-side only,
+  // no reprint/refetch): default Detailed, per the settings tab's own
+  // description. 'detailed'/'summary' tenants get a FIXED view matching their
+  // setting, with no toggle — 'summary' must actually show the collapsed row,
+  // not fall through to the detailed one.
+  let viewMode = $state<'detailed' | 'summary'>('detailed');
+  const displayedItems = $derived.by(() => {
+    if (data.displayMode === 'summary') return data.summaryItems ?? data.items;
+    if (data.displayMode === 'flexible') return viewMode === 'summary' ? (data.summaryItems ?? data.items) : data.items;
+    return data.items;
+  });
 
   function formatRp(n: number): string {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(n);
@@ -62,6 +78,23 @@
     {/if}
   </div>
 
+  {#if data.displayMode === 'flexible'}
+    <div class="flex justify-end mb-2 print:hidden">
+      <div class="inline-flex rounded-lg border border-slate-200 overflow-hidden text-xs" data-testid="invoice-view-mode-toggle">
+        <button
+          type="button"
+          class="px-3 py-1.5 font-medium transition-colors {viewMode === 'detailed' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}"
+          onclick={() => viewMode = 'detailed'}
+        >Detailed</button>
+        <button
+          type="button"
+          class="px-3 py-1.5 font-medium transition-colors {viewMode === 'summary' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}"
+          onclick={() => viewMode = 'summary'}
+        >Summary</button>
+      </div>
+    </div>
+  {/if}
+
   <table class="w-full text-sm border-collapse mb-6">
     <thead>
       <tr class="border-b border-slate-300 text-left text-slate-500">
@@ -72,7 +105,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each data.items as item}
+      {#each displayedItems as item}
         <tr class="border-b border-slate-100">
           <td class="py-2">{item.description}</td>
           <td class="py-2 text-center">{item.quantity}</td>

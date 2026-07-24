@@ -8,6 +8,7 @@ import { successResponse, errorResponse } from '../lib/response.js';
 import { requireAuth, getAuthContext } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { auditMiddleware } from '../middleware/audit.js';
+import { INVOICE_DISPLAY_MODES, type InvoiceDisplayMode } from '../modules/printer/types.js';
 
 export const settingsRouter = new Hono();
 settingsRouter.use('*', requireAuth);
@@ -54,6 +55,50 @@ settingsRouter.patch('/company', requirePermission('settings.manage_company'), z
     return successResponse(c, updated);
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update company profile', [err.message], 500);
+  }
+});
+
+// Tahap A — invoice display mode (Detailed/Summary/Flexible). Stored in the
+// existing tenants.settings jsonb (already used for simplifiedFinanceMode) —
+// no new column/table. Same admin gate as /company: one small tenant-wide
+// knob doesn't warrant its own permission code.
+settingsRouter.get('/sales', requirePermission('settings.manage_company'), async (c) => {
+  const { tenantId } = getAuthContext(c);
+
+  try {
+    const tenant = await db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
+    if (!tenant) return errorResponse(c, 'NOT_FOUND', 'Tenant not found', [], 404);
+
+    const settings = (tenant.settings ?? {}) as Record<string, unknown>;
+    const raw = settings.invoiceDisplayMode;
+    const invoiceDisplayMode: InvoiceDisplayMode = (INVOICE_DISPLAY_MODES as readonly string[]).includes(raw as string)
+      ? (raw as InvoiceDisplayMode)
+      : 'detailed';
+
+    return successResponse(c, { invoiceDisplayMode });
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch sales settings', [err.message]);
+  }
+});
+
+const updateSalesSchema = z.object({
+  invoiceDisplayMode: z.enum(INVOICE_DISPLAY_MODES),
+});
+
+settingsRouter.patch('/sales', requirePermission('settings.manage_company'), zValidator('json', updateSalesSchema), auditMiddleware({ action: 'settings.update_sales', entityType: 'tenant', bodyFields: ['invoiceDisplayMode'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const data = c.req.valid('json');
+
+  try {
+    const tenant = await db.query.tenants.findFirst({ where: eq(tenants.id, tenantId) });
+    if (!tenant) return errorResponse(c, 'NOT_FOUND', 'Tenant not found', [], 404);
+
+    const settings = { ...(tenant.settings as Record<string, unknown> ?? {}), invoiceDisplayMode: data.invoiceDisplayMode };
+    await db.update(tenants).set({ settings, updatedAt: new Date() }).where(eq(tenants.id, tenantId));
+
+    return successResponse(c, { invoiceDisplayMode: data.invoiceDisplayMode });
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update sales settings', [err.message], 500);
   }
 });
 

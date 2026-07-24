@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
-import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches, users } from '../db/schema';
+import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
 import { ticketStatusEnum } from '../db/schema/enums';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
@@ -97,6 +97,10 @@ ticketsRouter.get('/:id', async (c) => {
       template: flowTemplates,
       node: flowNodes,
       assignedTechnician: { id: users.id, name: users.name },
+      // Tahap A — device catalog. Null when the asset isn't linked to a
+      // catalog entry (freeform brand/model text, the common case until the
+      // catalog is populated).
+      deviceModel: { id: deviceModels.id, imageUrl: deviceModels.imageUrl, specs: deviceModels.specs, suggestedServices: deviceModels.suggestedServices },
     })
     .from(serviceTickets)
     .innerJoin(customers, eq(serviceTickets.customerId, customers.id))
@@ -104,6 +108,7 @@ ticketsRouter.get('/:id', async (c) => {
     .innerJoin(flowTemplates, eq(serviceTickets.flowTemplateId, flowTemplates.id))
     .leftJoin(flowNodes, eq(serviceTickets.currentNodeId, flowNodes.id))
     .leftJoin(users, eq(serviceTickets.assignedTechnicianId, users.id))
+    .leftJoin(deviceModels, eq(customerAssets.deviceModelId, deviceModels.id))
     .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
     
   if (ticketQuery.length === 0) {
@@ -161,6 +166,10 @@ const intakeSchema = z.object({
   assetBrand: z.string().optional(),
   assetModel: z.string().optional(),
   assetSn: z.string().optional(),
+  // Tahap A — device catalog (image/specs/suggested services). Set only when
+  // the intake form's autocomplete matched an existing device_models row;
+  // left undefined for freeform brand/model text (no catalog entry required).
+  deviceModelId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
 
   // Tahap A — go-live gap Tier-1 #2. Recorded at intake, given back at
   // handover (QC Akhir); editable later via PATCH /:id/intake-details.
@@ -197,12 +206,27 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
       let finalAssetId = data.assetId;
       if (!finalAssetId) {
         if (!data.assetType) throw new Error('Asset type required for new asset');
+
+        // Tahap A — verify a supplied deviceModelId actually belongs to this
+        // tenant (via its brand) before trusting it; silently drop it rather
+        // than 400ing the whole intake for a client-side matching mistake.
+        let resolvedDeviceModelId: string | null = null;
+        if (data.deviceModelId) {
+          const match = await tx
+            .select({ id: deviceModels.id })
+            .from(deviceModels)
+            .innerJoin(deviceBrands, eq(deviceModels.deviceBrandId, deviceBrands.id))
+            .where(and(eq(deviceModels.id, data.deviceModelId), eq(deviceBrands.tenantId, tenantId)));
+          resolvedDeviceModelId = match.length > 0 ? data.deviceModelId : null;
+        }
+
         const [newAsset] = await tx.insert(customerAssets).values({
           customerId: finalCustomerId,
           assetType: data.assetType,
           brand: data.assetBrand || null,
           model: data.assetModel || null,
-          serialNumber: data.assetSn || null
+          serialNumber: data.assetSn || null,
+          deviceModelId: resolvedDeviceModelId,
         }).returning();
         finalAssetId = newAsset.id;
       }

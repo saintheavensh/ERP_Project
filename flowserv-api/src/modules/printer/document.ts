@@ -3,7 +3,8 @@ import { posInvoices, printerAssignments, printerTemplates } from '../../db/sche
 import { eq, and } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { buildDocumentData, renderThermalBlocks, type InvoiceBundle } from './render';
-import type { DocumentType, PaperSize, LayoutConfig, DocumentData, ThermalBlock, ConnectionType } from './types';
+import type { DocumentType, PaperSize, LayoutConfig, DocumentData, ThermalBlock, ConnectionType, InvoiceDisplayMode } from './types';
+import { INVOICE_DISPLAY_MODES } from './types';
 
 export interface RenderedDocument {
   documentType: DocumentType;
@@ -156,7 +157,25 @@ export async function renderPosInvoiceDocument(
   };
 
   const data = buildDocumentData(documentType, resolvedTemplate.layoutConfig as LayoutConfig, bundle);
-  const blocks = paperSize === 'A4' ? undefined : renderThermalBlocks(paperSize, data);
+
+  // Tahap A — invoice display mode, resolved from the tenant's settings (this
+  // is the one caller that already fetches `invoice.tenant`). Only meaningful
+  // here — ticket-document.ts's label/tanda_terima have no line items.
+  const tenantSettings = (invoice.tenant.settings ?? {}) as Record<string, unknown>;
+  const rawMode = tenantSettings.invoiceDisplayMode;
+  const displayMode: InvoiceDisplayMode = (INVOICE_DISPLAY_MODES as readonly string[]).includes(rawMode as string)
+    ? (rawMode as InvoiceDisplayMode)
+    : 'detailed';
+  data.displayMode = displayMode;
+
+  // Thermal paper is committed once printed — no interactive toggle, so
+  // 'flexible' prints Detailed by default; only a genuine 'summary' setting
+  // collapses the printed lines. The A4 preview (below, spec rule 2 — client
+  // HTML) gets the full `data` untouched and does its own toggle.
+  const thermalData = displayMode === 'summary' && data.summaryItems
+    ? { ...data, items: data.summaryItems }
+    : data;
+  const blocks = paperSize === 'A4' ? undefined : renderThermalBlocks(paperSize, thermalData);
 
   return {
     documentType,

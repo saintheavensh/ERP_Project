@@ -12,6 +12,14 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export const PAPER_SIZES = ['58mm', '80mm', 'A4'] as const;
 export type PaperSize = (typeof PAPER_SIZES)[number];
 
+// Tahap A — invoice display mode (tenants.settings.invoiceDisplayMode). 'summary'
+// collapses every line into one combined row; 'flexible' sends full detail plus
+// a computed summary so the A4 preview (client-rendered HTML, spec rule 2) can
+// toggle on demand — thermal paper has no such toggle, so 'flexible' prints
+// Detailed by default (paper is committed once printed, not interactive).
+export const INVOICE_DISPLAY_MODES = ['detailed', 'summary', 'flexible'] as const;
+export type InvoiceDisplayMode = (typeof INVOICE_DISPLAY_MODES)[number];
+
 // 'win32' -- print via the Windows spooler by printer name (python-escpos's
 // Win32Raw), letting the agent (6C) list installed printers for the user to
 // pick from instead of typing a USB vendor/product ID or IP by hand. See
@@ -148,6 +156,14 @@ export interface DocumentData {
     showLogo: boolean; // A4 header only
     showSignature: boolean; // A4 signature column only
   };
+  // Tahap A — set by document.ts (the caller that already resolves tenant
+  // settings), not by buildDocumentData itself. Only meaningful for
+  // pos_invoice-sourced documents (receipt/invoice_a4); label/tanda_terima
+  // (ticket-document.ts) leave this undefined, they have no line items.
+  displayMode?: InvoiceDisplayMode;
+  // Always computed alongside `items` (one combined row) so the A4 preview
+  // can offer a Detailed/Summary toggle without a second render round-trip.
+  summaryItems?: Array<{ description: string; quantity: number; unitPrice: number; subtotal: number }>;
 }
 
 export type BlockAlign = 'left' | 'center' | 'right';
