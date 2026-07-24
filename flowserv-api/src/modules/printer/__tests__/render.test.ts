@@ -29,7 +29,7 @@ const bundle: InvoiceBundle = {
   taxAmount: 0,
   grandTotal: 350000,
   lines: [{ description: 'LCD iPhone 11 Original', quantity: 1, unitPrice: 350000, subtotal: 350000 }],
-  ticketInfo: { complaint: 'Layar retak', diagnosis: 'Ganti LCD', technicianName: 'Andi' },
+  technicianName: 'Andi',
 };
 
 describe('padRow', () => {
@@ -75,7 +75,7 @@ describe('buildDocumentData — "detail increases with paper size" (data-inclusi
     expect(doc.header.address).toBeUndefined();
     expect(doc.header.phone).toBeUndefined();
     expect(doc.extra.cashierName).toBeUndefined();
-    expect(doc.extra.ticketInfo).toBeUndefined();
+    expect(doc.extra.technicianName).toBeUndefined();
     expect(doc.display.showLineSubtotal).toBe(false);
   });
 
@@ -84,7 +84,7 @@ describe('buildDocumentData — "detail increases with paper size" (data-inclusi
     expect(doc.header.address).toBe(bundle.branch.address);
     expect(doc.header.phone).toBe(bundle.branch.phone);
     expect(doc.extra.cashierName).toBe('Sari');
-    expect(doc.extra.ticketInfo).toEqual(bundle.ticketInfo);
+    expect(doc.extra.technicianName).toBe('Andi');
     expect(doc.display.showLogo).toBe(true);
     expect(doc.display.showSignature).toBe(true);
     expect(doc.footer.warrantyPolicy).toBe('Kebijakan garansi lengkap.');

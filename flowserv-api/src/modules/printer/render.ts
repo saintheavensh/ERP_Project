@@ -19,7 +19,7 @@ export interface InvoiceBundle {
   taxAmount: number;
   grandTotal: number;
   lines: Array<{ description: string; quantity: number; unitPrice: number; subtotal: number }>;
-  ticketInfo?: { complaint: string; diagnosis?: string; technicianName?: string };
+  technicianName?: string;
 }
 
 /**
@@ -58,7 +58,7 @@ export function buildDocumentData(
       customerName: bundle.customerName,
       invoiceNumber: bundle.invoiceNumber,
       createdAt: bundle.createdAt,
-      ticketInfo: layoutConfig.extra.showTicketInfo ? bundle.ticketInfo : undefined,
+      technicianName: layoutConfig.extra.showTicketInfo ? bundle.technicianName : undefined,
     },
     footer: {
       note: layoutConfig.footer.note ?? undefined,

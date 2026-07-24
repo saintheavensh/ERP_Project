@@ -24,6 +24,7 @@ import { financeRouter } from './routes/finance';
 import { auditLogsRouter } from './routes/audit-logs';
 import { searchRouter } from './routes/search';
 import { printerRouter } from './routes/printer';
+import { printRouter } from './routes/print';
 import { subscribeLedger } from './modules/finance/ledger';
 
 // Split out of index.ts (H15) so the e2e suite can call the app directly via
@@ -55,6 +56,7 @@ app.route('/v1/finance', financeRouter);
 app.route('/v1/audit-logs', auditLogsRouter);
 app.route('/v1/search', searchRouter);
 app.route('/v1/printer', printerRouter);
+app.route('/v1/print', printRouter);
 
 // H11 — subscribe the finance ledger to the event bus once, at import time.
 subscribeLedger();

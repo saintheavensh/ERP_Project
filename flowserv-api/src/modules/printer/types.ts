@@ -121,11 +121,12 @@ export interface DocumentData {
     customerName?: string;
     invoiceNumber?: string;
     createdAt?: string;
-    ticketInfo?: {
-      complaint: string;
-      diagnosis?: string;
-      technicianName?: string;
-    };
+    // "Ticket info" per the spec's paper-size table is scoped to what the
+    // schema actually has today: service_tickets carries no complaint/
+    // diagnosis free-text column (a real, already-known gap — SVC-001/006 —
+    // not something to invent here, same restraint as F6/P9). Only the
+    // assigned technician's name is real data.
+    technicianName?: string;
   };
   footer: {
     note?: string;
