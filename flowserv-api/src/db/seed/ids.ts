@@ -201,4 +201,52 @@ export const IDS = {
   // Second tenant — a minimal set so its POS isn't empty either.
   paymentSecondTunai: 'b4000000-0000-4000-8000-000000000008',
   paymentSecondQris: 'b4000000-0000-4000-8000-000000000009',
+
+  // Tahap A (go-live gap Tier-1 #2) — two new service flow templates
+  // (Ditunggu/Disimpan), added alongside the existing "Standard Repair"
+  // WITHOUT touching it (see plan/tahap-a-flow-templates.md §2 — Standard
+  // Repair's fixed node/transition IDs are hardcoded across several existing
+  // tests). Neither new template is isDefault — Standard Repair stays the
+  // sole default so the Kanban board's default-template resolution is
+  // unaffected by adding these rows.
+  flowTemplateDitunggu: '84000000-0000-4000-8000-000000000001',
+  flowTemplateDisimpan: '84000000-0000-4000-8000-000000000002',
+
+  nodeDitungguIntake: '85000000-0000-4000-8000-000000000001',
+  nodeDitungguDiagnosis: '85000000-0000-4000-8000-000000000002',
+  nodeDitungguApproval: '85000000-0000-4000-8000-000000000003',
+  nodeDitungguQcAwal: '85000000-0000-4000-8000-000000000004',
+  nodeDitungguRepair: '85000000-0000-4000-8000-000000000005',
+  nodeDitungguQcAkhir: '85000000-0000-4000-8000-000000000006',
+  nodeDitungguSelesai: '85000000-0000-4000-8000-000000000007',
+
+  nodeDisimpanIntake: '85000000-0000-4000-8000-000000000008',
+  nodeDisimpanDiagnosis: '85000000-0000-4000-8000-000000000009',
+  nodeDisimpanUnitDisimpan: '85000000-0000-4000-8000-000000000010',
+  nodeDisimpanApproval: '85000000-0000-4000-8000-000000000011',
+  nodeDisimpanQcAwal: '85000000-0000-4000-8000-000000000012',
+  nodeDisimpanRepair: '85000000-0000-4000-8000-000000000013',
+  nodeDisimpanQcAkhir: '85000000-0000-4000-8000-000000000014',
+  nodeDisimpanSelesai: '85000000-0000-4000-8000-000000000015',
+
+  // Ditunggu: linear chain + one shortcut (Approval -> Selesai, mirrors the
+  // existing transApprovalToCompletion on Standard Repair for the
+  // "ternyata tidak ada kerusakan" case).
+  transDitungguIntakeToDiagnosis: '86000000-0000-4000-8000-000000000001',
+  transDitungguDiagnosisToApproval: '86000000-0000-4000-8000-000000000002',
+  transDitungguApprovalToQcAwal: '86000000-0000-4000-8000-000000000003',
+  transDitungguApprovalToSelesai: '86000000-0000-4000-8000-000000000004',
+  transDitungguQcAwalToRepair: '86000000-0000-4000-8000-000000000005',
+  transDitungguRepairToQcAkhir: '86000000-0000-4000-8000-000000000006',
+  transDitungguQcAkhirToSelesai: '86000000-0000-4000-8000-000000000007',
+
+  // Disimpan: same shape with Unit Disimpan inserted after Diagnosis.
+  transDisimpanIntakeToDiagnosis: '86000000-0000-4000-8000-000000000008',
+  transDisimpanDiagnosisToUnitDisimpan: '86000000-0000-4000-8000-000000000009',
+  transDisimpanUnitDisimpanToApproval: '86000000-0000-4000-8000-000000000010',
+  transDisimpanApprovalToQcAwal: '86000000-0000-4000-8000-000000000011',
+  transDisimpanApprovalToSelesai: '86000000-0000-4000-8000-000000000012',
+  transDisimpanQcAwalToRepair: '86000000-0000-4000-8000-000000000013',
+  transDisimpanRepairToQcAkhir: '86000000-0000-4000-8000-000000000014',
+  transDisimpanQcAkhirToSelesai: '86000000-0000-4000-8000-000000000015',
 } as const;

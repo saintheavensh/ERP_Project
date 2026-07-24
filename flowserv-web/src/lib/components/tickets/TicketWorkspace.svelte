@@ -55,6 +55,33 @@
         <span class="text-blue-600">{state.asset?.assetType}</span> {state.asset?.brand || ''} {state.asset?.model || ''}
       </p>
       <p class="text-slate-600 text-sm mt-1 font-mono">SN: {state.asset?.serialNumber || 'N/A'}</p>
+
+      <!-- Tahap A — go-live gap Tier-1 #2. Sandi/pola: dicatat di intake,
+           dikembalikan ke pelanggan saat serah-terima (QC Akhir). -->
+      <div class="mt-3 pt-3 border-t border-slate-100">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sandi / Pola</span>
+          {#if !state.passcodeEditing}
+            <button onclick={() => state.openPasscodeEdit()} class="text-blue-600 hover:text-blue-800 text-xs font-medium">Edit</button>
+          {/if}
+        </div>
+        {#if state.passcodeEditing}
+          <div class="mt-1 flex items-center gap-2">
+            <input
+              type="text"
+              bind:value={state.passcodeDraft}
+              placeholder="mis. 1234 atau pola L-terbalik"
+              class="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+            >
+            <button onclick={() => state.savePasscode()} disabled={state.passcodeLoading} class="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-2 py-1 rounded-lg">
+              {state.passcodeLoading ? '...' : 'Simpan'}
+            </button>
+            <button onclick={() => state.passcodeEditing = false} class="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1">Batal</button>
+          </div>
+        {:else}
+          <p class="text-sm font-mono text-slate-900 mt-1">{state.ticket?.devicePasscode || '-'}</p>
+        {/if}
+      </div>
     </div>
   </div>
 

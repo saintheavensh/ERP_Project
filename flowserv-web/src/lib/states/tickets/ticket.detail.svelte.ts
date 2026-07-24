@@ -62,6 +62,38 @@ export class TicketDetailState {
     finally { this.assignLoading = false; }
   }
 
+  // Tahap A — go-live gap Tier-1 #2. Sandi/pola: editable at any point, not
+  // just at intake (lets a mis-keyed value be corrected, or cleared once
+  // handed back to the customer at QC Akhir).
+  passcodeEditing = $state(false);
+  passcodeDraft = $state('');
+  passcodeLoading = $state(false);
+
+  openPasscodeEdit() {
+    this.passcodeDraft = this.ticket?.devicePasscode || '';
+    this.passcodeEditing = true;
+  }
+
+  async savePasscode() {
+    this.passcodeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/device-passcode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({ devicePasscode: this.passcodeDraft || null })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.passcodeEditing = false;
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal menyimpan sandi/pola';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.passcodeLoading = false; }
+  }
+
   // H7 — Charges
   chargeForm = $state<{ sourceType: 'part' | 'labor' | 'fee'; inventoryItemId: string; description: string; quantity: number; unitPrice: string }>({
     sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: ''

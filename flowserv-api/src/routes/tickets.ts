@@ -13,8 +13,8 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 import { FlowEngine } from '../flow-engine/engine';
 import { BusinessError } from '../lib/errors';
-import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice, cancelTicket } from '../modules/tickets/service';
+import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput, updateDevicePasscodeInput } from '../modules/tickets/types';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice, cancelTicket, updateDevicePasscode } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -154,7 +154,11 @@ const intakeSchema = z.object({
   assetBrand: z.string().optional(),
   assetModel: z.string().optional(),
   assetSn: z.string().optional(),
-  
+
+  // Tahap A — go-live gap Tier-1 #2. Recorded at intake, given back at
+  // handover (QC Akhir); editable later via PATCH /:id/device-passcode.
+  devicePasscode: z.preprocess(emptyToUndefined, z.string().optional()),
+
   flowTemplateId: z.string().uuid(),
   branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
 });
@@ -221,7 +225,8 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
         customerAssetId: finalAssetId,
         flowTemplateId: data.flowTemplateId,
         currentNodeId: firstNode.id,
-        status: 'open'
+        status: 'open',
+        devicePasscode: data.devicePasscode || null,
       }).returning();
       
       // 5. Create History Entry
@@ -238,6 +243,29 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
     return successResponse(c, result, undefined, 201);
   } catch (err: any) {
     return errorResponse(c, 'INTAKE_FAILED', err.message, [], 400);
+  }
+});
+
+// Tahap A — go-live gap Tier-1 #2. Set/clear the device passcode at any point
+// in the ticket's life (not just at intake — lets a mis-keyed value be
+// corrected, and lets staff clear it once returned to the customer at
+// handover). Reuses `ticket.create` (the same actors who do intake) rather
+// than adding a new permission for one small field. Deliberately NOT in
+// auditMiddleware's bodyFields — a lock code/pattern is exactly the kind of
+// value that shouldn't sit in cleartext in a second place (the audit log).
+ticketsRouter.patch('/:id/device-passcode', requirePermission('ticket.create'), zValidator('json', updateDevicePasscodeInput), auditMiddleware({ action: 'ticket.update_device_passcode', entityType: 'service_ticket', entityIdParam: 'id' }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const { devicePasscode } = c.req.valid('json');
+  try {
+    const result = await updateDevicePasscode(tenantId, ticketId, devicePasscode);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to update device passcode:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update device passcode', undefined, 500);
   }
 });
 

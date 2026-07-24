@@ -95,7 +95,17 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
 
 **TIER 1 — penting untuk operasional harian (mungkin penghalang go-live multi-cabang)**
 1. **Pisah data per cabang** — kasir Cabang A tidak lihat data Cabang B. Sekarang semua lihat semua. (JWT belum bawa `branchId`; query hanya filter tenant.)
-2. **Konfigurasi 2 flow template servis** (ditunggu/disimpan) + field intake **sandi/pola**.
+2. ~~**Konfigurasi 2 flow template servis** (ditunggu/disimpan) + field intake
+   **sandi/pola**.~~ ✅ **SELESAI 2026-07-24**
+   ([`plan/tahap-a-flow-templates.md`](tahap-a-flow-templates.md)). Struktur node
+   (dikonfirmasi ke pemilik): Ditunggu = Intake→Diagnosis→Menunggu Persetujuan→QC
+   Awal→Pengerjaan→QC Akhir→Selesai (7 node); Disimpan = sama + node "Unit Disimpan"
+   setelah Diagnosis (8 node); keduanya punya shortcut Menunggu Persetujuan→Selesai
+   untuk kasus "ternyata tidak ada kerusakan". `Standard Repair` (template lama)
+   tidak disentuh — tetap satu-satunya `isDefault`. `service_tickets.devicePasscode`
+   dicatat di intake, tampil + bisa diedit di ticket detail. Flow engine & UI tiket
+   ternyata sudah 100% generik atas nama node, jadi nol perubahan FE struktural
+   dibutuhkan — murni seed data. 90 Playwright + 198 unit hijau.
 3. **Pemicu cetak per-tahap**: tanda terima (alur disimpan, setelah diagnosa), nota selesai, label.
 4. ~~**CRUD metode pembayaran** (tambah e-wallet Dana/OVO/GoPay).~~ ✅ **SELESAI
    2026-07-24** ([`plan/tahap-a-payment-methods.md`](tahap-a-payment-methods.md)). Ternyata

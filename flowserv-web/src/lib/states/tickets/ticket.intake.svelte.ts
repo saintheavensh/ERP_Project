@@ -15,6 +15,9 @@ export class TicketIntakeState {
     assetBrand: '',
     assetModel: '',
     assetSn: '',
+    // Tahap A — go-live gap Tier-1 #2. Optional; recorded at intake, given
+    // back at handover (QC Akhir).
+    devicePasscode: '',
     flowTemplateId: '',
     branchId: '00000000-0000-0000-0000-000000000000'
   });

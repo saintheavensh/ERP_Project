@@ -925,6 +925,28 @@ export async function cancelCharge(tenantId: string, ticketId: string, chargeId:
   });
 }
 
+/**
+ * Tahap A — go-live gap Tier-1 #2. Set/clear the device's lock code/pattern,
+ * recorded at intake and given back at handover (QC Akhir). Editable at any
+ * time (not just at intake) so a mis-keyed value can be corrected. `null`
+ * clears it (e.g. once it's been returned to the customer).
+ */
+export async function updateDevicePasscode(
+  tenantId: string,
+  ticketId: string,
+  devicePasscode: string | null
+) {
+  const [updated] = await db
+    .update(serviceTickets)
+    .set({ devicePasscode })
+    .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
+    .returning({ id: serviceTickets.id, devicePasscode: serviceTickets.devicePasscode });
+  if (!updated) {
+    throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+  }
+  return updated;
+}
+
 /** List a ticket's charges with computed totals and margin. */
 export async function listCharges(tenantId: string, ticketId: string) {
   await assertTicketExists(db, tenantId, ticketId);

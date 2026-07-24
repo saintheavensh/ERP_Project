@@ -54,8 +54,10 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
   await page.fill('#model', 'Galaxy A10');
-  // Flow template select: option index 1 is the first real workflow (Standard Repair).
-  await page.selectOption('#flow', { index: 1 });
+  // Flow template select: pick "Standard Repair" by label, not position — Tahap A
+  // added two more service-domain templates (Ditunggu/Disimpan), so the dropdown
+  // is no longer a single real option at a fixed index.
+  await page.selectOption('#flow', { label: 'Standard Repair' });
   await shot(page, '02-intake-filled');
   await page.getByRole('button', { name: 'Create Ticket' }).click();
 

@@ -57,6 +57,10 @@ export const serviceTickets = pgTable('service_tickets', {
   // a ticket at intake has no technician yet.
   assignedTechnicianId: uuid('assigned_technician_id').references(() => users.id),
   assignedAt: timestamp('assigned_at', { withTimezone: true }),
+  // Tahap A — go-live gap Tier-1 #2. Recorded at intake, given back at handover
+  // (QC Akhir). Lives on the ticket, not customer_assets: a device's lock code
+  // can change between visits, so it isn't a permanent asset property.
+  devicePasscode: text('device_passcode'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({

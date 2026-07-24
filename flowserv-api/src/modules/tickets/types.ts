@@ -63,3 +63,11 @@ export const cancelTicketInput = z.object({
 });
 
 export type CancelTicketInput = z.infer<typeof cancelTicketInput>;
+
+// Tahap A — go-live gap Tier-1 #2. `null` clears the field; omitting the key
+// entirely is a no-op (not the same as clearing).
+export const updateDevicePasscodeInput = z.object({
+  devicePasscode: z.string().nullable(),
+});
+
+export type UpdateDevicePasscodeInput = z.infer<typeof updateDevicePasscodeInput>;
