@@ -61,6 +61,10 @@ export const serviceTickets = pgTable('service_tickets', {
   // (QC Akhir). Lives on the ticket, not customer_assets: a device's lock code
   // can change between visits, so it isn't a permanent asset property.
   devicePasscode: text('device_passcode'),
+  // Tahap A — go-live gap Tier-1 #3 (print triggers). SVC-001 always named
+  // "complaint" as part of intake, but no column for it ever existed until
+  // now. Feeds the label/tanda-terima print documents ("kerusakan").
+  reportedComplaint: text('reported_complaint'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({

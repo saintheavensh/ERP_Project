@@ -3,7 +3,10 @@ import { z } from 'zod';
 // Matches the varchar-with-comment convention already used in db/schema/printer.ts
 // (no pg enum type on these columns) — validated here at the Zod layer instead,
 // same as every other module's types.ts.
-export const DOCUMENT_TYPES = ['receipt', 'invoice_a4', 'label'] as const;
+// 'tanda_terima' (Tahap A, go-live gap Tier-1 #3) — proof-of-receipt for a
+// unit left for storage (alur Disimpan). Ticket-sourced like 'label', never
+// a pos_invoice — see modules/printer/ticket-document.ts.
+export const DOCUMENT_TYPES = ['receipt', 'invoice_a4', 'label', 'tanda_terima'] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 export const PAPER_SIZES = ['58mm', '80mm', 'A4'] as const;

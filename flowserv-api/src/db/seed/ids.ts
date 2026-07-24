@@ -176,8 +176,10 @@ export const IDS = {
   templatePrinterReceipt58: 'b2000000-0000-4000-8000-000000000001',
   templatePrinterReceipt80: 'b2000000-0000-4000-8000-000000000002',
   templatePrinterInvoiceA4: 'b2000000-0000-4000-8000-000000000003',
-  // Defined per plan Q2 but not yet wired to a print trigger anywhere.
+  // Defined per plan Q2, wired to a print trigger by Tahap A (go-live gap Tier-1 #3).
   templatePrinterLabelGaransi: 'b2000000-0000-4000-8000-000000000004',
+  // Tahap A — new document type, thermal-only (80mm) for MVP.
+  templatePrinterTandaTerima: 'b2000000-0000-4000-8000-000000000005',
 
   assignPrinterPusatReceipt: 'b3000000-0000-4000-8000-000000000001',
   assignPrinterPusatInvoiceA4: 'b3000000-0000-4000-8000-000000000002',

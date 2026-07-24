@@ -12,10 +12,14 @@
   import ThermalPreview from './ThermalPreview.svelte';
   import A4Invoice from './A4Invoice.svelte';
 
-  let { token, documentType, invoiceId, label = 'Cetak' }: {
+  // Tahap A — 'label'/'tanda_terima' are ticket-sourced (the `id` prop is a
+  // ticketId, not an invoiceId); the backend's GET /print/documents/:type/:id
+  // resolves which one it means from `documentType` alone. Renamed from
+  // `invoiceId` to `id` accordingly.
+  let { token, documentType, id, label = 'Cetak' }: {
     token: string;
-    documentType: 'receipt' | 'invoice_a4';
-    invoiceId: string;
+    documentType: 'receipt' | 'invoice_a4' | 'label' | 'tanda_terima';
+    id: string;
     label?: string;
   } = $props();
 
@@ -34,7 +38,7 @@
     rendered = null;
     agentStatus = 'idle';
     try {
-      const res = await fetch(`${API_BASE}/print/documents/${documentType}/${invoiceId}`, {
+      const res = await fetch(`${API_BASE}/print/documents/${documentType}/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const result = await res.json();

@@ -20,11 +20,92 @@ export interface RenderedDocument {
 }
 
 /**
- * The only two document types wired to a real data source in this phase
- * (plan Q2) — both are a pos_invoice. 'label' has seeded templates (Q2) but
- * no print trigger and no underlying entity model decided yet.
+ * Document types sourced from a pos_invoice. 'label'/'tanda_terima' are
+ * ticket-sourced instead — see modules/printer/ticket-document.ts.
  */
 const SUPPORTED_DOCUMENT_TYPES: readonly DocumentType[] = ['receipt', 'invoice_a4'];
+
+// Drizzle leaves layout_config as `unknown` (jsonb with no .$type<>() —
+// matches every other jsonb column in this schema) and paperSize as the
+// column's plain `string`, not the PaperSize literal union — both are cast
+// at the point of use, same as connectionType below.
+export interface ResolvedTemplateRef { id: string; name: string; paperSize: string; layoutConfig: unknown }
+
+// A documentType is "unambiguous" when exactly one paperSize makes sense for
+// it at all (so a missing branch assignment can still fall back to the
+// tenant default instead of asking the caller to disambiguate). 'receipt' is
+// deliberately absent — 58mm vs 80mm genuinely can't be guessed.
+const UNAMBIGUOUS_PAPER_SIZE: Partial<Record<DocumentType, PaperSize>> = {
+  invoice_a4: 'A4',
+  label: '58mm',
+  tanda_terima: '80mm',
+};
+
+/**
+ * Resolves which template (and, if one exists, which physical device
+ * assignment) a given branch+documentType should print through. Shared by
+ * both the pos_invoice path (renderPosInvoiceDocument) and the ticket path
+ * (ticket-document.ts's renderTicketDocument) — extracted here rather than
+ * duplicated, since renderTicketDocument became the second real caller of
+ * this exact resolution logic.
+ */
+export async function resolveTemplateAndAssignment(
+  tenantId: string,
+  documentType: DocumentType,
+  branchId: string,
+  requestedPaperSize?: PaperSize
+): Promise<{ template: ResolvedTemplateRef; assignment: RenderedDocument['assignment'] }> {
+  const branchAssignment = await db.query.printerAssignments.findFirst({
+    where: and(
+      eq(printerAssignments.tenantId, tenantId),
+      eq(printerAssignments.branchId, branchId),
+      eq(printerAssignments.documentType, documentType)
+    ),
+    with: { device: true, template: true },
+  });
+
+  const toAssignment = (a: NonNullable<typeof branchAssignment>): RenderedDocument['assignment'] => ({
+    deviceId: a.device.id,
+    deviceName: a.device.name,
+    connectionType: a.device.connectionType as ConnectionType,
+  });
+
+  if (requestedPaperSize) {
+    if (branchAssignment && branchAssignment.template.paperSize === requestedPaperSize) {
+      return { template: branchAssignment.template, assignment: toAssignment(branchAssignment) };
+    }
+    const fallback = await db.query.printerTemplates.findFirst({
+      where: and(
+        eq(printerTemplates.tenantId, tenantId),
+        eq(printerTemplates.documentType, documentType),
+        eq(printerTemplates.paperSize, requestedPaperSize),
+        eq(printerTemplates.isDefault, true)
+      ),
+    });
+    if (!fallback) throw new BusinessError('NO_TEMPLATE', `No ${documentType} template for paper size ${requestedPaperSize}`, 404);
+    return { template: fallback, assignment: null };
+  }
+
+  if (branchAssignment) {
+    return { template: branchAssignment.template, assignment: toAssignment(branchAssignment) };
+  }
+
+  const unambiguousSize = UNAMBIGUOUS_PAPER_SIZE[documentType];
+  if (unambiguousSize) {
+    const fallback = await db.query.printerTemplates.findFirst({
+      where: and(
+        eq(printerTemplates.tenantId, tenantId),
+        eq(printerTemplates.documentType, documentType),
+        eq(printerTemplates.paperSize, unambiguousSize),
+        eq(printerTemplates.isDefault, true)
+      ),
+    });
+    if (!fallback) throw new BusinessError('NO_TEMPLATE', `No ${documentType} template configured for this tenant`, 404);
+    return { template: fallback, assignment: null };
+  }
+
+  throw new BusinessError('PAPER_SIZE_REQUIRED', `No printer is assigned to this branch for ${documentType}; specify a paperSize`, 400);
+}
 
 export async function renderPosInvoiceDocument(
   tenantId: string,
@@ -49,69 +130,8 @@ export async function renderPosInvoiceDocument(
   });
   if (!invoice) throw new BusinessError('NOT_FOUND', 'Invoice not found', 404);
 
-  const branchAssignment = await db.query.printerAssignments.findFirst({
-    where: and(
-      eq(printerAssignments.tenantId, tenantId),
-      eq(printerAssignments.branchId, invoice.branchId),
-      eq(printerAssignments.documentType, documentType)
-    ),
-    with: { device: true, template: true },
-  });
-
-  // Drizzle leaves layout_config as `unknown` (jsonb with no .$type<>() —
-  // matches every other jsonb column in this schema) and paperSize as the
-  // column's plain `string`, not the PaperSize literal union — both are cast
-  // at the point of use below, same as connectionType a few lines down.
-  interface ResolvedTemplateRef { id: string; name: string; paperSize: string; layoutConfig: unknown }
-  let resolvedTemplate: ResolvedTemplateRef | null = null;
-  let resolvedAssignment: RenderedDocument['assignment'] = null;
-
-  if (requestedPaperSize) {
-    if (branchAssignment && branchAssignment.template.paperSize === requestedPaperSize) {
-      resolvedTemplate = branchAssignment.template;
-      resolvedAssignment = {
-        deviceId: branchAssignment.device.id,
-        deviceName: branchAssignment.device.name,
-        connectionType: branchAssignment.device.connectionType as ConnectionType,
-      };
-    } else {
-      const fallback = await db.query.printerTemplates.findFirst({
-        where: and(
-          eq(printerTemplates.tenantId, tenantId),
-          eq(printerTemplates.documentType, documentType),
-          eq(printerTemplates.paperSize, requestedPaperSize),
-          eq(printerTemplates.isDefault, true)
-        ),
-      });
-      if (!fallback) throw new BusinessError('NO_TEMPLATE', `No ${documentType} template for paper size ${requestedPaperSize}`, 404);
-      resolvedTemplate = fallback;
-    }
-  } else if (branchAssignment) {
-    resolvedTemplate = branchAssignment.template;
-    resolvedAssignment = {
-      deviceId: branchAssignment.device.id,
-      deviceName: branchAssignment.device.name,
-      connectionType: branchAssignment.device.connectionType as ConnectionType,
-    };
-  } else if (documentType === 'invoice_a4') {
-    // A4 is unambiguous — there is only one paper size for this doc type,
-    // so a missing assignment can still fall back to the tenant default.
-    const fallback = await db.query.printerTemplates.findFirst({
-      where: and(
-        eq(printerTemplates.tenantId, tenantId),
-        eq(printerTemplates.documentType, documentType),
-        eq(printerTemplates.paperSize, 'A4'),
-        eq(printerTemplates.isDefault, true)
-      ),
-    });
-    if (!fallback) throw new BusinessError('NO_TEMPLATE', 'No invoice_a4 template configured for this tenant', 404);
-    resolvedTemplate = fallback;
-  } else {
-    // 'receipt' has no branch assignment AND no explicit paperSize -- 58mm
-    // vs 80mm can't be guessed. Ask the caller to say which, rather than
-    // silently picking one.
-    throw new BusinessError('PAPER_SIZE_REQUIRED', 'No printer is assigned to this branch for receipts; specify ?paperSize=58mm or 80mm', 400);
-  }
+  const { template: resolvedTemplate, assignment: resolvedAssignment } =
+    await resolveTemplateAndAssignment(tenantId, documentType, invoice.branchId, requestedPaperSize);
 
   const paperSize = resolvedTemplate.paperSize as PaperSize;
 

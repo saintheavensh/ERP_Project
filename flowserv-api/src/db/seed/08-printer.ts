@@ -29,12 +29,25 @@ const layoutInvoiceA4: LayoutConfig = {
   },
 };
 
-// Defined per plan Q2 but not yet wired to a print trigger anywhere in the FE.
+// Defined per plan Q2, wired to a real print trigger by Tahap A (go-live gap
+// Tier-1 #3) — see modules/printer/ticket-document.ts's buildLabelBlocks().
 const layoutLabelGaransi: LayoutConfig = {
   header: { showStoreName: true, showAddress: false, showPhone: false, showLogo: false },
   items: { showLineSubtotal: false, showDescription: false },
   extra: { showCashierName: false, showTicketInfo: false, showSignature: false },
   footer: { note: 'Garansi 7 hari', warrantyPolicy: null },
+};
+
+// Tahap A — new document type. Ticket-sourced (not a pos_invoice) proof of
+// receipt for a unit left in storage (alur Disimpan). Read by
+// buildTandaTerimaBlocks(), not renderThermalBlocks() — it isn't a monetary
+// receipt, so it deliberately doesn't go through the invoice-shaped items/
+// totals pipeline (would render an awkward "TOTAL Rp0" line).
+const layoutTandaTerima: LayoutConfig = {
+  header: { showStoreName: true, showAddress: true, showPhone: false, showLogo: false },
+  items: { showLineSubtotal: false, showDescription: false },
+  extra: { showCashierName: false, showTicketInfo: false, showSignature: false },
+  footer: { note: 'Simpan bukti ini untuk pengambilan unit.', warrantyPolicy: null },
 };
 
 export async function seedPrinter(tx: SeedTx): Promise<void> {
@@ -105,6 +118,15 @@ export async function seedPrinter(tx: SeedTx): Promise<void> {
       documentType: 'label',
       paperSize: '58mm',
       layoutConfig: layoutLabelGaransi,
+      isDefault: true,
+    },
+    {
+      id: IDS.templatePrinterTandaTerima,
+      tenantId: IDS.tenantMain,
+      name: 'Tanda Terima Unit 80mm',
+      documentType: 'tanda_terima',
+      paperSize: '80mm',
+      layoutConfig: layoutTandaTerima,
       isDefault: true,
     },
   ]).onConflictDoNothing();

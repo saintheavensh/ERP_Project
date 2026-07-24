@@ -13,7 +13,7 @@ import { allocateInvoiceNumber } from '../../lib/invoice-number';
 // H10 — every reserve/release movement for a ticket charge shares this
 // referenceType, distinguished by movementType; referenceId is always the charge id.
 const RESERVATION_REFERENCE_TYPE = 'ticket_charge_reservation';
-import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput, GenerateTicketInvoiceInput } from './types';
+import type { CreateChargeInput, UpdateChargeInput, AssignTechnicianInput, GenerateTicketInvoiceInput, UpdateIntakeDetailsInput } from './types';
 
 // ============================================================================
 // Pure functions — no database, no HTTP. These are what the unit tests exercise.
@@ -926,25 +926,59 @@ export async function cancelCharge(tenantId: string, ticketId: string, chargeId:
 }
 
 /**
- * Tahap A — go-live gap Tier-1 #2. Set/clear the device's lock code/pattern,
- * recorded at intake and given back at handover (QC Akhir). Editable at any
- * time (not just at intake) so a mis-keyed value can be corrected. `null`
- * clears it (e.g. once it's been returned to the customer).
+ * Tahap A — go-live gap Tier-1 #2/#3. Set/clear sandi-pola and/or the
+ * reported complaint. Both are captured at intake but editable at any time
+ * afterward (correcting a typo; clearing sandi/pola once it's been handed
+ * back at QC Akhir). Only keys actually present in `input` are written —
+ * `updateIntakeDetailsInput`'s `.optional()` makes "not sent" different from
+ * "sent as null".
  */
-export async function updateDevicePasscode(
+export async function updateIntakeDetails(
   tenantId: string,
   ticketId: string,
-  devicePasscode: string | null
+  input: UpdateIntakeDetailsInput
 ) {
+  const patch: Record<string, unknown> = {};
+  if ('devicePasscode' in input) patch.devicePasscode = input.devicePasscode;
+  if ('reportedComplaint' in input) patch.reportedComplaint = input.reportedComplaint;
+
   const [updated] = await db
     .update(serviceTickets)
-    .set({ devicePasscode })
+    .set(patch)
     .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
-    .returning({ id: serviceTickets.id, devicePasscode: serviceTickets.devicePasscode });
+    .returning({
+      id: serviceTickets.id,
+      devicePasscode: serviceTickets.devicePasscode,
+      reportedComplaint: serviceTickets.reportedComplaint,
+    });
   if (!updated) {
     throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
   }
   return updated;
+}
+
+/**
+ * Tahap A — go-live gap Tier-1 #3 ("nota selesai"). The one non-voided
+ * pos_invoice already linked to this ticket (H17's generateTicketInvoice
+ * creates exactly this link), if any — lets the ticket detail page surface a
+ * "Cetak Nota" button once an invoice exists, without the frontend having to
+ * remember the id from the moment it was created (which doesn't survive a
+ * page reload).
+ */
+export async function findActiveInvoiceForTicket(tenantId: string, ticketId: string) {
+  const [invoice] = await db
+    .select({
+      id: posInvoices.id,
+      invoiceNumber: posInvoices.invoiceNumber,
+      paymentStatus: posInvoices.paymentStatus,
+    })
+    .from(posInvoices)
+    .where(and(
+      eq(posInvoices.tenantId, tenantId),
+      eq(posInvoices.serviceTicketId, ticketId),
+      ne(posInvoices.status, 'voided')
+    ));
+  return invoice ?? null;
 }
 
 /** List a ticket's charges with computed totals and margin. */

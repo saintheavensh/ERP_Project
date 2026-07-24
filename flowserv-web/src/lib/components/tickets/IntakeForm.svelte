@@ -111,6 +111,14 @@
       <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">3</span>
       Service Details
     </h2>
+    <!-- Tahap A — go-live gap Tier-1 #3. Optional but encouraged: feeds the
+         label/tanda-terima print documents ("kerusakan"). SVC-001 always
+         named complaint capture as part of intake; no field for it existed
+         until now. -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="complaint">Keluhan / Kerusakan</label>
+      <textarea id="complaint" bind:value={state.form.reportedComplaint} rows="2" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. LCD retak, tidak bisa charge"></textarea>
+    </div>
     <div>
       <label class="block text-sm font-medium text-slate-700 mb-1" for="flow">Service Flow *</label>
       <select id="flow" bind:value={state.form.flowTemplateId} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">

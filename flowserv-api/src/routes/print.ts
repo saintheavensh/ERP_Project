@@ -6,6 +6,13 @@ import { successResponse, errorResponse } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { DOCUMENT_TYPES, PAPER_SIZES } from '../modules/printer/types';
 import { renderPosInvoiceDocument } from '../modules/printer/document';
+import { renderTicketDocument } from '../modules/printer/ticket-document';
+
+// Tahap A — 'label'/'tanda_terima' are ticket-sourced (printed at diagnosis,
+// before any invoice exists); 'receipt'/'invoice_a4' are pos_invoice-sourced.
+// The `:id` path param means different things depending on documentType --
+// this is the one place that distinction is made.
+const TICKET_SOURCED_TYPES = new Set(['label', 'tanda_terima']);
 
 // 6A.4 — deliberately NOT gated by printer.manage: whoever can see an
 // invoice (a cashier at checkout, a technician handing over a repair) needs
@@ -34,7 +41,9 @@ printRouter.get(
     const { paperSize } = c.req.valid('query');
 
     try {
-      const rendered = await renderPosInvoiceDocument(tenantId, documentType, id, paperSize);
+      const rendered = TICKET_SOURCED_TYPES.has(documentType)
+        ? await renderTicketDocument(tenantId, documentType, id, paperSize)
+        : await renderPosInvoiceDocument(tenantId, documentType, id, paperSize);
       return successResponse(c, rendered);
     } catch (err) {
       if (err instanceof BusinessError) {

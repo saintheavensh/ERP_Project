@@ -106,7 +106,16 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
    dicatat di intake, tampil + bisa diedit di ticket detail. Flow engine & UI tiket
    ternyata sudah 100% generik atas nama node, jadi nol perubahan FE struktural
    dibutuhkan — murni seed data. 90 Playwright + 198 unit hijau.
-3. **Pemicu cetak per-tahap**: tanda terima (alur disimpan, setelah diagnosa), nota selesai, label.
+3. ~~**Pemicu cetak per-tahap**: tanda terima (alur disimpan, setelah diagnosa),
+   nota selesai, label.~~ ✅ **SELESAI 2026-07-25**
+   ([`plan/tahap-a-print-triggers.md`](tahap-a-print-triggers.md)). Ternyata butuh
+   jalur render baru sepenuhnya (bukan cuma "nyalakan yang ada") — label/tanda-terima
+   dicetak dari TIKET, bukan invoice, sebelum invoice ada. Sekalian menutup lubang
+   lama: field keluhan/kerusakan (SVC-001) tak pernah ada kolomnya sampai sekarang.
+   Tombol cetak selalu manual (bukan auto-print), muncul begitu dokumennya masuk
+   akal: Label setelah diagnosa dimulai (kedua alur), Tanda Terima setelah masuk
+   node Unit Disimpan (otomatis cuma alur Disimpan), Nota setelah invoice
+   sungguhan ada. 94 Playwright + 198 unit hijau.
 4. ~~**CRUD metode pembayaran** (tambah e-wallet Dana/OVO/GoPay).~~ ✅ **SELESAI
    2026-07-24** ([`plan/tahap-a-payment-methods.md`](tahap-a-payment-methods.md)). Ternyata
    bukan "kecil": tabel `payment_methods` dibaca POS tapi tak pernah di-seed, enum checkout
