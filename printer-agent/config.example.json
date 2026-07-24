@@ -19,6 +19,11 @@
     "baudrate": 9600
   },
 
+  "win32": {
+    "_comment": "Recommended for most Windows setups -- prints through the printer's own Windows driver via the print spooler, no USB vendor/product ID lookup needed. Use GET /printers to list installed printers, or POST /config to pick one from the Settings UI's scan button.",
+    "printerName": "POS-80"
+  },
+
   "file": {
     "_comment": "Writes raw ESC/POS bytes to this file instead of a real printer -- useful to inspect the exact output the 6D.1 physical-print checklist expects, with zero hardware.",
     "path": "printer_output.bin"

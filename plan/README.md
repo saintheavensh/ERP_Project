@@ -29,11 +29,20 @@ the resolved Q1–Q3 scope decisions — no physical printer available, build te
 hardware; MVP is POS receipt + A4 invoice; Python 3.14.3 confirmed available). **6A + 6B + 6C
 are done**: the entire backend foundation (seed, pure render engine, config CRUD, render
 endpoint), the entire frontend (Printer Settings tab with devices/templates/assignment matrix, a
-thermal preview, an A4 `window.print()` path, and a "Cetak" flow), and now the Python agent
-itself (`printer-agent/` — Flask `/health` + `/print`, a pure block→ESC/POS translator, a
-connection factory for Usb/Network/Serial/File/Dummy, and a working PyInstaller `--onefile`
-build). 198 backend unit + 75 Playwright + 23 agent pytest, all passing. Next: **6D.1**, the
-physical print checklist — hardware-dependent, the user runs it — then merge to `main`.
+thermal preview, an A4 `window.print()` path, and a "Cetak" flow), and the Python agent itself
+(`printer-agent/` — Flask `/health` + `/print`, a pure block→ESC/POS translator, a connection
+factory for Win32/Usb/Network/Serial/File/Dummy, and a working PyInstaller `--onefile` build).
+**6C.5** (added after a direct request) closed the last rough edge: scan-and-pick — the agent
+lists installed Windows printers (`GET /printers`) so the Settings UI can offer a pick-list
+instead of a USB vendor/product ID or IP address typed by hand, and the pick is persisted via
+`POST /config` with no manual file editing. **6C.6** (requested next) added a per-printer
+"Test Cetak" (`POST /test-print`, a canned diagnostic receipt through whichever printer
+`config.json` currently points at) — building it live surfaced and fixed a real packaging bug:
+the packaged exe was silently resetting `config.json` to `dummy` on every launch because
+`__file__` resolves inside PyInstaller's ephemeral extraction directory, not next to the real
+`.exe` (fixed via `sys.frozen`/`sys.executable`). 198 backend unit + 80 Playwright + 42 agent
+pytest, all passing. Next: **6D.1**, the physical print checklist — hardware-dependent, the
+user runs it — then merge to `main`.
 
 ---
 
@@ -93,17 +102,31 @@ physical print checklist — hardware-dependent, the user runs it — then merge
   the exact thing `window.print()` sends. **Python agent (6C)**: new top-level
   `printer-agent/` (Flask, `127.0.0.1:9100` only) — `escpos_translator.py` is the pure
   block→ESC/POS mapper (no layout, per D1), `connection.py` is a factory building a
-  real `Usb`/`Network`/`Serial` printer or a hardware-free `Dummy`/`File` one from a
-  per-machine `config.json`. 23 pytest tests (byte-level ESC/POS assertions against
-  `Dummy`, mocked connection-factory selection, Flask endpoint behavior). Packaged with
-  PyInstaller (`--collect-data escpos` — a real bundling bug found and documented) into
-  a working `printer-agent.exe`; live-verified running standalone, answering
-  `/health` and `/print` with no Python install. The "Cetak" button's agent-send path,
-  built in 6B before the agent existed, needs zero FE changes now that 6C is real. All
-  built without any printer hardware. Test baseline: **198 backend unit + 75
-  Playwright + 23 agent pytest**, all green. `npx tsc --noEmit` + `npx svelte-check`
-  clean. Only 6D.1 (physical print, hardware-dependent, user-run) remains before
-  merging this phase to `main`.
+  real `Win32Raw`/`Usb`/`Network`/`Serial` printer or a hardware-free `Dummy`/`File`
+  one from a per-machine `config.json`. Packaged with PyInstaller (`--collect-data
+  escpos` — a real bundling bug found and documented) into a working
+  `printer-agent.exe`; live-verified running standalone, answering `/health` and
+  `/print` with no Python install. The "Cetak" button's agent-send path, built in 6B
+  before the agent existed, needs zero FE changes now that 6C is real. **6C.5**
+  (requested after 6C shipped): `GET /printers` scans installed Windows printers
+  (`pywin32`) so `PrinterScanPicker.svelte` (shown in `PrinterTab.svelte` for
+  `connectionType: 'win32'`) offers a pick-list instead of a hand-typed USB
+  vendor/product ID or IP — picking one calls `POST /config` to lock it in on that
+  machine immediately. Live-verified on this actual Windows machine: scanned a real
+  installed "POS-80" printer, picked it, and a real `POST /print` spooled through it
+  successfully. **6C.6** (requested next): `POST /test-print` prints a canned
+  diagnostic receipt through whichever printer `config.json` currently points at —
+  "Test Cetak" in `PrinterScanPicker.svelte` right after a pick, plus a per-row "Test
+  Cetak" button in `PrinterTab.svelte`'s devices table for re-verifying any time.
+  Building it live (not just via pytest) surfaced a real packaging bug: the packaged
+  exe was silently resetting `config.json` to `dummy` on every launch, because
+  `__file__` resolves inside PyInstaller's ephemeral per-run extraction directory, not
+  next to the real `.exe` — every `POST /config` write from 6C.5 was vanishing the
+  moment the process exited. Fixed via `sys.frozen`/`sys.executable`; rebuilt and
+  redeployed the running agent. All built without any printer hardware. Test
+  baseline: **198 backend unit + 80 Playwright + 42 agent pytest**, all green. `npx
+  tsc --noEmit` + `npx svelte-check` clean. Only 6D.1 (physical print,
+  hardware-dependent, user-run) remains before merging this phase to `main`.
 
 ### ⏳ Deferred / not built — tracked so nothing is forgotten
 | Item | Why | Lands in |
@@ -272,7 +295,41 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
       not bundled without `--collect-data`). Verified: the built exe alone (no Python)
       answers `/health` and `/print`.
 
-**6A + 6B + 6C are done — 198 backend unit + 75 Playwright + 23 agent pytest, all
-green.** Only **6D.1** remains: the physical print checklist in
+- [x] 6C.5 Windows printer scan-and-pick — 2026-07-24, requested after 6C shipped
+      (typing a USB vendor/product ID or IP by hand is unfriendly). New `win32` mode
+      (`python-escpos`'s `Win32Raw`, raw ESC/POS through the Windows print spooler).
+      `connection.py`'s `scan_windows_printers()` lists installed Windows printer
+      queues (`pywin32`), tagging a `recommended` hint but never filtering. Two new
+      endpoints: `GET /printers` (scan), `GET`/`POST /config` (read/persist the local
+      choice, validated by actually building the printer before writing).
+      `PrinterScanPicker.svelte` — shown in `PrinterTab.svelte`'s device modals only
+      for `connectionType: 'win32'` — lists real printers, fills the address field on
+      pick, and POSTs the pick to the agent so the very next print already uses it.
+      Found and fixed a real bug along the way: the `usb` branch passed `timeout` as
+      `Usb()`'s 3rd positional arg (actually `usb_args`, a dict) — harmless at
+      `timeout=0` but would break the moment a non-zero timeout was configured; fixed
+      to pass it by keyword. 10 new pytest tests (33 total). Live-verified on this
+      Windows machine: scanned a real installed "POS-80" printer (correctly flagged
+      `recommended`), picked it, and a real `POST /print` spooled through it
+      successfully with nothing left stuck in the print queue.
+
+- [x] 6C.6 Per-printer test print — 2026-07-24, requested next ("is this printer
+      actually integrated correctly?"). `POST /test-print` (`build_test_print_blocks()`
+      + a new `pad_row()` helper in `escpos_translator.py`) prints a canned diagnostic
+      receipt exercising every block type through whichever printer `config.json`
+      currently points at. "Test Cetak" in `PrinterScanPicker.svelte` right after a
+      pick, plus a per-row "Test Cetak" button in `PrinterTab.svelte`'s devices table.
+      9 new pytest tests (42 total). Found and fixed a real bug while verifying via the
+      packaged exe (not just pytest): `CONFIG_PATH` was computed from `__file__`'s
+      directory, which resolves *inside* PyInstaller's ephemeral per-run extraction
+      dir, not next to the real `.exe` — `config.json` silently reset to `dummy` on
+      every launch of the packaged exe, and every 6C.5 `POST /config` write vanished on
+      exit. Fixed with `_resolve_base_dir()` (`sys.frozen`/`sys.executable`).
+      Live-verified: `config.json` next to `dist/printer-agent.exe` → `GET /config`
+      correctly returns the persisted `win32`/"POS-80" choice; rebuilt and redeployed
+      the running agent with the fix.
+
+**6A + 6B + 6C (+ 6C.5, 6C.6) are done — 198 backend unit + 80 Playwright + 42 agent
+pytest, all green.** Only **6D.1** remains: the physical print checklist in
 `printer-agent/README.md` (hardware-dependent — the user runs this with a real 58/80mm
 printer), then close out `plan/phase-6-printer.md` and merge `phase-6/printer` → `main`.

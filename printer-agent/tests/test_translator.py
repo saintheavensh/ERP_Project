@@ -20,7 +20,12 @@ from escpos.printer import Dummy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from escpos_translator import UnknownBlockTypeError, blocks_to_escpos  # noqa: E402
+from escpos_translator import (  # noqa: E402
+    UnknownBlockTypeError,
+    blocks_to_escpos,
+    build_test_print_blocks,
+    pad_row,
+)
 
 BOLD_ON = b"\x1bE\x01"
 BOLD_OFF = b"\x1bE\x00"
@@ -104,3 +109,41 @@ def test_full_receipt_sequence_matches_expected_block_order():
 def test_unknown_block_type_raises_instead_of_silently_dropping():
     with pytest.raises(UnknownBlockTypeError):
         render([{"type": "qr", "value": "not-yet-supported"}])
+
+
+def test_pad_row_matches_ts_render_engine_behavior():
+    assert pad_row("TOTAL", "100.000", 32) == "TOTAL                    100.000"
+    assert len(pad_row("TOTAL", "100.000", 32)) == 32
+    # A right side too long for the width is truncated to fit; left is
+    # squeezed out entirely once there's no room -- mirrors render.ts's
+    # padRow() exactly, including its "always reserve >=1 space" rule, which
+    # is why a right value that alone fills the whole width still produces a
+    # (width + 1)-char string (a leading space + the full-width right side)
+    # rather than silently dropping that reserved gap.
+    long_right = "x" * 40
+    result = pad_row("L", long_right, 32)
+    assert result == " " + ("x" * 32)
+    assert result.endswith("x" * 32)
+
+
+def test_build_test_print_blocks_is_a_full_diagnostic_receipt():
+    blocks = build_test_print_blocks(32, "win32: POS-80", "2026-07-24 15:00:00")
+    types = [b["type"] for b in blocks]
+    # Exercises every block type this agent understands, in a sensible order.
+    assert types[0] == "text"
+    assert "line" in types
+    assert "row" in types
+    assert "total" in types
+    assert types[-1] == "cut"
+    joined = " ".join(b.get("value", "") for b in blocks)
+    assert "win32: POS-80" in joined
+    assert "2026-07-24 15:00:00" in joined
+
+
+def test_build_test_print_blocks_prints_cleanly_through_dummy():
+    # End-to-end within this file: the diagnostic content itself must survive
+    # the real translator, not just look right as a Python list.
+    blocks = build_test_print_blocks(48, "dummy", "2026-07-24 15:00:00")
+    out = render(blocks, width=48)
+    assert CUT in out
+    assert BOLD_ON in out  # the header + total are both bold

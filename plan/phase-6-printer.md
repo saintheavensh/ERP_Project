@@ -313,7 +313,68 @@ thermal "send" path that already handles the agent not existing yet).
 **6A + 6B + 6C are complete — 198 backend unit + 75 Playwright + 23 agent pytest, all
 green.** Everything hardware-independent across the whole phase (config, preview, A4
 print, and now the actual thermal agent) is built and verified without touching a real
-printer. Only **6D.1** remains: the physical print checklist in
+printer.
+
+- [x] **6C.5** Windows printer scan-and-pick — 2026-07-24, added after a direct
+      request: typing a USB vendor/product ID or an IP address by hand is unfriendly,
+      and most receipt printers already register as an installed Windows printer queue
+      once their driver is set up. New `win32` connection mode via `python-escpos`'s
+      `Win32Raw` (raw ESC/POS through the Windows spooler — no direct USB/serial wiring
+      needed). `connection.py`'s `scan_windows_printers()` enumerates installed queues
+      (`pywin32`'s `win32print.EnumPrinters`), tagging a `recommended` hint but never
+      filtering — every printer is always listed, the pick stays explicit. Two new
+      endpoints: `GET /printers` (scan) and `GET`/`POST /config` (read/persist the
+      local choice — `POST` validates by actually constructing the printer instance
+      before writing). Frontend: `PrinterScanPicker.svelte`, shown in
+      `PrinterTab.svelte`'s device modals only for `connectionType === 'win32'` — pick
+      a printer, its name fills `connectionAddress` (and the device name if still
+      empty), and the choice is POSTed to the agent's `/config` so the very next print
+      already uses it. `CONNECTION_TYPES` extended additively in
+      `flowserv-api/src/modules/printer/types.ts`.
+      Found and fixed a real bug while wiring this: `connection.py`'s `usb` branch
+      passed `timeout` as `Usb()`'s 3rd *positional* argument (actually `usb_args`, a
+      dict) — harmless at the default `timeout=0` (falsy, masked by `usb_args or {}`)
+      but would raise `'int' object does not support item assignment` the moment a
+      non-zero timeout was ever configured. Fixed to pass `timeout=` by keyword; the
+      test that had asserted the old (wrong) positional shape was rewritten against the
+      real `Usb` signature rather than a fake that happened to match the bug.
+      10 new pytest tests (33 total: win32 construction, scan sorting/flagging with a
+      mocked `win32print` incl. the non-Windows `ImportError` → 501 path, config
+      save/load round-trip, `/printers` + `/config` endpoint behavior). `npx tsc
+      --noEmit` + `npx svelte-check`: 0 errors. `npx vitest run`: 198/198 (untouched
+      beyond the additive enum value). Live-verified beyond pytest, on this actual
+      Windows machine: `GET /printers` found a real installed "POS-80" printer
+      (`recommended: true`, `isDefault: true`) among PDF/Fax/OneNote queues (all
+      correctly `recommended: false`); picked it via `POST /config`; a subsequent
+      `POST /print` actually spooled to "POS-80" and returned `{"status":"printed"}`
+      with nothing stuck in the Windows print queue afterward — the full scan → pick →
+      print path proven end-to-end, not just unit-tested.
+
+- [x] **6C.6** Per-printer test print — 2026-07-24, requested to answer "is this
+      printer actually integrated correctly?" without a real invoice. New
+      `POST /test-print` (`build_test_print_blocks()` + a new `pad_row()` helper in
+      `escpos_translator.py`, mirroring `render.ts`'s column alignment) prints a
+      generic diagnostic receipt exercising every block type through whichever
+      printer `config.json` currently points at. FE: "Test Cetak" right after a pick
+      in `PrinterScanPicker.svelte`, and a "Test Cetak" button per row in
+      `PrinterTab.svelte`'s devices table for re-verifying any time. 9 new pytest
+      tests (42 total).
+      **Found and fixed a real bug while verifying this via the packaged exe, not
+      just pytest:** `CONFIG_PATH` was computed from `__file__`'s directory --
+      inside a PyInstaller `--onefile` exe, `__file__` resolves *inside* the fresh
+      temp dir the exe extracts to on every launch (deleted on exit), not next to
+      the real `.exe`. `config.json` was silently resetting to `dummy` on every run
+      of the packaged exe, and every `POST /config` write vanished on exit --
+      invisible when testing via `python printer_agent.py` directly, only
+      surfacing against the actual shipped artifact. Fixed with `_resolve_base_dir()`
+      (checks `sys.frozen`, resolves next to `sys.executable` when bundled).
+      Verified live: config.json next to `dist/printer-agent.exe` → `GET /config`
+      correctly returns the persisted `win32`/"POS-80" choice, `POST /test-print`
+      against it → `{"status":"printed","mode":"win32"}`. Rebuilt and redeployed the
+      running agent with the fix.
+
+**6A + 6B + 6C (+ 6C.5, 6C.6) are complete — 198 backend unit + 75 Playwright + 42
+agent pytest, all green.** Only **6D.1** remains: the physical print checklist in
 `printer-agent/README.md`, which needs real ESC/POS hardware the user has and this
 environment does not — followed by closing this file out and merging `phase-6/printer`
 → `main`.

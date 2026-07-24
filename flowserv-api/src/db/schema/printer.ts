@@ -29,7 +29,7 @@ export const printerDevices = pgTable('printer_devices', {
   tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
   branchId: uuid('branch_id').notNull().references(() => branches.id),
   name: text('name').notNull(), // "Epson TM-T82 - Kasir 1"
-  connectionType: varchar('connection_type', { length: 20 }).notNull(), // 'usb' | 'network' | 'serial' | 'os_printer'
+  connectionType: varchar('connection_type', { length: 20 }).notNull(), // 'usb' | 'network' | 'serial' | 'os_printer' | 'win32'
   connectionAddress: text('connection_address'), // IP/device path — null kalau 'os_printer' (A4 lewat dialog print browser)
   paperSize: varchar('paper_size', { length: 10 }).notNull(), // '58mm' | '80mm' | 'A4' | dst — properti fisik printer ini
 }, (table) => ({

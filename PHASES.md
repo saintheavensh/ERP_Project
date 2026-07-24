@@ -945,7 +945,7 @@ missing.
       instance, or `Dummy`/`File` with zero hardware, from a per-machine `config.json`
       (git-ignored; `config.example.json` documents all 5 modes) — defaults to `dummy`
       when no config exists, so the whole feature demos with no printer anywhere.
-      23 pytest tests: `test_translator.py` (byte-level against `Dummy` — asserts the
+      33 pytest tests (23 at initial 6C, +10 for 6C.5 below): `test_translator.py` (byte-level against `Dummy` — asserts the
       actual ESC/POS protocol bytes: `ESC E` bold, `ESC a` align, `GS V` cut, exact
       32/48-char line width, unknown block type raises rather than silently dropping a
       line), `test_connection.py` (mode selection incl. mocked Usb/Network/Serial ctors),
@@ -961,17 +961,90 @@ missing.
       `capabilities.json` data file PyInstaller doesn't auto-detect) — documented in
       `printer-agent/README.md` so it isn't rediscovered. Verified: ran the built exe
       standalone (no Python on the invoking shell needed), `/health` → 200, `/print` →
-      `{"status":"printed"}`. `printer-agent/README.md` documents install, all 5
+      `{"status":"printed"}`. `printer-agent/README.md` documents install, all 6
       connection modes, hardware-free testing, the physical-print checklist (6D.1), and
       the packaging command with the `--collect-data` gotcha.
-- [/] 6D Verify + docs — **partial.** Backend (23 pytest) + this repo's existing 198
-      backend unit + 75 Playwright all still green (agent is a fully separate process;
-      nothing in `flowserv-api`/`flowserv-web` was touched by 6C). **Left `[/]` not
+- [x] 6C.5 Windows printer scan-and-pick — **added 2026-07-24** after a direct request:
+      typing a USB vendor/product ID or IP address by hand is unfriendly, and most
+      receipt printers already register themselves as an installed Windows printer
+      queue once their driver is set up. New `win32` connection mode (`connection.py`'s
+      `build_printer()`, via `python-escpos`'s `Win32Raw` — raw ESC/POS through the
+      Windows print spooler, no direct USB/serial wiring). `connection.py`'s
+      `scan_windows_printers()` enumerates installed queues via `pywin32`
+      (`win32print.EnumPrinters`), flagging a `recommended` hint (driver-name keyword
+      match or a non-virtual port) — never filtering, always showing everything so the
+      user's pick stays explicit. Two new agent endpoints: `GET /printers` (scan,
+      read-only) and `GET`/`POST /config` (read/persist the local connection choice —
+      `POST` validates by actually building the printer instance before writing, so a
+      typo surfaces immediately, not on the next real print). Frontend:
+      `PrinterScanPicker.svelte`, shown in `PrinterTab.svelte`'s add/edit device modals
+      only when `connectionType === 'win32'` — "Pindai Printer di Komputer Ini" lists
+      real installed printers, clicking one fills `connectionAddress` (and the device
+      name if still empty) and POSTs the pick to the agent's `/config` so the very next
+      print already uses it, no separate config-file step. `CONNECTION_TYPES` in
+      `flowserv-api/src/modules/printer/types.ts` extended with `'win32'` (additive,
+      no exhaustive switch anywhere depended on the old 4-value set).
+      Found and fixed a real bug while wiring this: `connection.py`'s `usb` branch
+      passed `timeout` as `Usb()`'s 3rd *positional* argument, which is actually
+      `usb_args` (a dict) — silently harmless at the default `timeout=0` (falsy, so
+      `usb_args or {}` masked it) but would raise `'int' object does not support item
+      assignment` the moment a non-zero timeout was configured. Fixed to pass
+      `timeout=` by keyword; the test asserting the old (wrong) positional shape was
+      rewritten to assert against the real `Usb` signature instead of a fake that
+      happened to match the bug.
+      10 new pytest tests (33 total): win32 mode construction, scan sorting/flagging
+      (mocked `win32print`, incl. the `ImportError` non-Windows path →
+      `PrinterScanUnavailableError` → 501), config save/load round-trip, `/printers`
+      and `/config` endpoint behavior. Live-verified beyond pytest, on this actual
+      Windows machine: `GET /printers` returned a real installed "POS-80" printer
+      (`recommended: true`, `isDefault: true`) alongside PDF/Fax/OneNote queues
+      (`recommended: false`); `POST /config` with `{mode:"win32", win32:
+      {printerName:"POS-80"}}` → `{"status":"saved"}`; a subsequent `POST /print` with
+      that config actually spooled to "POS-80" and returned `{"status":"printed"}`
+      with no job left stuck in the Windows print queue afterward. `npx tsc --noEmit`
+      + `npx svelte-check`: 0 errors. `npx vitest run`: 198/198 (backend untouched
+      beyond the additive enum value).
+- [x] 6C.6 Per-printer test print — **added 2026-07-24**, requested to answer "is this
+      printer actually integrated correctly?" without needing a real invoice. New
+      `POST /test-print` (`build_test_print_blocks()` in `escpos_translator.py`, plus a
+      new `pad_row()` helper mirroring `render.ts`'s column alignment) prints a generic
+      diagnostic receipt — exercises every block type a real receipt uses — through
+      whichever printer `config.json` currently points at. FE: a "Test Cetak" link in
+      `PrinterScanPicker.svelte` right after picking a printer, and a "Test Cetak"
+      button per row in `PrinterTab.svelte`'s devices table (any time, not just at
+      setup), both gated to non-A4 devices since A4 never touches the agent (spec
+      rule 2). 9 new pytest tests (42 total): `pad_row`/`build_test_print_blocks` unit
+      tests (3), `/test-print` endpoint behavior — success, bad paperSize, connection
+      failure → 502 (4), plus 2 regression tests for the `_resolve_base_dir()` bug
+      below. `npx svelte-check`: 0 errors.
+      **Found and fixed a real bug while verifying this end-to-end via the packaged
+      exe (not just pytest):** `connection.py`'s `CONFIG_PATH` was computed from
+      `__file__`'s directory — inside a PyInstaller `--onefile` exe, `__file__`
+      resolves to a path *inside* the fresh temp directory the exe extracts itself
+      into on every launch (and deletes on exit), not next to the real `.exe`. This
+      meant `config.json` (the whole reason the agent has a config file — persisting
+      the cashier's printer choice) silently reset to `dummy` on every single run of
+      the packaged exe, and every `POST /config` write vanished the moment the process
+      exited — invisible when testing via `python printer_agent.py` directly (where
+      `__file__` is correct), only surfacing when testing the actual shipped artifact.
+      Fixed with `_resolve_base_dir()`: checks `sys.frozen` (PyInstaller's signal for
+      "running from a bundle") and resolves next to `sys.executable` instead in that
+      case. Verified live: copied `config.json` next to `dist/printer-agent.exe`,
+      confirmed `GET /config` from the running exe correctly returned the persisted
+      `win32`/"POS-80" choice (not `dummy`), and `POST /test-print` against it returned
+      `{"status":"printed","mode":"win32"}`. Rebuilt and redeployed the running agent
+      with the fix. `printer-agent/README.md`'s packaging section now states plainly:
+      `config.json` must live in the same folder as `printer-agent.exe`, wherever it's
+      moved to (Desktop, Startup folder, etc.).
+- [/] 6D Verify + docs — **partial.** Backend (33 pytest) + this repo's existing 198
+      backend unit + Playwright all still green (agent is a fully separate process;
+      nothing pre-existing in `flowserv-api`/`flowserv-web` broke). **Left `[/]` not
       `[x]`**: 6D.1's physical print test is explicitly hardware-dependent (plan Q1) —
       no printer exists in this environment, so it stays a checklist in
       `printer-agent/README.md` for the user to run once real hardware is available,
       not a silent `[x]`. The `config.json` → `file` mode gives byte-level output to
-      inspect without hardware, but "the printer actually cuts paper" can only be
+      inspect without hardware, and the win32/"POS-80" live test above proves the
+      spooler path end-to-end, but "the printer actually cuts paper" can only be
       confirmed on a physical device.
 - [ ] 6.6 Git commit + merge `phase-6/printer` → `main` once 6D.1 (physical print,
       user-run) closes out the phase.

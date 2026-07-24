@@ -1,5 +1,7 @@
 <script lang="ts">
   import { API_BASE } from '$lib/api/config';
+  import { PRINTER_AGENT_URL } from '$lib/api/printer-agent';
+  import PrinterScanPicker from './PrinterScanPicker.svelte';
 
   let { data } = $props<{ data: any }>();
   let devices = $derived(data.printerDevices || []);
@@ -17,6 +19,7 @@
 
   const CONNECTION_LABELS: Record<string, string> = {
     usb: 'USB', network: 'Jaringan', serial: 'Serial', os_printer: 'Printer OS (A4)',
+    win32: 'Printer Windows (Pindai Otomatis)',
   };
 
   function branchName(branchId: string): string {
@@ -80,6 +83,34 @@
       connectionAddress: device.connectionAddress ?? '',
       paperSize: device.paperSize,
     };
+  }
+
+  // ---- Test print (per registered device) ----
+  // Lets the admin re-verify "is this printer actually integrated correctly"
+  // at any time, not just right after picking it in the add/edit modal --
+  // useful after moving cables, restarting the agent, or just doubting a
+  // config from last week. Only applies to thermal devices; A4 (os_printer)
+  // never goes through the agent (spec rule 2), so window.print() itself is
+  // the only meaningful "test" for those, already exercised on real invoices.
+  type TestPrintStatus = 'idle' | 'printing' | 'printed' | 'failed';
+  let testPrintStatus = $state<Record<string, TestPrintStatus>>({});
+  let testPrintErrorMsg = $state<Record<string, string>>({});
+
+  async function testPrintDevice(device: any) {
+    testPrintStatus = { ...testPrintStatus, [device.id]: 'printing' };
+    try {
+      const res = await fetch(`${PRINTER_AGENT_URL}/test-print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperSize: device.paperSize }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Test cetak gagal');
+      testPrintStatus = { ...testPrintStatus, [device.id]: 'printed' };
+    } catch (err: any) {
+      testPrintStatus = { ...testPrintStatus, [device.id]: 'failed' };
+      testPrintErrorMsg = { ...testPrintErrorMsg, [device.id]: err.message || 'Agent printer tidak terdeteksi.' };
+    }
   }
 
   async function saveEditDevice() {
@@ -208,8 +239,25 @@
                 <td class="p-4 text-slate-600">{branchName(device.branchId)}</td>
                 <td class="p-4 text-slate-600">{CONNECTION_LABELS[device.connectionType] ?? device.connectionType}</td>
                 <td class="p-4 text-slate-600">{device.paperSize}</td>
-                <td class="p-4 text-right">
-                  <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={() => openEditDevice(device)}>Edit</button>
+                <td class="p-4 text-right space-y-1">
+                  <div class="flex justify-end items-center gap-3">
+                    {#if device.paperSize !== 'A4'}
+                      <button
+                        class="text-slate-600 hover:text-slate-900 text-sm font-medium disabled:opacity-50"
+                        disabled={testPrintStatus[device.id] === 'printing'}
+                        onclick={() => testPrintDevice(device)}
+                        data-testid="test-print-device-button"
+                      >
+                        {testPrintStatus[device.id] === 'printing' ? 'Mencetak...' : 'Test Cetak'}
+                      </button>
+                    {/if}
+                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={() => openEditDevice(device)}>Edit</button>
+                  </div>
+                  {#if testPrintStatus[device.id] === 'printed'}
+                    <p class="text-xs text-green-700" data-testid="test-print-device-status">Terkirim — cek hasil cetak fisik.</p>
+                  {:else if testPrintStatus[device.id] === 'failed'}
+                    <p class="text-xs text-red-700" data-testid="test-print-device-status">Gagal: {testPrintErrorMsg[device.id]}</p>
+                  {/if}
                 </td>
               </tr>
             {:else}
@@ -348,6 +396,7 @@
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="device-connection">Jenis Koneksi *</label>
           <select id="device-connection" bind:value={deviceForm.connectionType} required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+            <option value="win32">Printer Windows (Pindai Otomatis)</option>
             <option value="usb">USB</option>
             <option value="network">Jaringan</option>
             <option value="serial">Serial</option>
@@ -355,8 +404,15 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="device-address">Alamat Koneksi (Opsional)</label>
-          <input id="device-address" type="text" bind:value={deviceForm.connectionAddress} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="mis. USB001 atau 192.168.1.50">
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="device-address">
+            {deviceForm.connectionType === 'win32' ? 'Nama Printer Windows' : 'Alamat Koneksi (Opsional)'}
+          </label>
+          <input id="device-address" type="text" bind:value={deviceForm.connectionAddress} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder={deviceForm.connectionType === 'win32' ? 'mis. POS-80' : 'mis. USB001 atau 192.168.1.50'}>
+          {#if deviceForm.connectionType === 'win32'}
+            <div class="mt-2">
+              <PrinterScanPicker bind:connectionAddress={deviceForm.connectionAddress} bind:deviceName={deviceForm.name} paperSize={deviceForm.paperSize} />
+            </div>
+          {/if}
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="device-paper">Ukuran Kertas *</label>
@@ -398,6 +454,7 @@
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="edit-device-connection">Jenis Koneksi *</label>
           <select id="edit-device-connection" bind:value={editDeviceForm.connectionType} required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+            <option value="win32">Printer Windows (Pindai Otomatis)</option>
             <option value="usb">USB</option>
             <option value="network">Jaringan</option>
             <option value="serial">Serial</option>
@@ -405,8 +462,15 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="edit-device-address">Alamat Koneksi (Opsional)</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="edit-device-address">
+            {editDeviceForm.connectionType === 'win32' ? 'Nama Printer Windows' : 'Alamat Koneksi (Opsional)'}
+          </label>
           <input id="edit-device-address" type="text" bind:value={editDeviceForm.connectionAddress} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          {#if editDeviceForm.connectionType === 'win32'}
+            <div class="mt-2">
+              <PrinterScanPicker bind:connectionAddress={editDeviceForm.connectionAddress} bind:deviceName={editDeviceForm.name} paperSize={editDeviceForm.paperSize} />
+            </div>
+          {/if}
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="edit-device-paper">Ukuran Kertas *</label>

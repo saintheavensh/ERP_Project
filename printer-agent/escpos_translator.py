@@ -31,6 +31,46 @@ class UnknownBlockTypeError(ValueError):
     """Raised when a block carries a `type` this agent doesn't know how to print."""
 
 
+def pad_row(left: str, right: str, width: int) -> str:
+    """Right-align `right` within `width`, left-align `left` in the remaining
+    space -- mirrors flowserv-api's modules/printer/render.ts padRow() so a
+    diagnostic test-print row lines up exactly like a real receipt's would.
+    Used only by build_test_print_blocks() below; real receipts already
+    arrive with this padding done server-side (decision D1)."""
+    r = right[:width] if len(right) > width else right
+    max_left = max(0, width - len(r) - 1)
+    l = left[:max_left] if len(left) > max_left else left
+    gap = max(1, width - len(l) - len(r))
+    return l + (" " * gap) + r
+
+
+def build_test_print_blocks(width: int, config_description: str, timestamp: str) -> list[dict]:
+    """A generic diagnostic receipt -- no transaction data, no template --
+    that exercises every ThermalBlock type this agent understands (text at
+    each alignment, a line, a padded row, a bold total, cut). Printing this
+    successfully proves the full pipeline (agent -> connection -> physical
+    device) works for whatever printer THIS machine's config.json currently
+    points at, independent of any real invoice."""
+    return [
+        {"type": "text", "value": "TES CETAK / TEST PRINT", "align": "center", "bold": True},
+        {"type": "line"},
+        {"type": "text", "value": f"Waktu: {timestamp}", "align": "left"},
+        {"type": "text", "value": f"Konfigurasi: {config_description}", "align": "left"},
+        {"type": "line"},
+        {"type": "text", "value": "Rata Kiri", "align": "left"},
+        {"type": "text", "value": "Rata Tengah", "align": "center"},
+        {"type": "text", "value": "Rata Kanan", "align": "right"},
+        {"type": "line"},
+        {"type": "row", "value": pad_row("Kolom Kiri", "Kolom Kanan", width)},
+        {"type": "total", "value": pad_row("CONTOH TOTAL", "100.000", width)},
+        {"type": "line"},
+        {"type": "text", "value": "Jika teks di atas rapi dan", "align": "center"},
+        {"type": "text", "value": "kertas ini benar tercetak,", "align": "center"},
+        {"type": "text", "value": "printer sudah terhubung dengan benar.", "align": "center"},
+        {"type": "cut"},
+    ]
+
+
 def blocks_to_escpos(printer: Any, blocks: list[dict], width: int) -> None:
     """Write `blocks` to `printer` (any python-escpos Escpos subclass, including
     Dummy/File for hardware-free testing). Raises UnknownBlockTypeError on a

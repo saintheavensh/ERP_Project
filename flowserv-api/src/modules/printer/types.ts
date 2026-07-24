@@ -9,7 +9,11 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export const PAPER_SIZES = ['58mm', '80mm', 'A4'] as const;
 export type PaperSize = (typeof PAPER_SIZES)[number];
 
-export const CONNECTION_TYPES = ['usb', 'network', 'serial', 'os_printer'] as const;
+// 'win32' -- print via the Windows spooler by printer name (python-escpos's
+// Win32Raw), letting the agent (6C) list installed printers for the user to
+// pick from instead of typing a USB vendor/product ID or IP by hand. See
+// printer-agent/connection.py's scan_windows_printers().
+export const CONNECTION_TYPES = ['usb', 'network', 'serial', 'os_printer', 'win32'] as const;
 export type ConnectionType = (typeof CONNECTION_TYPES)[number];
 
 /**

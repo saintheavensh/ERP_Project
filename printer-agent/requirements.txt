@@ -2,3 +2,14 @@ flask==3.1.3
 python-escpos==3.1
 pytest==9.1.1
 pyinstaller==6.16.0
+
+# python-escpos's Usb/Serial backends need these but don't pull them in as
+# hard dependencies (they're optional per connection type). Only needed if
+# config.json actually uses "usb" or "serial" mode.
+pyusb==1.3.1
+pyserial==3.5
+
+# Enumerate + print through installed Windows printer queues ("win32" mode) --
+# this is what makes printer scanning zero-configuration, see connection.py's
+# scan_windows_printers(). Windows-only.
+pywin32==312; sys_platform == "win32"
