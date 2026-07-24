@@ -102,13 +102,18 @@ test.describe('desktop (1280x800)', () => {
     expect(body.error.code).toBe('ACCOUNT_INACTIVE');
   });
 
-  test('payment methods tab: shows seeded methods read-only, no edit controls', async ({ page }) => {
+  test('payment methods tab: shows seeded methods with CRUD controls (Tahap A)', async ({ page }) => {
+    // Tahap A turned this tab from read-only into real CRUD (add/edit/toggle);
+    // the "+ Tambah Metode" button and per-row Edit are now expected, the
+    // opposite of P9's original read-only assertion. Full add/edit/POS flow
+    // lives in tahap-a-payment-methods.spec.ts.
     await login(page);
     await page.goto('/settings?tab=payment-methods');
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('table')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: '+ Tambah Metode' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit' }).first()).toBeVisible();
   });
 
   test('tab links switch the active panel via the ?tab= query', async ({ page }) => {

@@ -62,6 +62,10 @@ export const IDS = {
   // Phase 6 (6A.1) — printer device/template/assignment CRUD. Admin-only,
   // same pattern as permAuditView/permBranchManage.
   permPrinterManage: 'd1000000-0000-4000-8000-000000000026',
+  // Tahap A (go-live gap Tier-1 #4) — payment-method CRUD. Admin-only, NOT
+  // granted to Manager (same pattern as permBranchManage). GET stays open to
+  // any authenticated user because the POS checkout reads the list.
+  permPaymentManage: 'd1000000-0000-4000-8000-000000000027',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',
@@ -182,4 +186,19 @@ export const IDS = {
   // default template" path against real seed data (Cabang has no invoice_a4
   // assignment at all).
   assignPrinterCabangReceipt: 'b3000000-0000-4000-8000-000000000003',
+
+  // Tahap A (go-live gap Tier-1 #4) — payment methods. `type` is the finite
+  // category (cash/transfer/qris/ewallet/tempo); `name` is the specific brand.
+  // Three e-wallets share type 'ewallet' on purpose — the POS radio binds on
+  // id (not type), so Dana/OVO/GoPay each render as a distinct, selectable option.
+  paymentTunai: 'b4000000-0000-4000-8000-000000000001',
+  paymentTransfer: 'b4000000-0000-4000-8000-000000000002',
+  paymentQris: 'b4000000-0000-4000-8000-000000000003',
+  paymentDana: 'b4000000-0000-4000-8000-000000000004',
+  paymentOvo: 'b4000000-0000-4000-8000-000000000005',
+  paymentGopay: 'b4000000-0000-4000-8000-000000000006',
+  paymentTempo: 'b4000000-0000-4000-8000-000000000007',
+  // Second tenant — a minimal set so its POS isn't empty either.
+  paymentSecondTunai: 'b4000000-0000-4000-8000-000000000008',
+  paymentSecondQris: 'b4000000-0000-4000-8000-000000000009',
 } as const;

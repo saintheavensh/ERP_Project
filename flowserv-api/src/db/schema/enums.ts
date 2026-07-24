@@ -12,7 +12,7 @@ export const ticketStatusEnum    = pgEnum('ticket_status',    ['open', 'closed',
 // consumed (part physically taken from stock, set in H9). 'cancelled' = job abandoned
 // or part not needed. Only 'estimated' charges are editable.
 export const chargeStatusEnum    = pgEnum('charge_status',    ['estimated', 'approved', 'consumed', 'cancelled']);
-export const paymentMethodEnum   = pgEnum('payment_method',   ['cash', 'transfer', 'qris', 'split', 'tempo']);
+export const paymentMethodEnum   = pgEnum('payment_method',   ['cash', 'transfer', 'qris', 'ewallet', 'split', 'tempo']);
 
 // H2 assumed this vocabulary was Indonesian ('tunai'/'transfer'/'tempo'), based on a
 // stale schema comment. The actual write sites (purchasing/invoices.ts, modules/finance/types.ts)

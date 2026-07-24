@@ -97,7 +97,13 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
 1. **Pisah data per cabang** — kasir Cabang A tidak lihat data Cabang B. Sekarang semua lihat semua. (JWT belum bawa `branchId`; query hanya filter tenant.)
 2. **Konfigurasi 2 flow template servis** (ditunggu/disimpan) + field intake **sandi/pola**.
 3. **Pemicu cetak per-tahap**: tanda terima (alur disimpan, setelah diagnosa), nota selesai, label.
-4. **CRUD metode pembayaran** (tambah e-wallet Dana/OVO/GoPay). — *kecil*
+4. ~~**CRUD metode pembayaran** (tambah e-wallet Dana/OVO/GoPay).~~ ✅ **SELESAI
+   2026-07-24** ([`plan/tahap-a-payment-methods.md`](tahap-a-payment-methods.md)). Ternyata
+   bukan "kecil": tabel `payment_methods` dibaca POS tapi tak pernah di-seed, enum checkout
+   backend hardcoded tanpa `ewallet`, dan radio POS bind ke `type` (rusak bila 2+ metode
+   ber-type sama). Diperbaiki end-to-end: seed 7 metode (incl. Dana/OVO/GoPay), CRUD
+   admin-only (`payment.manage`), enum + `paymentMethodEnum` tambah `ewallet`, radio POS
+   bind ke `id`. 85 Playwright + 198 unit hijau.
 5. **Change order** (konfirmasi ulang harga saat ada kerusakan tambahan di tengah pengerjaan).
 
 **TIER 2 — dibangun dari gesekan Tahap pilot**
