@@ -29,7 +29,7 @@ test.describe('desktop (1280x800)', () => {
 
   test('Device catalog admin: create a brand + model with specs/image/suggested services', async ({ page }) => {
     await login(page);
-    await page.goto('/inventory/device-catalog');
+    await page.goto('/devices');
     await page.waitForLoadState('networkidle');
 
     const brandName = `TestBrand ${Date.now()}`;
@@ -67,7 +67,7 @@ test.describe('desktop (1280x800)', () => {
 
   test('Device catalog admin: actually uploading a file (not just pasting a URL) works end-to-end', async ({ page }) => {
     await login(page);
-    await page.goto('/inventory/device-catalog');
+    await page.goto('/devices');
     await page.waitForLoadState('networkidle');
 
     const brandName = `UploadBrand ${Date.now()}`;
@@ -222,7 +222,7 @@ test.describe('mobile (375x667)', () => {
 
   test('Device catalog page and intake catalog card do not overflow', async ({ page }) => {
     await login(page);
-    await page.goto('/inventory/device-catalog');
+    await page.goto('/devices');
     await page.waitForLoadState('networkidle');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
 

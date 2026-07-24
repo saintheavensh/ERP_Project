@@ -118,9 +118,6 @@
 
 <div class="max-w-4xl mx-auto space-y-6">
   <div class="flex flex-wrap items-center gap-4">
-    <a href="/inventory" class="text-slate-500 hover:text-slate-800" aria-label="Kembali ke inventory">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-    </a>
     <div class="flex-1 min-w-[200px]">
       <h1 class="text-2xl font-bold text-slate-900">Katalog Device</h1>
       <p class="text-slate-500 mt-1">Merk & model HP untuk kompatibilitas sparepart, dan (opsional) gambar/spesifikasi/saran servis yang tampil saat intake tiket.</p>

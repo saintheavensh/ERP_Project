@@ -30,8 +30,9 @@
           { label: 'Initial Stock Upload', path: '/inventory/opname' }
         ]
       });
-      items.push({ 
-        label: 'Purchasing (Pembelian)', 
+      items.push({ label: 'Katalog Device', path: '/devices' });
+      items.push({
+        label: 'Purchasing (Pembelian)',
         path: '/inventory/purchasing',
         subItems: [
           { label: 'All Purchases', path: '/inventory/purchasing' },
