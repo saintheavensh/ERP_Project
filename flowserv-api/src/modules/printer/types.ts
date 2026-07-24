@@ -131,13 +131,27 @@ export interface DocumentData {
     note?: string;
     warrantyPolicy?: string;
   };
+  // Boolean rendering flags resolved once from layoutConfig by
+  // buildDocumentData() — both the thermal block builder and the (future) A4
+  // component read these instead of re-reading layoutConfig themselves, so
+  // "which fields to show" is decided in exactly one place.
+  display: {
+    showLineSubtotal: boolean;
+    showLogo: boolean; // A4 header only
+    showSignature: boolean; // A4 signature column only
+  };
 }
 
 export type BlockAlign = 'left' | 'center' | 'right';
 
+// 'row'/'total' carry an ALREADY width-padded single string (via padRow() in
+// render.ts) — never separate left/right pieces. That is what makes the
+// Python agent's job purely mechanical (print `value` verbatim) instead of
+// re-implementing column alignment, per the spec's "one shared render
+// module" rule.
 export type ThermalBlock =
   | { type: 'text'; value: string; align: BlockAlign; bold?: boolean }
   | { type: 'line' }
-  | { type: 'row'; left: string; right: string; bold?: boolean }
-  | { type: 'total'; left: string; right: string }
+  | { type: 'row'; value: string; bold?: boolean }
+  | { type: 'total'; value: string }
   | { type: 'cut' };
