@@ -209,6 +209,27 @@ For auto-start on boot: place a shortcut to `printer-agent.exe` in the
 Windows Startup folder (`shell:startup`), or register it as a scheduled task
 that runs at logon.
 
+### Quick toggle for local development
+
+`start-agent.bat` / `stop-agent.bat` (this folder) start/stop the packaged
+`dist\printer-agent.exe` on demand — double-click whichever one you need.
+These are **manual only, not autorun**: nothing is registered with Windows
+Startup or Task Scheduler, so the agent only runs when you explicitly start
+it. This is deliberately separate from the "auto-start on boot" note above,
+which is for a real cashier machine's permanent setup, not a dev box —
+during FlowServ development you usually want the printer agent off unless
+you're actively testing "Kirim ke Printer" / test-print, so the toggle is a
+plain start/stop, not a background service.
+
+- `start-agent.bat` — no-ops with "already running" if it's already up;
+  otherwise launches the exe minimized and confirms `GET /health`.
+- `stop-agent.bat` — kills every `printer-agent.exe` process (the
+  `--onefile` build runs a bootloader + child process, both sharing this
+  image name).
+
+Requires `dist\printer-agent.exe` to already be built (see "Packaging"
+above) — `start-agent.bat` tells you the exact command if it's missing.
+
 ## Architecture notes
 
 - `printer_agent.py` — the Flask app: `GET /health`, `POST /print`,
