@@ -3,6 +3,7 @@
   import BranchesTab from '$lib/components/settings/BranchesTab.svelte';
   import UsersTab from '$lib/components/settings/UsersTab.svelte';
   import PaymentMethodsTab from '$lib/components/settings/PaymentMethodsTab.svelte';
+  import PrinterTab from '$lib/components/settings/PrinterTab.svelte';
 
   let { data } = $props();
 
@@ -11,6 +12,7 @@
     { id: 'branches', label: 'Cabang' },
     { id: 'users', label: 'Pengguna & Peran' },
     { id: 'payment-methods', label: 'Metode Pembayaran' },
+    { id: 'printers', label: 'Printer' },
   ];
 </script>
 
@@ -45,5 +47,7 @@
     <UsersTab {data} />
   {:else if data.tab === 'payment-methods'}
     <PaymentMethodsTab {data} />
+  {:else if data.tab === 'printers'}
+    <PrinterTab {data} />
   {/if}
 </div>
