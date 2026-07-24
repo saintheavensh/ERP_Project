@@ -90,11 +90,18 @@ deviceCatalogRouter.get('/models', async (c) => {
 
 const specsSchema = z.record(z.string(), z.string()).nullish();
 const suggestedServicesSchema = z.array(z.string().min(1)).nullish();
+// Either a full external URL (the hand-seeded demo entries) or a relative
+// path our own upload endpoint / the bulk import returns ("/uploads/...").
+// z.string().url() alone would reject every relative path, which is exactly
+// what POST /v1/uploads and the device-catalog import produce.
+const imageUrlSchema = z.string().refine((v) => v.startsWith('http') || v.startsWith('/'), {
+  message: 'imageUrl must be an absolute URL or a path starting with /',
+}).nullish();
 
 const createModelSchema = z.object({
   deviceBrandId: z.string().uuid(),
   name: z.string().min(1).max(100),
-  imageUrl: z.string().url().nullish(),
+  imageUrl: imageUrlSchema,
   specs: specsSchema,
   suggestedServices: suggestedServicesSchema,
 });
@@ -125,7 +132,7 @@ deviceCatalogRouter.post('/models', requirePermission('inventory.manage_items'),
 
 const updateModelSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  imageUrl: z.string().url().nullish(),
+  imageUrl: imageUrlSchema,
   specs: specsSchema,
   suggestedServices: suggestedServicesSchema,
 });

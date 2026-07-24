@@ -2,6 +2,7 @@
   import type { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
   import TicketCharges from './TicketCharges.svelte';
   import PrintButton from '$lib/components/print/PrintButton.svelte';
+  import { resolveImageUrl } from '$lib/utils/image';
 
   let { state } = $props<{ state: TicketDetailState }>();
 </script>
@@ -62,7 +63,7 @@
       {#if state.deviceModel}
         <div class="mt-3 pt-3 border-t border-slate-100 flex gap-3" data-testid="device-catalog-card">
           {#if state.deviceModel.imageUrl}
-            <img src={state.deviceModel.imageUrl} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0" />
+            <img src={resolveImageUrl(state.deviceModel.imageUrl)} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0" />
           {/if}
           {#if state.deviceModel.specs && Object.keys(state.deviceModel.specs).length > 0}
             <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5 content-start">

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { API_BASE } from '$lib/api/config';
+  import { resolveImageUrl } from '$lib/utils/image';
+  import ImageUpload from '$lib/components/inventory/ImageUpload.svelte';
 
   let { data } = $props();
   let brands = $derived(data.brands || []);
@@ -139,7 +141,7 @@
           {#each brand.deviceModels || [] as model (model.id)}
             <div class="p-4 flex items-center gap-4">
               {#if model.imageUrl}
-                <img src={model.imageUrl} alt="" class="w-10 h-10 object-cover rounded border border-slate-200 flex-shrink-0" />
+                <img src={resolveImageUrl(model.imageUrl)} alt="" class="w-10 h-10 object-cover rounded border border-slate-200 flex-shrink-0" />
               {:else}
                 <div class="w-10 h-10 rounded border border-dashed border-slate-200 flex-shrink-0"></div>
               {/if}
@@ -211,8 +213,8 @@
           <input id="model-name" type="text" bind:value={modelForm.name} required class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="mis. Galaxy A10">
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="model-image">URL Gambar (Opsional)</label>
-          <input id="model-image" type="url" bind:value={modelForm.imageUrl} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="https://...">
+          <span class="block text-sm font-medium text-slate-700 mb-1">Gambar (Opsional)</span>
+          <ImageUpload bind:value={modelForm.imageUrl} token={data.token} folder="devices" />
         </div>
         <div>
           <div class="flex items-center justify-between mb-1">

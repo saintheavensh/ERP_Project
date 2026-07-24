@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TicketIntakeState } from '$lib/states/tickets/ticket.intake.svelte';
+  import { resolveImageUrl } from '$lib/utils/image';
 
   let { state } = $props<{ state: TicketIntakeState }>();
 </script>
@@ -113,7 +114,7 @@
       {#if state.selectedDeviceModel}
         <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg flex gap-4" data-testid="device-catalog-preview">
           {#if state.selectedDeviceModel.imageUrl}
-            <img src={state.selectedDeviceModel.imageUrl} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0">
+            <img src={resolveImageUrl(state.selectedDeviceModel.imageUrl)} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0">
           {/if}
           <div class="flex-1 min-w-0 space-y-2">
             {#if state.selectedDeviceModel.specs && Object.keys(state.selectedDeviceModel.specs).length > 0}

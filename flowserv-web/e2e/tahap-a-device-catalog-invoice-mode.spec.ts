@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Tahap A — device catalog (image/specs/saran servis, extends the existing
 // device_brands/device_models tables built for DEV-008 sparepart
@@ -45,7 +49,7 @@ test.describe('desktop (1280x800)', () => {
 
     const modelName = `TestModel X1 ${Date.now()}`;
     await page.locator('#model-name').fill(modelName);
-    await page.locator('#model-image').fill('https://example.com/x1.jpg');
+    await page.locator('#image-url-fallback').fill('https://example.com/x1.jpg');
     await page.locator('input[placeholder="mis. RAM"]').fill('RAM');
     await page.locator('input[placeholder="mis. 4 GB"]').fill('6 GB');
     await page.locator('#model-services').fill('Ganti LCD, Ganti Baterai');
@@ -61,6 +65,39 @@ test.describe('desktop (1280x800)', () => {
     await expect(modelRow.getByText('2 saran servis')).toBeVisible();
   });
 
+  test('Device catalog admin: actually uploading a file (not just pasting a URL) works end-to-end', async ({ page }) => {
+    await login(page);
+    await page.goto('/inventory/device-catalog');
+    await page.waitForLoadState('networkidle');
+
+    const brandName = `UploadBrand ${Date.now()}`;
+    await page.getByRole('button', { name: 'Merk Baru' }).click();
+    await page.locator('#brand-name').fill(brandName);
+    await page.getByRole('button', { name: 'Simpan' }).click();
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('div.rounded-xl.shadow-sm.border-slate-200').filter({ hasText: brandName })
+      .getByRole('button', { name: '+ Model' }).click();
+
+    const modelName = `UploadModel ${Date.now()}`;
+    await page.locator('#model-name').fill(modelName);
+    await page.setInputFiles('input[type="file"][accept*="image"]', path.join(__dirname, 'fixtures', 'tiny.png'));
+    await expect(page.getByRole('button', { name: 'Upload Gambar' })).toBeVisible({ timeout: 10_000 });
+    // The URL fallback field is where ImageUpload writes the uploaded relative
+    // path once the request completes -- asserting on it (rather than just
+    // the preview <img> existing) proves the real POST /v1/uploads round-trip
+    // happened, not just that a local <input type=file> was filled.
+    await expect(page.locator('#image-url-fallback')).toHaveValue(/^\/uploads\/devices\/.+\.png$/, { timeout: 10_000 });
+
+    await page.getByRole('button', { name: 'Simpan' }).click();
+    await page.waitForLoadState('networkidle');
+
+    const modelRow = page.locator('div.p-4.flex.items-center.gap-4').filter({ hasText: modelName });
+    await expect(modelRow.locator('img')).toBeVisible();
+    const src = await modelRow.locator('img').getAttribute('src');
+    expect(src).toMatch(/\/uploads\/devices\/.+\.png$/);
+  });
+
   test('Intake: catalog match shows image/specs + suggested-service chip fills Keluhan', async ({ page }) => {
     await login(page);
     await page.goto('/tickets/intake');
@@ -72,8 +109,8 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#brand', 'Samsung');
     await page.fill('#model', 'Galaxy A10');
     // Debounced (250ms) live search against the seeded catalog entry.
-    await expect(page.getByRole('button', { name: /Samsung Galaxy A10/ })).toBeVisible({ timeout: 5_000 });
-    await page.getByRole('button', { name: /Samsung Galaxy A10/ }).click();
+    await expect(page.getByRole('button', { name: 'Samsung Galaxy A10', exact: true })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Samsung Galaxy A10', exact: true }).click();
 
     const preview = page.getByTestId('device-catalog-preview');
     await expect(preview).toBeVisible();
@@ -193,8 +230,8 @@ test.describe('mobile (375x667)', () => {
     await page.waitForLoadState('networkidle');
     await page.fill('#brand', 'Samsung');
     await page.fill('#model', 'Galaxy A10');
-    await expect(page.getByRole('button', { name: /Samsung Galaxy A10/ })).toBeVisible({ timeout: 5_000 });
-    await page.getByRole('button', { name: /Samsung Galaxy A10/ }).click();
+    await expect(page.getByRole('button', { name: 'Samsung Galaxy A10', exact: true })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Samsung Galaxy A10', exact: true }).click();
     await expect(page.getByTestId('device-catalog-preview')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(376);
   });

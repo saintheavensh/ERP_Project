@@ -112,6 +112,68 @@ Tiga pertanyaan diselesaikan sebelum desain:
 - Katalog device bersama lintas-tenant — didokumentasikan di atas sebagai keputusan
   ditunda, bukan dilupakan.
 
+## 3b. Tambahan 2026-07-25 — foto sungguhan + import katalog nyata
+
+Pemilik minta lebih jauh: pindahkan foto device dari folder `legacy/` (proyek lama
+yang mau dihapus) ke `flowserv-api`, dan cek apakah `devices_export.xlsx` (dataset
+lama pemilik, 1784 device) bisa diimpor jadi katalog nyata — **bagian scraping dari
+`legacy/` sengaja TIDAK diikuti**, hanya bagian manajemen katalog (CRUD, upload
+gambar) yang diadaptasi.
+
+- **Foto**: 1827 file (`legacy/apps/backend/public/uploads/`, ~30MB, 9 folder
+  merk) dipindah ke `flowserv-api/public/uploads/`. Disajikan via
+  `serveStatic({ root: './public' })` Hono (`@hono/node-server/serve-static`) di
+  `/uploads/*`.
+- **Upload endpoint baru**: `POST /v1/uploads` (`routes/uploads.ts`) — diadaptasi
+  dari `LocalStorageAdapter` milik proyek lama (Bun → Node `fs`), TANPA bagian
+  scraping-nya. Terima multipart `file`+`folder`, simpan ke
+  `public/uploads/<folder>/<uuid>.<ext>`, balas path relatif.
+- **`ImageUpload.svelte`** (baru, `components/inventory/`) — diadaptasi dari
+  proyek lama punya pemilik, Tailwind polos (bukan lucide-svelte/shadcn — biar
+  konsisten gaya kode yang sudah ada). Upload asli + fallback tempel URL manual
+  (dua opsi, proyek lama cuma punya upload).
+- **`resolveImageUrl()`** (`lib/utils/image.ts`) — path relatif (`/uploads/...`)
+  diresolusi ke origin API (`API_URL`, BUKAN `API_BASE` yang sudah include
+  `/v1`), URL absolut (`https://...`, dua entri contoh lama) dilewatkan apa
+  adanya. Dipakai di semua tempat gambar device dirender (katalog admin, kartu
+  intake, kartu tiket).
+- **Import katalog nyata**: `devices_export.xlsx` (1784 device, 9 merk) diubah
+  jadi `devices-catalog.json` via skrip konversi sekali-jalan (TIDAK disimpan
+  sebagai dependency runtime) — **paket npm `xlsx` sengaja TIDAK dipakai**:
+  punya CVE high-severity belum ada fix (prototype pollution + ReDoS) yang
+  tidak sepadan untuk satu kali impor lokal. Ekstraksi manual via `unzip` +
+  parser regex kecil, sekali jalan, hasilnya JSON yang di-commit.
+  - Spesifikasi dikurasi dari kolom "Specifications" (JSON GSMArena mentah,
+    30+ field) jadi 6 field yang relevan buat toko servis: Chipset,
+    RAM/Storage, Baterai, Layar, Kamera, OS. **Ditemukan bug data nyata**: key
+    `display_type` di dataset ini justru berisi nilai baterai (bug scraper
+    proyek lama), bukan tipe panel layar — dikonfirmasi lewat beberapa baris
+    (selalu duplikat `battery`), jadi field ini **dibuang**, bukan dipakai
+    dengan label salah.
+  - `import-device-catalog.ts` (baru, `db/seed/`, script terpisah — **BUKAN**
+    bagian `db:seed`/`db:reset` otomatis, karena ini data onboarding nyata
+    ~1780 device, bukan fixture tes kecil deterministik). Dijalankan manual:
+    `npm run import:devices`. Merk dicari-atau-dibuat by name (reuse merk yang
+    sudah ada dari seed kecil: Samsung/Oppo/Asus/Apple); model di-skip kalau
+    kombinasi (merk, nama) sudah ada — aman dijalankan ulang. Brand "apple"
+    (huruf kecil, inkonsistensi data sumber) dinormalisasi jadi "Apple"; "vivo"
+    sengaja TETAP huruf kecil (itu memang gaya branding resminya, bukan bug).
+  - **Bug ditemukan+diperbaiki saat verifikasi E2E**: field fallback URL gambar
+    (`ImageUpload.svelte`) awalnya `type="url"` — HTML5 menolak path relatif
+    (`/uploads/...`) sebagai "invalid URL" secara native, MEMBLOKIR event
+    `submit` seluruh form TANPA error yang terlihat (tidak ada exception JS,
+    tidak ada network request tercatat) begitu field itu berisi path hasil
+    upload. Baru ketahuan lewat tes Playwright yang benar-benar upload file
+    (bukan cuma tempel URL) — diperbaiki jadi `type="text"`.
+  - Skema Zod `imageUrl` di `device-catalog.ts` awalnya `z.string().url()` —
+    juga menolak path relatif dari endpoint upload sendiri. Diperbaiki jadi
+    terima `http...` ATAU `/...`.
+- Verifikasi live: `npm run import:devices` → 1778 model masuk (6 dilewati,
+  sudah ada); pencarian `?q=vivo y` → 20 hasil real dengan spesifikasi
+  terkurasi; `GET /uploads/vivo/Y01.jpg` → 200 `image/jpeg`. Playwright
+  **100/100** (full suite, termasuk tes upload-file sungguhan), `vitest`
+  201/201, `tsc` + `svelte-check` bersih.
+
 ## 4. Task breakdown
 - [x] BE: schema `device_models` (+imageUrl/specs/suggestedServices), `customer_assets`
       (+deviceModelId), migrasi via `db:reset`.
@@ -135,3 +197,10 @@ Tiga pertanyaan diselesaikan sebelum desain:
       invoice mode setting → tercermin di cetak).
 - [x] Verifikasi: `tsc`, `svelte-check`, `vitest`, Playwright full suite.
 - [x] Commit + update dokumen ini jadi SELESAI.
+- [x] Pindahkan `legacy/apps/backend/public/uploads` → `flowserv-api/public/uploads`.
+- [x] `serveStatic` `/uploads/*` + `POST /v1/uploads` (Node fs, admin-gated).
+- [x] Konversi `devices_export.xlsx` → `devices-catalog.json` (tanpa dependency `xlsx`).
+- [x] `import-device-catalog.ts` (script terpisah, `npm run import:devices`) — 1778 model masuk.
+- [x] `ImageUpload.svelte` + `resolveImageUrl()`, dipasang di katalog admin + kartu intake/tiket.
+- [x] Test Playwright upload file sungguhan (bukan cuma URL) — nemu+perbaiki bug `type="url"`.
+- [x] Verifikasi: `tsc`, `svelte-check`, `vitest` 201/201, Playwright **100/100**.
