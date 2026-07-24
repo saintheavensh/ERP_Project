@@ -1,9 +1,11 @@
 # Phase 6 — Printer Integration (plan)
 
-> **Status (2026-07-24): 6A done.** Backend foundation (seed, pure render engine, config
-> CRUD, render endpoint) is built and independently verified live, with zero printer
-> hardware and zero FE — see `PHASES.md`'s Phase 6 section and this file's Progress log
-> below for full evidence. Branch: `phase-6/printer`. Next: 6B (FE).
+> **Status (2026-07-24): 6A + 6B done.** Backend foundation (seed, pure render engine,
+> config CRUD, render endpoint) and the full frontend (Printer Settings tab, thermal
+> preview, A4 print, agent-send with graceful offline fallback) are built and verified
+> — 198 backend unit + 75 Playwright, all green, zero printer hardware needed anywhere
+> yet. See `PHASES.md`'s Phase 6 section and this file's Progress log below for full
+> evidence. Branch: `phase-6/printer`. Next: 6C (Python agent).
 > **Read first:** [`specification/09-printer-integration.md`](../specification/09-printer-integration.md).
 > **Convention:** this file lives only while Phase 6 is active. On completion it is deleted;
 > durable evidence moves to `PHASES.md` + git (same as every `H*`/`F*`/`P*` file before it).
@@ -234,4 +236,34 @@ complete, verifiable config-and-A4-print feature.
       afterward. `npx tsc --noEmit` clean throughout 6A. `npx vitest run`: 198/198.
 
 **6A is complete — the entire backend foundation, verified without any printer hardware or
-frontend, per Q1.** Next: 6B (Settings UI).
+frontend, per Q1.**
+
+- [x] **6B.1** Printer Settings tab — 2026-07-24, commit `99467ae`. Fifth tab
+      (`?tab=printers`) on the P9 shell. Devices: full CRUD mirroring `BranchesTab`.
+      Templates: read-only (layoutConfig editing deferred to Phase 7.2's WYSIWYG
+      builder, already the plan's intended split). Assignment matrix: rows = branches,
+      columns = document types, the assign modal filters templates by the picked
+      device's paperSize so the client can never trigger 6A.3's mismatch guards. 5
+      Playwright tests, including one against the real Cabang seed asymmetry (receipt
+      assigned, `invoice_a4` "Belum diatur"). `npx svelte-check`: 0 errors. No
+      regression on the 7 pre-existing `p9-settings` tests.
+- [x] **6B.2-6B.4** Cetak flow — 2026-07-24, commit `d4f52ed`. Built as one feature
+      (`ThermalPreview.svelte`, `A4Invoice.svelte`, `PrintButton.svelte`) rather than
+      three separate commits — a preview component isn't independently verifiable
+      without a real caller. `PrintButton` fetches `GET /v1/print/documents/...` and
+      shows whichever preview matches the resolved `paperSize`; A4's print CSS
+      (`#print-area` + `visibility` trick) means the on-screen preview IS what
+      `window.print()` sends, per the spec's WYSIWYG rule; thermal's "Kirim ke
+      Printer" POSTs to a fixed `127.0.0.1:9100` (`lib/api/printer-agent.ts` — 6C's
+      Flask agent must bind here) and degrades to a clear offline message when nothing
+      answers. Wired into `InvoiceDetailModal.svelte` as "Cetak Struk"/"Cetak Invoice
+      A4". 5 Playwright tests against real invoices from the actual checkout API,
+      including a `window.print()` spy via `page.addInitScript`. **Full suite: 75
+      Playwright tests passing** (all specs, confirming zero regression across every
+      prior phase's pages); `npx svelte-check`: 0 errors; `npx vitest run`: 198/198.
+
+**6A + 6B are complete.** Everything hardware-independent is built and verified — the
+entire backend foundation plus the entire frontend (config UI, preview, A4 print, and a
+thermal "send" path that already handles the agent not existing yet). Next: 6C (Python
+agent, `printer-agent/`), then 6D (verify/docs, including the user's physical-print
+checklist).

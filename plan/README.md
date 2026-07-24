@@ -26,11 +26,12 @@ convention — see the Progress log below for the full per-step evidence and com
 **Now on Phase 6 (Printer Integration)**, branch `phase-6/printer`. Plan:
 **[`plan/phase-6-printer.md`](./phase-6-printer.md)** (task breakdown 6A–6D, decision D1, and
 the resolved Q1–Q3 scope decisions — no physical printer available, build test-covered without
-hardware; MVP is POS receipt + A4 invoice; Python 3.14.0 confirmed available). **6A (the entire
-backend foundation) is done**: seed + `printer.manage` permission, the pure render engine
-(D1's shared layout logic), config CRUD (`/v1/printer/*`), and the render endpoint
-(`/v1/print/documents/*`) — all independently verified live against a real POS invoice, no
-hardware or FE needed. Next: 6B (Settings UI + preview + A4 print), then 6C (Python agent).
+hardware; MVP is POS receipt + A4 invoice; Python 3.14.0 confirmed available). **6A + 6B are
+done**: the entire backend foundation (seed, pure render engine, config CRUD, render endpoint)
+and the entire frontend (Printer Settings tab with devices/templates/assignment matrix, a
+thermal preview, an A4 `window.print()` path, and a "Cetak" flow that already handles the
+Python agent not existing yet). 198 backend unit + 75 Playwright tests passing. Next:
+**6C (Python agent)**, then 6D (verify/docs).
 
 ---
 
@@ -74,15 +75,23 @@ hardware or FE needed. Next: 6B (Settings UI + preview + A4 print), then 6C (Pyt
 
   Test baseline: **183 backend unit + 21 API e2e + 65 Playwright browser specs**, all green.
   `svelte-check` 723 files 0 errors.
-- **Phase 6 so far — 6A (backend foundation)**: `printer.manage` permission + seed data
-  (3 devices/4 templates/3 assignments, deliberately asymmetric across branches);
-  the pure render engine (`modules/printer/render.ts` — D1's shared layout logic,
-  15 unit tests); config CRUD (`/v1/printer/devices|templates|assignments`, admin-only,
-  with real paperSize/documentType/branch mismatch validation); the render endpoint
+- **Phase 6 so far — 6A + 6B**: `printer.manage` permission + seed data (3 devices/4
+  templates/3 assignments, deliberately asymmetric across branches); the pure render
+  engine (`modules/printer/render.ts` — D1's shared layout logic, 15 unit tests); config
+  CRUD (`/v1/printer/devices|templates|assignments`, admin-only, with real
+  paperSize/documentType/branch mismatch validation); the render endpoint
   (`/v1/print/documents/:documentType/:id?paperSize=`, resolves branch assignment →
-  tenant default → `PAPER_SIZE_REQUIRED` if ambiguous). All verified live against a real
-  POS invoice from the actual checkout API — no printer hardware or FE needed.
-  Test baseline: **198 backend unit** (was 183, +15), all green. `npx tsc --noEmit` clean.
+  tenant default → `PAPER_SIZE_REQUIRED` if ambiguous) — all verified live against a
+  real POS invoice from the actual checkout API. **Frontend (6B)**: a fifth Settings
+  tab (`PrinterTab.svelte` — devices CRUD, read-only template list, an assignment
+  matrix that filters templates by the picked device's paperSize so mismatches can't
+  even be submitted); the Cetak flow (`ThermalPreview`/`A4Invoice`/`PrintButton`,
+  wired into `InvoiceDetailModal` as "Cetak Struk"/"Cetak Invoice A4") — thermal
+  preview renders the real blocks verbatim, A4's print CSS makes the on-screen preview
+  the exact thing `window.print()` sends, and the agent-send path already degrades
+  gracefully since the Python agent (6C) doesn't exist yet. All built without any
+  printer hardware. Test baseline: **198 backend unit + 75 Playwright** (was 65 at
+  end of Phase 5), all green. `npx tsc --noEmit` + `npx svelte-check` clean.
 
 ### ⏳ Deferred / not built — tracked so nothing is forgotten
 | Item | Why | Lands in |
@@ -93,7 +102,9 @@ hardware or FE needed. Next: 6B (Settings UI + preview + A4 print), then 6C (Pyt
 | **RBAC** branch + multi-role in JWT; permission-driven sidebar | hardcoded role checks today | Phase 7, alongside the RBAC management UI |
 | Real **P&L / Chart of Accounts / journal** (double-entry) | ledger single-sided by design | Phase 2+ / Phase 8 |
 | **RBAC management UI** (permission matrix, custom roles) | | Phase 7.3 |
-| **Printer** config UI (Settings tab, preview, "Cetak" button) + Python agent | backend CRUD/render (6A) is done; UI is 6B, agent is 6C | Phase 6 |
+| **Printer** Python agent (thermal ESC/POS actually printing) | backend + full UI (6A+6B) are done; only the agent (6C) and a physical print checklist (6D) remain | Phase 6 |
+| Printer **label/garansi** print trigger | template seeded, no button anywhere calls it (Q2 scope) | later, when warranty (Phase 8) lands |
+| Printer **template WYSIWYG editor** (edit `layoutConfig`'s flags in the UI) | 6B.1 shipped devices/assignments; template layout editing was always meant for the builder | Phase 7.2 |
 | Settings: **Operational** (flow defaults, QC checklists, approval thresholds), **Financial** (currency/tax/fiscal year), **Document & Printing**, **Notification** (SET-004/005/006/007) | P9 scoped to Company/Branches/Users+Roles only, per the plan | Printing→Phase 6; rest→Phase 8 as their owning feature lands |
 
 ### Floating gaps (fold into whichever task touches them)
@@ -212,5 +223,23 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
       resolution, the Cabang fallback path, `?paperSize=` override, 400/404/422 error paths,
       exact 48/32-char block-width checks. `npx tsc --noEmit` clean throughout 6A.
 
-**6A (entire backend foundation) is done.** Next: 6B (Settings UI — Printer tab, thermal
-preview, A4 print, "Cetak" button), then 6C (Python agent) — see `plan/phase-6-printer.md`.
+**6A (entire backend foundation) is done.**
+- [x] 6B.1 Printer Settings tab (`PrinterTab.svelte`) — 2026-07-24, commit `99467ae`.
+      Devices CRUD, read-only template list (WYSIWYG editor deferred to Phase 7.2 by
+      design), assignment matrix that filters templates by the picked device's
+      paperSize so a mismatch can't even be submitted. 5 Playwright tests, incl. one
+      against the real Cabang seed asymmetry. No regression on 7 pre-existing
+      `p9-settings` tests. `svelte-check`: 0 errors.
+- [x] 6B.2-6B.4 Cetak flow (`ThermalPreview`/`A4Invoice`/`PrintButton.svelte`) —
+      2026-07-24, commit `d4f52ed`. Built together — a preview component needs a real
+      caller to be verifiable. Wired into `InvoiceDetailModal` as "Cetak Struk"/"Cetak
+      Invoice A4". A4's print CSS makes the preview literally what `window.print()`
+      sends; thermal's agent-send already handles 6C not existing yet (graceful
+      offline message). 5 Playwright tests against real checkout-API invoices,
+      including a spied `window.print()` call. **Full suite: 75 Playwright tests
+      green** (every spec, zero regression). `svelte-check`: 0 errors.
+
+**6A + 6B are done — the entire backend and frontend, with zero printer hardware.**
+Next: 6C (Python agent — `printer-agent/`, Flask `POST /print`, ESC/POS translator
+tested against python-escpos's Dummy/File backend, PyInstaller packaging), then 6D
+(verify/docs) — see `plan/phase-6-printer.md`.

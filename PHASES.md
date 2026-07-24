@@ -13,8 +13,14 @@
 
 ---
 
-## Current Phase: `Phase 6 — IN PROGRESS (6A done)` — Printer Integration
+## Current Phase: `Phase 6 — IN PROGRESS (6A + 6B done)` — Printer Integration
 
+> **⚠️ Updated 2026-07-24 (later still).** **6B (frontend) is done** — Printer Settings
+> tab (devices CRUD, read-only template list, assignment matrix) and the full Cetak flow
+> (thermal preview, A4 print, agent-send with graceful offline fallback) wired into the
+> real POS invoice detail modal. See the Phase 6 section below for full evidence. Next:
+> **6C (Python agent)**, then 6D (verify/docs).
+>
 > **⚠️ Updated 2026-07-24 (later).** Phase 5 merged to `main` (fast-forward to `26f06f4`,
 > then a docs commit `4fae57f`). **Phase 6 work started on `phase-6/printer`.** The plan
 > is [`plan/phase-6-printer.md`](plan/phase-6-printer.md) — task breakdown 6A–6D, the
@@ -23,8 +29,7 @@
 > backend; Q2: MVP is POS receipt + A4 invoice, `label` deferred; Q3: Python 3.14.0
 > confirmed available). **6A (the entire backend foundation — seed, pure render engine,
 > config CRUD, render endpoint) is done and independently verified**, see the Phase 6
-> section below for full evidence. 6B (frontend), 6C (Python agent), 6D (verify/docs)
-> are not started.
+> section below for full evidence.
 >
 > **⚠️ Updated 2026-07-24.** **Phase 5 (Core UI Polish) is complete.** P9 (Settings
 > CRUD — Company/Branches/Users & Roles, closing the long-open 2A.1 create-user
@@ -888,9 +893,46 @@ missing.
       `PAPER_SIZE_REQUIRED` on a freshly-created branch with zero assignments, and exact
       48-char/32-char block-width verification. Dev DB reset to clean seed state
       afterward. `npx tsc --noEmit` clean throughout 6A; `npx vitest run`: 198/198.
-- [ ] 6B FE: Printer Settings tab (devices/templates/assignment matrix), thermal
-      monospace preview, A4 `window.print()` path, "Cetak" button on POS/ticket detail.
-      Not started.
+- [x] 6B.1 FE: Printer Settings tab (`PrinterTab.svelte`, fifth tab on the P9 shell,
+      `?tab=printers`). Devices: full CRUD, mirrors `BranchesTab`'s established pattern.
+      Templates: read-only list — editing `layoutConfig`'s 12 boolean flags is
+      deliberately deferred to the WYSIWYG template builder PHASES.md already scopes to
+      Phase 7.2, not a gap. Assignment matrix: rows = branches, columns = document
+      types; the assign modal filters the template dropdown to the slot's `documentType`
+      and (once a device is picked) that device's `paperSize`, so the client can never
+      submit a combination 6A.3 would reject with `PAPER_SIZE_MISMATCH` —
+      correct-by-construction. 5 new Playwright tests (seeded-data render, the real
+      Cabang seed asymmetry — receipt assigned, `invoice_a4` "Belum diatur", device
+      create+edit, the full "Belum diatur → configured" flow, mobile no-overflow); two
+      `data-testid`s added after the tests caught real strict-mode ambiguity (a
+      template's name / a device's name each render in two places on the page).
+      `npx svelte-check`: 0 errors. No regression on the 7 pre-existing `p9-settings`
+      tests despite editing the shared `+page.svelte`/`+page.server.ts`.
+- [x] 6B.2–6B.4 FE: Cetak flow — built together (`ThermalPreview.svelte`,
+      `A4Invoice.svelte`, `PrintButton.svelte`), since a preview component with no real
+      caller isn't independently meaningful under this file's Definition of Done.
+      `PrintButton` fetches `GET /v1/print/documents/:documentType/:id` (letting the
+      backend resolve the branch's real assignment) and shows whichever preview matches
+      the resolved `paperSize` — `ThermalPreview` renders the real `ThermalBlock[]`
+      verbatim in a monospace box at the exact 32/48-char width (no layout decision in
+      the FE, per D1); `A4Invoice` renders `data` directly as HTML with print-scoped CSS
+      (`#print-area` + a `visibility` trick) so `window.print()` prints only the
+      invoice, not the whole SPA page — the on-screen preview IS the exact markup sent
+      to print, per the spec's WYSIWYG rule. Thermal's "Kirim ke Printer" POSTs to a
+      fixed `127.0.0.1:9100` (`lib/api/printer-agent.ts`, the port 6C's Flask agent
+      must bind to); since the agent doesn't exist yet, a failed/refused POST degrades
+      to a clear "printer agent tidak terdeteksi" message instead of hanging, per the
+      plan's R2 risk mitigation. Wired into `InvoiceDetailModal.svelte`'s footer as
+      "Cetak Struk" / "Cetak Invoice A4" — every `pos_invoice` (walk-in or
+      ticket-linked via H17) surfaces there already. 5 new Playwright tests against
+      real invoices created through the actual checkout API: correct resolved
+      paperSize + real content on the thermal preview; A4 shows its layout and never
+      renders thermal blocks; the agent-offline message actually appears; `window.print()`
+      is actually invoked (spied via `page.addInitScript`, asserted with `expect.poll`);
+      mobile no-overflow. Full Playwright suite (**75 tests**, all specs) passing,
+      including the pre-existing P7 sweep's "POS invoice detail modal does not
+      overflow" check — confirms the two new buttons don't regress that modal.
+      `npx svelte-check`: 0 errors. `npx vitest run`: 198/198 (backend untouched).
 - [ ] 6C Python agent (`printer-agent/`, separate from `flowserv-api` per spec rule 1):
       Flask `POST /print` (localhost-only), block→ESC/POS translator tested against
       python-escpos's `Dummy`/`File` backend (no hardware needed), PyInstaller packaging.
