@@ -8,6 +8,7 @@ import { seedInventory } from './05-inventory';
 import { seedCustomers } from './06-customers';
 import { seedTransactions } from './07-transactions';
 import { seedPrinter } from './08-printer';
+import { seedPaymentMethods } from './09-payment-methods';
 import { IDS } from './ids';
 
 dotenv.config();
@@ -21,8 +22,9 @@ async function runSeed(): Promise<void> {
 
   // One transaction for the whole run: foreign keys require these modules to
   // run in this exact order (core -> catalog -> suppliers -> flows ->
-  // inventory -> customers -> transactions -> printer), and a failure partway
-  // through should leave nothing behind rather than a half-seeded database.
+  // inventory -> customers -> transactions -> printer -> payment-methods),
+  // and a failure partway through should leave nothing behind rather than a
+  // half-seeded database.
   await db.transaction(async (tx) => {
     await seedCore(tx);
     await seedCatalog(tx);
@@ -32,6 +34,7 @@ async function runSeed(): Promise<void> {
     await seedCustomers(tx);
     await seedTransactions(tx);
     await seedPrinter(tx);
+    await seedPaymentMethods(tx);
   });
 
   console.log('✅ Seed complete.');

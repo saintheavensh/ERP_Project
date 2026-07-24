@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection.js';
 import { paymentMethods, tenants } from '../db/schema/index.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { successResponse, errorResponse } from '../lib/response.js';
 import { requireAuth, getAuthContext } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
@@ -58,7 +58,12 @@ settingsRouter.patch('/company', requirePermission('settings.manage_company'), z
 });
 
 // GET /v1/settings/payment-methods
-// Returns all active payment methods for the tenant
+// Returns ALL payment methods (active + inactive) for the tenant — no
+// permission gate, since the POS checkout screen needs this for every
+// cashier, not just admins. The POS-consuming side is responsible for
+// filtering to isActive (see pos.checkout.svelte.ts); this endpoint stays
+// the single source both callers share, same as the settings page which
+// needs inactive rows visible so an admin can reactivate them.
 settingsRouter.get('/payment-methods', async (c) => {
   const { tenantId } = getAuthContext(c);
   if (!tenantId) return errorResponse(c, 'UNAUTHORIZED', 'Missing tenant context', undefined, 401);
@@ -66,13 +71,78 @@ settingsRouter.get('/payment-methods', async (c) => {
   try {
     const methods = await db.query.paymentMethods.findMany({
       where: eq(paymentMethods.tenantId, tenantId),
-      // order by can be added if needed, e.g., name or type
+      orderBy: (paymentMethods, { asc }) => [asc(paymentMethods.name)],
     });
-    
-    // For now, if no methods found, we can return empty or a default set (will be populated by seed)
+
     return successResponse(c, methods);
   } catch (e: any) {
     console.error('Failed to fetch payment methods', e);
     return errorResponse(c, 'INTERNAL_SERVER_ERROR', 'Failed to fetch payment methods');
+  }
+});
+
+// Tahap A (go-live plan tier 1 item 4) — CRUD closing the gap the read-only
+// P9 tab left open. 'type' is restricted to the four buckets a cashier can
+// actually pick at checkout ('split' is a system-computed settlement shape
+// for multi-method checkouts, never a named method someone creates here —
+// see enums.ts's comment on paymentMethodEnum).
+const paymentMethodTypeSchema = z.enum(['cash', 'transfer', 'qris', 'tempo']);
+
+const createPaymentMethodSchema = z.object({
+  name: z.string().min(1).max(50),
+  type: paymentMethodTypeSchema,
+  isActive: z.boolean().optional(),
+});
+
+settingsRouter.post('/payment-methods', requirePermission('settings.manage_payment_methods'), zValidator('json', createPaymentMethodSchema), auditMiddleware({ action: 'settings.create_payment_method', entityType: 'payment_method', bodyFields: ['name', 'type', 'isActive'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const data = c.req.valid('json');
+
+  try {
+    const [created] = await db.insert(paymentMethods).values({
+      tenantId,
+      name: data.name,
+      type: data.type,
+      isActive: data.isActive ?? true,
+    }).returning();
+
+    return successResponse(c, created, undefined, 201);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to create payment method', [err.message], 500);
+  }
+});
+
+const updatePaymentMethodSchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  type: paymentMethodTypeSchema.optional(),
+  isActive: z.boolean().optional(),
+});
+
+settingsRouter.patch('/payment-methods/:id', requirePermission('settings.manage_payment_methods'), zValidator('json', updatePaymentMethodSchema), auditMiddleware({ action: 'settings.update_payment_method', entityType: 'payment_method', entityIdParam: 'id', bodyFields: ['name', 'type', 'isActive'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const id = c.req.param('id');
+  const data = c.req.valid('json');
+
+  try {
+    const existing = await db.query.paymentMethods.findFirst({
+      where: and(eq(paymentMethods.id, id), eq(paymentMethods.tenantId, tenantId)),
+    });
+    if (!existing) return errorResponse(c, 'NOT_FOUND', 'Payment method not found', [], 404);
+
+    const patch: Record<string, unknown> = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.type !== undefined) patch.type = data.type;
+    if (data.isActive !== undefined) patch.isActive = data.isActive;
+
+    if (Object.keys(patch).length === 0) return successResponse(c, existing);
+
+    const [updated] = await db.update(paymentMethods)
+      .set(patch)
+      .where(and(eq(paymentMethods.id, id), eq(paymentMethods.tenantId, tenantId)))
+      .returning();
+
+    return successResponse(c, updated);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update payment method', [err.message], 500);
   }
 });

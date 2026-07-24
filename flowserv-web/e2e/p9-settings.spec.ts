@@ -102,13 +102,33 @@ test.describe('desktop (1280x800)', () => {
     expect(body.error.code).toBe('ACCOUNT_INACTIVE');
   });
 
-  test('payment methods tab: shows seeded methods read-only, no edit controls', async ({ page }) => {
+  test('payment methods tab: shows seeded methods, creates one, then deactivates it', async ({ page }) => {
     await login(page);
     await page.goto('/settings?tab=payment-methods');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('table')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+    // Tahap A seed data — Dana/OVO/GoPay bucketed under 'qris'.
+    await expect(page.locator('tr', { hasText: 'Dana' })).toBeVisible();
+    await expect(page.locator('tr', { hasText: 'GoPay' })).toBeVisible();
+
+    const methodName = `P9 Wallet ${Date.now()}`;
+    await page.getByRole('button', { name: '+ Tambah Metode' }).click();
+    await page.locator('#method-name').fill(methodName);
+    await page.locator('#method-type').selectOption('qris');
+    await page.getByRole('button', { name: 'Simpan' }).click();
+    await page.waitForLoadState('networkidle');
+
+    const row = page.locator('tr', { hasText: methodName });
+    await expect(row).toBeVisible();
+    await expect(row.getByText('QRIS / E-wallet')).toBeVisible();
+    await expect(row.getByText('Aktif', { exact: true })).toBeVisible();
+
+    await row.getByRole('button', { name: 'Edit' }).click();
+    await page.locator('#edit-method-status').selectOption('inactive');
+    await page.getByRole('button', { name: 'Simpan Perubahan' }).click();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('tr', { hasText: methodName }).getByText('Nonaktif')).toBeVisible();
   });
 
   test('tab links switch the active panel via the ?tab= query', async ({ page }) => {

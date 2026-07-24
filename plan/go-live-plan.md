@@ -150,8 +150,32 @@ fitur multi-cabang dibangun paralel. Trade-off: validasi awal hanya di satu temp
   - [x] Label (kedua alur, saat diagnosa+harga, tanpa harga) + tanda terima (alur
         disimpan, dengan harga+sandi) + tombol cetak invoice A4 di halaman tiket
         (sebelumnya tidak ada sama sekali)
-  - [ ] CRUD metode pembayaran (e-wallet) — **belum dikerjakan, lanjut di Tahap A
-        berikutnya atau kapan pun dibutuhkan**
+  - [x] CRUD metode pembayaran (e-wallet) — **selesai 2026-07-24.** Ditemukan gap
+        nyata sambil mengerjakan ini: tabel `payment_methods` **belum pernah diisi
+        seed sejak Phase 1** — di database yang baru di-reset, `GET
+        /v1/settings/payment-methods` mengembalikan array kosong, dan radio pilihan
+        metode bayar di POS checkout **kosong sama sekali** (checkout tetap
+        "berhasil" hanya karena nilai default state-nya `'cash'`, bukan karena ada
+        pilihan yang bisa diklik). Diperbaiki: seed baru (`09-payment-methods.ts`)
+        mengisi Tunai/Transfer Bank/QRIS/Dana/OVO/GoPay/Tempo. Dana/OVO/GoPay
+        dikelompokkan ke tipe `qris` — tidak ada logic bisnis yang membedakan tipe
+        pembayaran selain `tempo` (piutang), jadi metode e-wallet bernama berbagi
+        bucket `qris` sudah pas dengan bentuk tabel `(name, type)` yang memang
+        dirancang untuk ini. Endpoint baru: `POST`/`PATCH
+        /v1/settings/payment-methods` (permission baru `settings.manage_payment_methods`,
+        admin-only, pola sama seperti `branch.manage`/`settings.manage_company`);
+        `GET` tetap tanpa gate karena dipakai semua kasir saat checkout. FE:
+        `PaymentMethodsTab.svelte` yang tadinya read-only sekarang punya modal
+        tambah + edit (nama/tipe/status aktif), mengikuti pola persis
+        `BranchesTab.svelte`; state checkout POS (`pos.checkout.svelte.ts`) sekarang
+        memfilter ke `isActive` saja supaya metode yang dinonaktifkan tidak bisa
+        dipilih kasir. Diverifikasi live (curl, Super Admin): create 201, tipe
+        tidak valid (`split`) → 400, deactivate via PATCH, PATCH id tak ada → 404.
+        `npx tsc --noEmit` bersih; `npx vitest run` 207/207; `npm run test:e2e`
+        21/21; `npx svelte-check` 0 error; Playwright `p9-settings.spec.ts` (test
+        read-only lama diganti alur create+deactivate nyata) 7/7, full suite
+        78/80 (2 gagal bukan bug — agent printer memang menyala di komputer ini,
+        sama seperti sebelumnya).
 - **Tahap B — Pilot 1 cabang (mode bayangan):** onboarding stok asli, pakai harian berdampingan dengan `pos_sederhana`. **Di sinilah stok mulai beres.** Kumpulkan masalah nyata.
 - **Tahap C — Siap multi-cabang:** pisah data per cabang + multi-role fleksibel → roll-out ke semua cabang.
 - **Tahap D — Aturan kasir:** batas diskon per peran, retur/tukar, tempo per pelanggan (dari gesekan Tahap B).

@@ -28,7 +28,10 @@ export class PosCheckoutState {
   }
 
   get paymentMethods() {
-    return this.data.paymentMethods || [];
+    // Tahap A — an admin can deactivate a method (e.g. a discontinued
+    // e-wallet) without deleting it, so the settings page can still show its
+    // history; the checkout radio group must not offer it as a live choice.
+    return (this.data.paymentMethods || []).filter((pm: any) => pm.isActive);
   }
 
   get customers() {

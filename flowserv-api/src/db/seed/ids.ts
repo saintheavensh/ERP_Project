@@ -62,6 +62,9 @@ export const IDS = {
   // Phase 6 (6A.1) — printer device/template/assignment CRUD. Admin-only,
   // same pattern as permAuditView/permBranchManage.
   permPrinterManage: 'd1000000-0000-4000-8000-000000000026',
+  // Tahap A (go-live plan, tier 1 item 4) — payment-methods CRUD. Admin-only,
+  // same pattern as permBranchManage/permSettingsManageCompany.
+  permSettingsManagePaymentMethods: 'd1000000-0000-4000-8000-000000000027',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',
@@ -195,4 +198,21 @@ export const IDS = {
   // 6A.1's deliberate Cabang/invoice_a4 asymmetry.
   assignPrinterCabangLabel: 'b3000000-0000-4000-8000-000000000004',
   assignPrinterPusatTandaTerima: 'b3000000-0000-4000-8000-000000000005',
+
+  // Tahap A — payment methods (go-live plan tier 1 item 4). The table existed
+  // since Phase 1 but was never seeded (GET /v1/settings/payment-methods
+  // returned an empty array on a fresh reset, and the POS checkout radio
+  // group rendered with zero options as a result). Dana/OVO/GoPay are
+  // bucketed as type 'qris' — python-escpos/POS business logic (H11 ledger,
+  // 'tempo' unpaid-status branch) never differentiates by type beyond
+  // cash/transfer/qris/tempo, so a named e-wallet method sharing the 'qris'
+  // bucket is exactly what this table's (name, type) split was already
+  // shaped for; it is not a new decision, just the first time it's used.
+  paymentMethodCash: 'b4000000-0000-4000-8000-000000000001',
+  paymentMethodTransfer: 'b4000000-0000-4000-8000-000000000002',
+  paymentMethodQris: 'b4000000-0000-4000-8000-000000000003',
+  paymentMethodDana: 'b4000000-0000-4000-8000-000000000004',
+  paymentMethodOvo: 'b4000000-0000-4000-8000-000000000005',
+  paymentMethodGopay: 'b4000000-0000-4000-8000-000000000006',
+  paymentMethodTempo: 'b4000000-0000-4000-8000-000000000007',
 } as const;

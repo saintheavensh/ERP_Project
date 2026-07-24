@@ -59,6 +59,10 @@ const PERMISSIONS = [
   // Phase 6 (6A.1) — printer devices/templates/assignments. Admin-only, same
   // pattern as permAuditView — deliberately NOT granted to Manager below.
   { id: IDS.permPrinterManage, code: 'printer.manage', description: 'Manage printer devices, templates, and document assignments' },
+
+  // Tahap A (go-live plan) — payment-methods CRUD. Admin-only, same pattern
+  // as permBranchManage/permSettingsManageCompany.
+  { id: IDS.permSettingsManagePaymentMethods, code: 'settings.manage_payment_methods', description: 'Create or edit payment methods' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
