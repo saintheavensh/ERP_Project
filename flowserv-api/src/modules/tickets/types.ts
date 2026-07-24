@@ -63,3 +63,12 @@ export const cancelTicketInput = z.object({
 });
 
 export type CancelTicketInput = z.infer<typeof cancelTicketInput>;
+
+// Tahap A (plan/A-service-flow-templates.md) — flip 'ditunggu' <-> 'disimpan' mid-flow.
+// The owner's real scenario: a ditunggu job converts to disimpan once diagnosis
+// reveals it needs more time than the customer can wait on-site.
+export const changeServiceModeInput = z.object({
+  serviceMode: z.enum(['ditunggu', 'disimpan']),
+});
+
+export type ChangeServiceModeInput = z.infer<typeof changeServiceModeInput>;

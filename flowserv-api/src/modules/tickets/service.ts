@@ -60,6 +60,16 @@ export function canCancelTicket(status: TicketStatus): boolean {
 }
 
 /**
+ * Tahap A — a ticket's serviceMode can only change while it's still 'open'. Once
+ * closed/cancelled, "ditunggu vs disimpan" no longer means anything (the unit is
+ * already handed back or the job is dead) — changing it after the fact would just
+ * corrupt a historical fact for no operational benefit.
+ */
+export function canChangeServiceMode(status: TicketStatus): boolean {
+  return status === 'open';
+}
+
+/**
  * H17 — which charges become invoice lines. A part is billable only once
  * 'consumed' (its stock was physically deducted at consumption, H9); labor/fee
  * are billable once 'approved' (they carry no stock and are never 'consumed').
@@ -583,6 +593,58 @@ export async function cancelTicket(
     }
 
     return { ...updated, releasedPartsCount, consumedPartsLeftBehind };
+  });
+}
+
+/**
+ * Tahap A — flip a ticket's serviceMode ('ditunggu' <-> 'disimpan'). Records a
+ * ticket_stage_history note at the ticket's current node so the switch shows up on
+ * the timeline (the same audit trail pattern as assignTechnician below), not just as
+ * a silent column change.
+ */
+export async function changeServiceMode(
+  tenantId: string,
+  ticketId: string,
+  newMode: 'ditunggu' | 'disimpan',
+  actorUserId: string
+) {
+  return db.transaction(async (tx) => {
+    const [ticket] = await tx
+      .select()
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!ticket) {
+      throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    }
+    if (!canChangeServiceMode(ticket.status)) {
+      throw new BusinessError(
+        'TICKET_NOT_OPEN',
+        `A ${ticket.status} ticket's service mode can no longer be changed`,
+        409
+      );
+    }
+    if (ticket.serviceMode === newMode) {
+      return ticket; // no-op, not an error — idempotent from the caller's perspective
+    }
+
+    const [updated] = await tx
+      .update(serviceTickets)
+      .set({ serviceMode: newMode })
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)))
+      .returning();
+
+    if (ticket.currentNodeId) {
+      await tx.insert(ticketStageHistory).values({
+        ticketId,
+        nodeId: ticket.currentNodeId,
+        actorId: actorUserId,
+        notes: newMode === 'disimpan'
+          ? 'Diubah menjadi unit disimpan'
+          : 'Diubah menjadi ditunggu',
+      });
+    }
+
+    return updated;
   });
 }
 

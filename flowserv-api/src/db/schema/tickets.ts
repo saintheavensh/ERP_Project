@@ -16,7 +16,7 @@ import { relations } from 'drizzle-orm';
 
 import { tenants, branches, users } from './core';
 import { flowTemplates, flowNodes } from './flow';
-import { ticketStatusEnum } from './enums';
+import { ticketStatusEnum, serviceModeEnum } from './enums';
 import { money } from './columns';
 
 
@@ -49,6 +49,22 @@ export const serviceTickets = pgTable('service_tickets', {
   flowTemplateId: uuid('flow_template_id').notNull().references(() => flowTemplates.id),
   currentNodeId: uuid('current_node_id').references(() => flowNodes.id),
   status: ticketStatusEnum('status').notNull().default('open'),
+  // Tahap A (go-live-plan.md) — the reported problem ("keluhan/kerusakan"), captured
+  // at intake. Nullable only because tickets created before this column existed have
+  // none; every new intake requires it (enforced in modules/tickets/types.ts, not
+  // here — this table has no CHECK constraints elsewhere either).
+  reportedComplaint: text('reported_complaint'),
+  // 'ditunggu' (customer waits on-site) | 'disimpan' (unit left behind). Deliberately
+  // NOT a second flow template (see plan/A-service-flow-templates.md Q1) — both paths
+  // share the same node graph; this field only changes which documents print and how
+  // the ticket reads in lists. Changeable mid-flow: the owner's own example is a
+  // ditunggu job converting to disimpan once diagnosis reveals it needs more time.
+  serviceMode: serviceModeEnum('service_mode').notNull().default('ditunggu'),
+  // Sandi/pola HP — captured at intake, returned to the customer at handover. Plain
+  // text by design (same trust boundary as everything else an employee can see on a
+  // ticket); do not encrypt/hash — it must be human-readable for QC to key in and
+  // print on the label/tanda terima.
+  unlockCode: text('unlock_code'),
   // H7 — denormalized totals for list views that must not aggregate ticket_charges.
   // Kept in sync by the tickets service inside the same transaction as every charge write.
   estimatedTotal: money('estimated_total').notNull().default('0'),

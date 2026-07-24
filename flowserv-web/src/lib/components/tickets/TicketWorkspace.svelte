@@ -58,6 +58,45 @@
     </div>
   </div>
 
+  <!-- Tahap A — keluhan, sandi/pola, status unit (ditunggu/disimpan) -->
+  <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+    <div>
+      <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Keluhan / Kerusakan</h3>
+      <p class="text-slate-900" data-testid="ticket-complaint">{state.ticket?.reportedComplaint || '-'}</p>
+    </div>
+    <div class="flex flex-wrap items-start justify-between gap-4">
+      <div>
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Sandi / Pola HP</h3>
+        <p class="text-slate-900 font-mono" data-testid="ticket-unlock-code">{state.ticket?.unlockCode || '-'}</p>
+      </div>
+      <div>
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Status Unit</h3>
+        {#if state.canChangeServiceMode}
+          <div class="flex gap-2">
+            <button
+              onclick={() => state.changeServiceMode('ditunggu')}
+              disabled={state.serviceModeLoading}
+              class="px-3 py-1 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 {state.ticket?.serviceMode === 'ditunggu' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}"
+              data-testid="service-mode-ditunggu"
+            >
+              Ditunggu
+            </button>
+            <button
+              onclick={() => state.changeServiceMode('disimpan')}
+              disabled={state.serviceModeLoading}
+              class="px-3 py-1 rounded-full text-xs font-medium border transition-colors disabled:opacity-50 {state.ticket?.serviceMode === 'disimpan' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}"
+              data-testid="service-mode-disimpan"
+            >
+              Disimpan
+            </button>
+          </div>
+        {:else}
+          <p class="text-slate-900" data-testid="service-mode-readonly">{state.ticket?.serviceMode === 'disimpan' ? 'Disimpan' : 'Ditunggu'}</p>
+        {/if}
+      </div>
+    </div>
+  </div>
+
   <!-- F1 — Technician assignment (wires H8's previously-orphaned POST /:id/assign) -->
   <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
     <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Assigned Technician</h3>

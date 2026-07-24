@@ -3,6 +3,7 @@ import {
   calculateTicketTotals,
   canModifyCharge,
   canCancelTicket,
+  canChangeServiceMode,
   calculateTicketMargin,
   describeAssignment,
   isBillableCharge,
@@ -68,6 +69,20 @@ describe('canCancelTicket (F3)', () => {
 
   it('blocks cancelling an already-cancelled ticket', () => {
     expect(canCancelTicket('cancelled')).toBe(false);
+  });
+});
+
+describe('canChangeServiceMode (Tahap A)', () => {
+  it('allows changing serviceMode on an open ticket', () => {
+    expect(canChangeServiceMode('open')).toBe(true);
+  });
+
+  it('blocks changing serviceMode on a closed ticket', () => {
+    expect(canChangeServiceMode('closed')).toBe(false);
+  });
+
+  it('blocks changing serviceMode on a cancelled ticket', () => {
+    expect(canChangeServiceMode('cancelled')).toBe(false);
   });
 });
 

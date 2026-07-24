@@ -104,17 +104,58 @@
       <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">3</span>
       Service Details
     </h2>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="flow">Service Flow *</label>
-      <select id="flow" bind:value={state.form.flowTemplateId} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-        <option value="">Select Service Workflow...</option>
-        {#each state.templates as t}
-          <option value={t.id}>{t.name} - {t.description}</option>
-        {/each}
-      </select>
-      <p class="text-xs text-slate-500 mt-2">
-        The selected workflow dictates the stages this ticket will go through (e.g. Diagnosis &rarr; Approval &rarr; Repair).
-      </p>
+    <div class="space-y-6">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="complaint">Keluhan / Kerusakan *</label>
+        <textarea
+          id="complaint"
+          bind:value={state.form.reportedComplaint}
+          required
+          rows="3"
+          class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="mis. Layar retak, tidak bisa charge"
+        ></textarea>
+        <p class="text-xs text-slate-500 mt-1">Dicetak pada label unit dan tanda terima.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <span class="block text-sm font-medium text-slate-700 mb-1">Status Unit *</span>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              onclick={() => state.form.serviceMode = 'ditunggu'}
+              class="flex-1 px-4 py-2 rounded-lg border text-sm font-medium transition-colors {state.form.serviceMode === 'ditunggu' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}"
+            >
+              Ditunggu
+            </button>
+            <button
+              type="button"
+              onclick={() => state.form.serviceMode = 'disimpan'}
+              class="flex-1 px-4 py-2 rounded-lg border text-sm font-medium transition-colors {state.form.serviceMode === 'disimpan' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}"
+            >
+              Ditinggal / Disimpan
+            </button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="unlock-code">Sandi / Pola HP (Opsional)</label>
+          <input id="unlock-code" type="text" bind:value={state.form.unlockCode} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. 1234 atau pola L-terbalik">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="flow">Service Flow *</label>
+        <select id="flow" bind:value={state.form.flowTemplateId} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="">Select Service Workflow...</option>
+          {#each state.templates as t}
+            <option value={t.id}>{t.name} - {t.description}</option>
+          {/each}
+        </select>
+        <p class="text-xs text-slate-500 mt-2">
+          The selected workflow dictates the stages this ticket will go through (e.g. Diagnosis &rarr; Approval &rarr; Repair).
+        </p>
+      </div>
     </div>
   </div>
 

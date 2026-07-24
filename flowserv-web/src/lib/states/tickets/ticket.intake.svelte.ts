@@ -16,7 +16,11 @@ export class TicketIntakeState {
     assetModel: '',
     assetSn: '',
     flowTemplateId: '',
-    branchId: '00000000-0000-0000-0000-000000000000'
+    branchId: '00000000-0000-0000-0000-000000000000',
+    // Tahap A (plan/A-service-flow-templates.md)
+    reportedComplaint: '',
+    serviceMode: 'ditunggu' as 'ditunggu' | 'disimpan',
+    unlockCode: '',
   });
 
   loading = $state(false);
@@ -74,6 +78,11 @@ export class TicketIntakeState {
     
     if (!this.form.customerName || !this.form.assetType || !this.form.flowTemplateId) {
       this.errorMsg = 'Name, Device Type, and Flow Template are required.';
+      this.loading = false;
+      return;
+    }
+    if (!this.form.reportedComplaint.trim()) {
+      this.errorMsg = 'Keluhan / kerusakan wajib diisi.';
       this.loading = false;
       return;
     }

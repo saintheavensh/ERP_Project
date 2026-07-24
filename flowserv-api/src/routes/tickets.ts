@@ -13,8 +13,8 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 import { FlowEngine } from '../flow-engine/engine';
 import { BusinessError } from '../lib/errors';
-import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput } from '../modules/tickets/types';
-import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice, cancelTicket } from '../modules/tickets/service';
+import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput, changeServiceModeInput } from '../modules/tickets/types';
+import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice, cancelTicket, changeServiceMode } from '../modules/tickets/service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -156,10 +156,21 @@ const intakeSchema = z.object({
   assetSn: z.string().optional(),
   
   flowTemplateId: z.string().uuid(),
-  branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
+  branchId: z.string().uuid(), // for this MVP we'll need to pass branchId from frontend (or default it)
+
+  // Tahap A (plan/A-service-flow-templates.md) — the reason for the visit. Required:
+  // there is no meaningful intake without it, and it is what prints on the label/
+  // tanda terima.
+  reportedComplaint: z.string().min(1, 'Keluhan/kerusakan wajib diisi'),
+  // Defaults to 'ditunggu' — the more common case (customer present) needs no extra
+  // tap on the intake form; 'disimpan' is an explicit choice.
+  serviceMode: z.enum(['ditunggu', 'disimpan']).default('ditunggu'),
+  // Sandi/pola HP — optional (not every device is locked), returned to the customer
+  // at handover.
+  unlockCode: z.string().optional(),
 });
 
-ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('json', intakeSchema), auditMiddleware({ action: 'ticket.create', entityType: 'service_ticket', bodyFields: ['flowTemplateId', 'branchId', 'customerId', 'assetId', 'assetType'] }), async (c) => {
+ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('json', intakeSchema), auditMiddleware({ action: 'ticket.create', entityType: 'service_ticket', bodyFields: ['flowTemplateId', 'branchId', 'customerId', 'assetId', 'assetType', 'reportedComplaint', 'serviceMode'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -221,7 +232,10 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
         customerAssetId: finalAssetId,
         flowTemplateId: data.flowTemplateId,
         currentNodeId: firstNode.id,
-        status: 'open'
+        status: 'open',
+        reportedComplaint: data.reportedComplaint,
+        serviceMode: data.serviceMode,
+        unlockCode: data.unlockCode || null,
       }).returning();
       
       // 5. Create History Entry
@@ -319,6 +333,26 @@ ticketsRouter.post('/:id/cancel', requirePermission('ticket.cancel'), zValidator
     }
     console.error('Failed to cancel ticket:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to cancel ticket', undefined, 500);
+  }
+});
+
+// Tahap A — flip ditunggu <-> disimpan mid-flow. Gated by ticket.diagnose (the
+// coarse permission catalog's closest fit — this decision is made around the same
+// point as diagnosis, and a dedicated permission for one field would go against the
+// H12 "coarse, resource-level codes" philosophy).
+ticketsRouter.patch('/:id/service-mode', requirePermission('ticket.diagnose'), zValidator('json', changeServiceModeInput), auditMiddleware({ action: 'ticket.change_service_mode', entityType: 'service_ticket', entityIdParam: 'id', bodyFields: ['serviceMode'] }), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  const { serviceMode } = c.req.valid('json');
+  try {
+    const result = await changeServiceMode(tenantId, ticketId, serviceMode, userId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to change service mode:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to change service mode', undefined, 500);
   }
 });
 

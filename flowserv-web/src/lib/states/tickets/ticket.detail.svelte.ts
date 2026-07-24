@@ -321,6 +321,27 @@ export class TicketDetailState {
     finally { this.cancelLoading = false; }
   }
 
+  // Tahap A — flip ditunggu <-> disimpan mid-flow (the owner's own scenario: a
+  // ditunggu job converts to disimpan once diagnosis reveals it needs more time).
+  // Mirrors canChangeServiceMode() in the backend service purely for UI gating.
+  get canChangeServiceMode() { return this.ticket?.status === 'open'; }
+  serviceModeLoading = $state(false);
+
+  async changeServiceMode(mode: 'ditunggu' | 'disimpan') {
+    if (mode === this.ticket?.serviceMode) return;
+    this.serviceModeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/service-mode`, {
+        method: 'PATCH', headers: this.chargeHeaders(), body: JSON.stringify({ serviceMode: mode })
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal mengubah status unit';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.serviceModeLoading = false; }
+  }
+
   openEditCustomer() {
     this.editCustomerData = { name: this.customer.name, phone: this.customer.phone || '', email: this.customer.email || '' };
     this.showEditWarning = true;

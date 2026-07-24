@@ -8,6 +8,11 @@ export const invoiceStatusEnum   = pgEnum('invoice_status',   ['active', 'voided
 export const poStatusEnum        = pgEnum('po_status',        ['draft', 'ordered', 'partial', 'received', 'completed']);
 export const movementTypeEnum    = pgEnum('movement_type',    ['in', 'out', 'reserve', 'release', 'adjust', 'write_off']);
 export const ticketStatusEnum    = pgEnum('ticket_status',    ['open', 'closed', 'cancelled']);
+// Tahap A (plan/A-service-flow-templates.md) — 'ditunggu' (customer waits on-site) vs
+// 'disimpan' (unit left behind). Changeable mid-flow, not a fixed intake choice: see
+// the schema comment on service_tickets.serviceMode for why this isn't a second flow
+// template.
+export const serviceModeEnum     = pgEnum('service_mode',     ['ditunggu', 'disimpan']);
 // Ticket charge lifecycle (H7): estimated → approved (customer accepts quote) →
 // consumed (part physically taken from stock, set in H9). 'cancelled' = job abandoned
 // or part not needed. Only 'estimated' charges are editable.
@@ -29,6 +34,7 @@ export type InvoiceStatus        = (typeof invoiceStatusEnum.enumValues)[number]
 export type PoStatus             = (typeof poStatusEnum.enumValues)[number];
 export type MovementType         = (typeof movementTypeEnum.enumValues)[number];
 export type TicketStatus         = (typeof ticketStatusEnum.enumValues)[number];
+export type ServiceMode          = (typeof serviceModeEnum.enumValues)[number];
 export type ChargeStatus         = (typeof chargeStatusEnum.enumValues)[number];
 export type PaymentMethod        = (typeof paymentMethodEnum.enumValues)[number];
 export type SupplierPaymentMethod = (typeof supplierPayMethodEnum.enumValues)[number];
