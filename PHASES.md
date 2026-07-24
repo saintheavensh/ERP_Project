@@ -100,6 +100,12 @@ missing.
 > needed. Both `phase-4/purchasing-completion` and `track-f/honesty-fixes` were then
 > deleted (local + remote) since nothing in them exists outside `main`'s history now.
 > **Phase 5 work starts on `phase-5/core-ui`, branched fresh from this `main`.**
+>
+> **Merged 2026-07-24.** `main` never diverged from `phase-5/core-ui` — every Phase 5
+> commit (P1.5 through P9, 32 commits) landed there and nowhere else — so the merge to
+> `main` was a clean fast-forward to `26f06f4`, no real merge commit needed.
+> `phase-5/core-ui` is kept (not deleted) since it points at the same commit as `main`.
+> **Phase 6 work should start on a fresh `phase-6/printer` branched from this `main`.**
 
 ---
 
