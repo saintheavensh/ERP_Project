@@ -1,0 +1,26 @@
+{
+  "_comment": "Copy this file to config.json and edit for the printer physically attached to THIS computer. config.json is git-ignored -- each cashier machine keeps its own.",
+
+  "mode": "dummy",
+
+  "usb": {
+    "_comment": "lsusb / Device Manager to find these. Hex strings, e.g. Epson TM-T82 is often 04b8:0202.",
+    "idVendor": "0x04b8",
+    "idProduct": "0x0202"
+  },
+
+  "network": {
+    "host": "192.168.1.50",
+    "port": 9100
+  },
+
+  "serial": {
+    "devfile": "COM3",
+    "baudrate": 9600
+  },
+
+  "file": {
+    "_comment": "Writes raw ESC/POS bytes to this file instead of a real printer -- useful to inspect the exact output the 6D.1 physical-print checklist expects, with zero hardware.",
+    "path": "printer_output.bin"
+  }
+}

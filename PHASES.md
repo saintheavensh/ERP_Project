@@ -849,11 +849,13 @@ missing.
 > render-engine decision D1, and the resolved Q1–Q3 scope decisions).
 > **Branch:** `phase-6/printer`
 >
-> **Status (2026-07-24): 6A (backend foundation) is done.** Zero physical printer is
-> available in this environment (plan Q1) — everything below is built and verified
-> without hardware; the real ESC/POS print is a checklist deferred to 6D.1. Q2 scoped
-> this phase's MVP to the POS receipt + A4 invoice only; `label` has seed data but no
-> print trigger yet.
+> **Status (2026-07-24): 6A + 6B + 6C are done.** Zero physical printer is available in
+> this environment (plan Q1) — everything below is built and verified without hardware
+> (Dummy/File `python-escpos` backends + a packaged `printer-agent.exe` that answers
+> `/health` and `/print`); the real ESC/POS print is a checklist deferred to 6D.1. Q2
+> scoped this phase's MVP to the POS receipt + A4 invoice only; `label` has seed data
+> but no print trigger yet. **Only 6D.1 (physical print, hardware-dependent, user-run)
+> and the final merge to `main` remain.**
 
 - [x] 6A.1 Seed: `printer.manage` permission (admin-only, not granted to Manager) +
       3 devices / 4 templates / 3 assignments, deliberately asymmetric across branches
@@ -933,14 +935,46 @@ missing.
       including the pre-existing P7 sweep's "POS invoice detail modal does not
       overflow" check — confirms the two new buttons don't regress that modal.
       `npx svelte-check`: 0 errors. `npx vitest run`: 198/198 (backend untouched).
-- [ ] 6C Python agent (`printer-agent/`, separate from `flowserv-api` per spec rule 1):
-      Flask `POST /print` (localhost-only), block→ESC/POS translator tested against
-      python-escpos's `Dummy`/`File` backend (no hardware needed), PyInstaller packaging.
-      Not started. Python 3.14.0 confirmed available on this machine.
-- [ ] 6D Verify + docs: full Playwright + backend unit + agent pytest sweep; physical
-      print checklist (hardware-dependent, deferred to the user per plan Q1); close out
-      `plan/phase-6-printer.md` and this section.
-- [ ] 6.6 Git commit + merge `phase-6/printer` → `main` once 6B/6C/6D close out the phase.
+- [x] 6C Python agent (`printer-agent/`, separate from `flowserv-api` per spec rule 1) —
+      **done 2026-07-24.** `printer_agent.py` (Flask, binds `127.0.0.1:9100` only —
+      matches `PRINTER_AGENT_URL` in `flowserv-web/src/lib/api/printer-agent.ts`):
+      `GET /health`, `POST /print`. `escpos_translator.py`: pure `blocks_to_escpos()`,
+      one branch per `ThermalBlock` type (`text`/`line`/`row`/`total`/`cut`), no layout
+      decisions (mirrors D1 — the TS render engine is the only place alignment happens).
+      `connection.py`: factory building a real `python-escpos` `Usb`/`Network`/`Serial`
+      instance, or `Dummy`/`File` with zero hardware, from a per-machine `config.json`
+      (git-ignored; `config.example.json` documents all 5 modes) — defaults to `dummy`
+      when no config exists, so the whole feature demos with no printer anywhere.
+      23 pytest tests: `test_translator.py` (byte-level against `Dummy` — asserts the
+      actual ESC/POS protocol bytes: `ESC E` bold, `ESC a` align, `GS V` cut, exact
+      32/48-char line width, unknown block type raises rather than silently dropping a
+      line), `test_connection.py` (mode selection incl. mocked Usb/Network/Serial ctors),
+      `test_agent.py` (Flask endpoint incl. 400s on bad payload, CORS preflight).
+      Live-verified beyond the test suite: ran the real Flask process, `curl`'d
+      `/health` → 200 and `/print` with a real block document → `{"status":"printed"}`;
+      switched `config.json` to `file` mode and inspected the raw output bytes
+      (`\x1bE\x01...\x1dV\x00`) to confirm the byte stream a real printer would receive.
+      **6C.4 PyInstaller packaging**: `python -m PyInstaller --onefile --name
+      printer-agent --collect-data escpos printer_agent.py` → `dist/printer-agent.exe`.
+      Found and fixed a real packaging bug: without `--collect-data escpos`, the exe
+      answers `/health` but every `/print` fails (`python-escpos` loads a bundled
+      `capabilities.json` data file PyInstaller doesn't auto-detect) — documented in
+      `printer-agent/README.md` so it isn't rediscovered. Verified: ran the built exe
+      standalone (no Python on the invoking shell needed), `/health` → 200, `/print` →
+      `{"status":"printed"}`. `printer-agent/README.md` documents install, all 5
+      connection modes, hardware-free testing, the physical-print checklist (6D.1), and
+      the packaging command with the `--collect-data` gotcha.
+- [/] 6D Verify + docs — **partial.** Backend (23 pytest) + this repo's existing 198
+      backend unit + 75 Playwright all still green (agent is a fully separate process;
+      nothing in `flowserv-api`/`flowserv-web` was touched by 6C). **Left `[/]` not
+      `[x]`**: 6D.1's physical print test is explicitly hardware-dependent (plan Q1) —
+      no printer exists in this environment, so it stays a checklist in
+      `printer-agent/README.md` for the user to run once real hardware is available,
+      not a silent `[x]`. The `config.json` → `file` mode gives byte-level output to
+      inspect without hardware, but "the printer actually cuts paper" can only be
+      confirmed on a physical device.
+- [ ] 6.6 Git commit + merge `phase-6/printer` → `main` once 6D.1 (physical print,
+      user-run) closes out the phase.
 
 ---
 

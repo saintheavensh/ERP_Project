@@ -1,11 +1,14 @@
 # Phase 6 — Printer Integration (plan)
 
-> **Status (2026-07-24): 6A + 6B done.** Backend foundation (seed, pure render engine,
-> config CRUD, render endpoint) and the full frontend (Printer Settings tab, thermal
-> preview, A4 print, agent-send with graceful offline fallback) are built and verified
-> — 198 backend unit + 75 Playwright, all green, zero printer hardware needed anywhere
-> yet. See `PHASES.md`'s Phase 6 section and this file's Progress log below for full
-> evidence. Branch: `phase-6/printer`. Next: 6C (Python agent).
+> **Status (2026-07-24): 6A + 6B + 6C done.** Backend foundation (seed, pure render
+> engine, config CRUD, render endpoint), the full frontend (Printer Settings tab,
+> thermal preview, A4 print, agent-send with graceful offline fallback), and the Python
+> agent (`printer-agent/` — Flask, translator, connection factory, 23 pytest tests, a
+> working PyInstaller `--onefile` build) are all built and verified — 198 backend unit +
+> 75 Playwright + 23 agent pytest, all green, zero printer hardware needed anywhere yet.
+> See `PHASES.md`'s Phase 6 section and this file's Progress log below for full
+> evidence. Branch: `phase-6/printer`. Next: 6D.1 (physical print checklist — hardware-
+> dependent, the user runs this) and the merge to `main`.
 > **Read first:** [`specification/09-printer-integration.md`](../specification/09-printer-integration.md).
 > **Convention:** this file lives only while Phase 6 is active. On completion it is deleted;
 > durable evidence moves to `PHASES.md` + git (same as every `H*`/`F*`/`P*` file before it).
@@ -264,6 +267,53 @@ frontend, per Q1.**
 
 **6A + 6B are complete.** Everything hardware-independent is built and verified — the
 entire backend foundation plus the entire frontend (config UI, preview, A4 print, and a
-thermal "send" path that already handles the agent not existing yet). Next: 6C (Python
-agent, `printer-agent/`), then 6D (verify/docs, including the user's physical-print
-checklist).
+thermal "send" path that already handles the agent not existing yet).
+
+- [x] **6C.1** Flask `POST /print` + `GET /health` — 2026-07-24. `printer_agent.py`
+      binds `127.0.0.1:9100` only (matches `PRINTER_AGENT_URL`). Validates `paperSize`
+      and non-empty `blocks` before touching a printer connection; permissive CORS is
+      safe here specifically because the bind is localhost-only, so no external origin
+      can ever reach the process regardless of the header. Live-verified: `curl
+      /health` → 200; `curl -X POST /print` with a real block document → `{"status":
+      "printed"}`; bad `paperSize`/empty `blocks`/unknown block type → 400.
+- [x] **6C.2** Block→ESC/POS translator — 2026-07-24. `escpos_translator.py`:
+      `blocks_to_escpos(printer, blocks, width)`, one branch per `text`/`line`/`row`/
+      `total`/`cut`, raises `UnknownBlockTypeError` rather than silently dropping an
+      unrecognized block (a real receipt line going missing is worse than a loud
+      error). 9 pytest tests against `python-escpos`'s `Dummy` backend, asserting the
+      actual ESC/POS protocol bytes (`ESC E` bold on/off, `ESC a` align, `GS V` cut) and
+      exact 32-char/48-char line width — not implementation-detail assertions, the
+      standard ESC/POS command bytes themselves.
+- [x] **6C.3** Connection handling — 2026-07-24. `connection.py`: factory selecting
+      `Usb`/`Network`/`Serial`/`File`/`Dummy` from a per-machine `config.json`
+      (git-ignored; `config.example.json` documents all 5 modes). Defaults to `dummy`
+      when no config file exists — the reason the whole feature (settings UI through
+      "Kirim ke Printer") demos cleanly with zero hardware anywhere. Deliberately does
+      not trust the FE request body's `device` field (the tenant DB's printer
+      assignment) for the actual physical connection — that's a local, per-machine
+      decision recorded once in `config.json`, matching the spec's "first-time setup:
+      branch admin registers device" note. 7 pytest tests (factory selection with
+      mocked Usb/Network/Serial constructors so no real device is opened; `Dummy`/
+      `File` fully exercised for real). Live-verified beyond pytest: switched
+      `config.json` to `file` mode and inspected the written bytes
+      (`\x1bE\x01...TOKO SERVIS JAYA...\x1dV\x00`) — confirms the exact byte stream a
+      real 58/80mm printer would receive.
+- [x] **6C.4** PyInstaller packaging — 2026-07-24. `python -m PyInstaller --onefile
+      --name printer-agent --collect-data escpos printer_agent.py` → working
+      `dist/printer-agent.exe`. Found and fixed a real packaging bug along the way:
+      without `--collect-data escpos`, the built exe answers `/health` fine but every
+      `/print` call fails — `python-escpos` loads a bundled `capabilities.json` data
+      file at runtime that PyInstaller's default analysis doesn't detect (it's data,
+      not an import). Documented in `printer-agent/README.md`'s packaging section so
+      it's never rediscovered the hard way. Verified: ran the built `.exe` directly (no
+      Python interpreter needed on the invoking shell) — `/health` → 200, `/print` →
+      `{"status":"printed"}`. Build artifacts (`build/`, `dist/`, `*.spec`) are
+      git-ignored; rebuild with the documented command.
+
+**6A + 6B + 6C are complete — 198 backend unit + 75 Playwright + 23 agent pytest, all
+green.** Everything hardware-independent across the whole phase (config, preview, A4
+print, and now the actual thermal agent) is built and verified without touching a real
+printer. Only **6D.1** remains: the physical print checklist in
+`printer-agent/README.md`, which needs real ESC/POS hardware the user has and this
+environment does not — followed by closing this file out and merging `phase-6/printer`
+→ `main`.
