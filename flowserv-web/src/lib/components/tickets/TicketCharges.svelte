@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
   import StatCard from '$lib/components/dashboard/StatCard.svelte';
+  import PrintButton from '$lib/components/print/PrintButton.svelte';
 
   let { state } = $props<{ state: TicketDetailState }>();
 
@@ -170,6 +171,26 @@
         </button>
       </div>
 
+      <!-- Tahap A — label prints in both service paths at "diagnosa + harga"
+           (the moment a quote first exists); tanda terima only when the unit
+           is left behind (disimpan). Both are ticket-sourced documents (no
+           invoice exists yet), reusing the same PrintButton built for POS. -->
+      {#if state.isQuoted}
+        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+          <p class="text-xs text-slate-500">
+            {state.ticket?.serviceMode === 'disimpan'
+              ? 'Cetak label unit dan tanda terima untuk pelanggan.'
+              : 'Cetak label unit untuk identifikasi.'}
+          </p>
+          <div class="flex items-center gap-2">
+            <PrintButton token={state.token} documentType="label" invoiceId={state.ticket.id} label="Cetak Label" />
+            {#if state.ticket?.serviceMode === 'disimpan'}
+              <PrintButton token={state.token} documentType="tanda_terima" invoiceId={state.ticket.id} label="Cetak Tanda Terima" />
+            {/if}
+          </div>
+        </div>
+      {/if}
+
       <!-- H17 — generate service invoice (consumed parts + approved labor) -->
       {#if state.canInvoice}
         <div class="flex items-center justify-between border-t border-slate-100 pt-3">
@@ -187,6 +208,15 @@
               Buat Faktur
             </button>
           </div>
+        </div>
+      {/if}
+
+      <!-- Tahap A — the ticket workspace never had a print affordance at all,
+           even though the invoice it creates is a real pos_invoice (the same
+           PrintButton POS already uses). -->
+      {#if state.lastInvoiceId}
+        <div class="flex items-center justify-end border-t border-slate-100 pt-3">
+          <PrintButton token={state.token} documentType="invoice_a4" invoiceId={state.lastInvoiceId} label="Cetak Invoice A4" />
         </div>
       {/if}
     {/if}

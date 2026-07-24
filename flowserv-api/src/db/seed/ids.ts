@@ -172,8 +172,15 @@ export const IDS = {
   templatePrinterReceipt58: 'b2000000-0000-4000-8000-000000000001',
   templatePrinterReceipt80: 'b2000000-0000-4000-8000-000000000002',
   templatePrinterInvoiceA4: 'b2000000-0000-4000-8000-000000000003',
-  // Defined per plan Q2 but not yet wired to a print trigger anywhere.
+  // Repurposed in Tahap A: this was seeded per plan Q2 as a speculative
+  // "warranty label" with no print trigger anywhere. The real, owner-confirmed
+  // need is a unit-identification label printed at diagnosis+price (both
+  // service paths) — see plan/A-service-flow-templates.md. Same row, same id,
+  // new name/content; nothing else referenced the old "Label Garansi" name.
   templatePrinterLabelGaransi: 'b2000000-0000-4000-8000-000000000004',
+  // Tahap A — tanda terima unit (disimpan path only), printed alongside the
+  // label at the same moment.
+  templatePrinterTandaTerima: 'b2000000-0000-4000-8000-000000000005',
 
   assignPrinterPusatReceipt: 'b3000000-0000-4000-8000-000000000001',
   assignPrinterPusatInvoiceA4: 'b3000000-0000-4000-8000-000000000002',
@@ -182,4 +189,10 @@ export const IDS = {
   // default template" path against real seed data (Cabang has no invoice_a4
   // assignment at all).
   assignPrinterCabangReceipt: 'b3000000-0000-4000-8000-000000000003',
+  // label (58mm) matches Cabang's thermal device (Epson TM-T20, 58mm) --
+  // Pusat's own thermal device is 80mm, so it gets the tanda_terima
+  // assignment instead. Real paperSize-matching seed data, same spirit as
+  // 6A.1's deliberate Cabang/invoice_a4 asymmetry.
+  assignPrinterCabangLabel: 'b3000000-0000-4000-8000-000000000004',
+  assignPrinterPusatTandaTerima: 'b3000000-0000-4000-8000-000000000005',
 } as const;

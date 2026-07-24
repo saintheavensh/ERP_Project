@@ -45,6 +45,7 @@ async function createIntakeTicket(page: Page, customerName: string) {
       assetModel: 'E2E',
       flowTemplateId: STANDARD_REPAIR_FLOW,
       branchId: '00000000-0000-0000-0000-000000000000',
+      reportedComplaint: 'Tidak bisa menyala',
     },
   });
   const body = await res.json();

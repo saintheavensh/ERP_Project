@@ -208,6 +208,12 @@ export class TicketDetailState {
   // H13 pattern — minted when the invoice action starts, reused across retries,
   // cleared on success so a later (blocked) retry doesn't replay a stale response.
   private invoiceIdempotencyKey = '';
+  // Tahap A — the pos_invoices id from the just-generated invoice, so a "Cetak
+  // Invoice A4" button can appear immediately (PrintButton needs an id, and
+  // GET /tickets/:id doesn't currently join the linked invoice back — reloading
+  // the page loses this until that join exists; printing right after generating
+  // is the flow this closes, not re-printing an old session's invoice).
+  lastInvoiceId = $state('');
 
   async generateInvoice() {
     this.chargeLoading = true;
@@ -223,6 +229,7 @@ export class TicketDetailState {
       const result = await res.json();
       if (res.ok) {
         this.invoiceIdempotencyKey = '';
+        this.lastInvoiceId = result.data.id;
         this.successMsg = `Faktur dibuat: ${result.data.invoiceNumber}`;
         await invalidateAll();
       } else {

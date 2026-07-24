@@ -14,7 +14,7 @@
 
   let { token, documentType, invoiceId, label = 'Cetak' }: {
     token: string;
-    documentType: 'receipt' | 'invoice_a4';
+    documentType: 'receipt' | 'invoice_a4' | 'label' | 'tanda_terima';
     invoiceId: string;
     label?: string;
   } = $props();

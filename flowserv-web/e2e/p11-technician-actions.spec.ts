@@ -43,6 +43,7 @@ async function createAssignedDiagnosisTicket(page: Page, customerName: string, t
       assetModel: 'P11-E2E',
       flowTemplateId: STANDARD_REPAIR_FLOW,
       branchId: '00000000-0000-0000-0000-000000000000',
+      reportedComplaint: 'Keyboard tidak berfungsi',
     },
   });
   const { data: ticket } = await intakeRes.json();

@@ -155,3 +155,76 @@ export function renderThermalBlocks(paperSize: '58mm' | '80mm', doc: DocumentDat
   blocks.push({ type: 'cut' });
   return blocks;
 }
+
+/**
+ * Tahap A (plan/A-service-flow-templates.md) — raw data behind 'label' and
+ * 'tanda_terima', sourced directly from a service_ticket (there is no invoice yet
+ * at "diagnosis + price given", the moment both print). Deliberately a separate
+ * shape from InvoiceBundle: a ticket at this point has no line items/subtotal in
+ * the invoice sense, just a complaint, an optional unlock code, and (once quoted)
+ * a cumulative approved amount.
+ */
+export interface ServiceTicketBundle {
+  createdAt: string; // ISO — when the unit was taken in (intake), not "now"
+  storeName: string;
+  branch: { name: string; address?: string; phone?: string };
+  customerName: string;
+  assetLabel: string; // "Smartphone Samsung Galaxy A54" — already joined by the caller
+  reportedComplaint: string;
+  unlockCode?: string;
+  serviceMode: 'ditunggu' | 'disimpan';
+  quotedAmount?: number; // service_tickets.approvedTotal — undefined if not quoted yet
+}
+
+/**
+ * 'label': nama, kerusakan, tanggal masuk ONLY — no price (that's what tanda_terima
+ * is for; a label is an identification tag stuck on the unit itself, per the owner's
+ * own spec, not a financial document). Printed in BOTH service paths.
+ *
+ * 'tanda_terima': the same identification info PLUS the agreed price and unlock
+ * code, since it doubles as proof the unit was left behind with the shop (only the
+ * 'disimpan' path prints this).
+ */
+export function renderTicketThermalBlocks(
+  documentType: 'label' | 'tanda_terima',
+  paperSize: '58mm' | '80mm',
+  bundle: ServiceTicketBundle
+): ThermalBlock[] {
+  const width = THERMAL_CHAR_WIDTH[paperSize];
+  const blocks: ThermalBlock[] = [];
+
+  blocks.push({ type: 'text', value: bundle.storeName, align: 'center', bold: true });
+  blocks.push({
+    type: 'text',
+    value: documentType === 'label' ? 'LABEL UNIT SERVIS' : 'TANDA TERIMA UNIT',
+    align: 'center',
+    bold: true,
+  });
+  blocks.push({ type: 'line' });
+
+  blocks.push({ type: 'text', value: truncate(`Plg: ${bundle.customerName}`, width), align: 'left' });
+  blocks.push({ type: 'text', value: truncate(bundle.assetLabel, width), align: 'left' });
+  blocks.push({ type: 'text', value: `Masuk: ${bundle.createdAt}`, align: 'left' });
+  blocks.push({ type: 'line' });
+
+  blocks.push({ type: 'text', value: 'Keluhan/Kerusakan:', align: 'left', bold: true });
+  blocks.push({ type: 'text', value: truncate(bundle.reportedComplaint, width), align: 'left' });
+
+  if (documentType === 'tanda_terima') {
+    blocks.push({ type: 'line' });
+    if (bundle.unlockCode) {
+      blocks.push({ type: 'text', value: truncate(`Sandi/Pola: ${bundle.unlockCode}`, width), align: 'left' });
+    }
+    if (bundle.quotedAmount !== undefined) {
+      blocks.push({ type: 'total', value: padRow('Harga Disepakati', formatMoney(bundle.quotedAmount), width) });
+    } else {
+      blocks.push({ type: 'text', value: 'Harga: menunggu diagnosa', align: 'left' });
+    }
+    blocks.push({ type: 'line' });
+    blocks.push({ type: 'text', value: 'Simpan tanda terima ini untuk', align: 'center' });
+    blocks.push({ type: 'text', value: 'pengambilan unit.', align: 'center' });
+  }
+
+  blocks.push({ type: 'cut' });
+  return blocks;
+}

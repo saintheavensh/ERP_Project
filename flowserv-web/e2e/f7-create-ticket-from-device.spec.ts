@@ -50,6 +50,8 @@ test('creates a ticket from a customer device via the previously-dead button', a
   await shot(page, '02-intake-prefilled');
 
   // 5. Pick a flow and submit — the device section has no inputs to fill (locked).
+  // Tahap A — keluhan is required (400 without it).
+  await page.fill('#complaint', 'Tidak bisa dicas, baterai cepat habis');
   await page.selectOption('#flow', { index: 1 });
   await page.getByRole('button', { name: 'Create Ticket' }).click();
 

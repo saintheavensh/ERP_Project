@@ -5,7 +5,12 @@ import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { DOCUMENT_TYPES, PAPER_SIZES } from '../modules/printer/types';
-import { renderPosInvoiceDocument } from '../modules/printer/document';
+import { renderPosInvoiceDocument, renderServiceTicketDocument } from '../modules/printer/document';
+
+// Tahap A — 'label'/'tanda_terima' are sourced from a service_ticket (:id is a
+// ticket id); 'receipt'/'invoice_a4' stay sourced from a pos_invoice (:id is an
+// invoice id) exactly as before. Same URL shape, different id-space per type.
+const TICKET_SOURCED_DOCUMENT_TYPES = new Set(['label', 'tanda_terima']);
 
 // 6A.4 — deliberately NOT gated by printer.manage: whoever can see an
 // invoice (a cashier at checkout, a technician handing over a repair) needs
@@ -34,7 +39,9 @@ printRouter.get(
     const { paperSize } = c.req.valid('query');
 
     try {
-      const rendered = await renderPosInvoiceDocument(tenantId, documentType, id, paperSize);
+      const rendered = TICKET_SOURCED_DOCUMENT_TYPES.has(documentType)
+        ? await renderServiceTicketDocument(tenantId, documentType, id, paperSize)
+        : await renderPosInvoiceDocument(tenantId, documentType, id, paperSize);
       return successResponse(c, rendered);
     } catch (err) {
       if (err instanceof BusinessError) {

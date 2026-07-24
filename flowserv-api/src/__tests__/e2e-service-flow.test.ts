@@ -108,6 +108,7 @@ describe('H15 — end-to-end service flow: intake to close', () => {
         assetId: IDS.assetBudiHp,
         flowTemplateId: IDS.flowTemplate,
         branchId: IDS.branchPusat,
+        reportedComplaint: 'Layar tidak menyala',
       },
     });
     expect(res.status).toBe(201);
@@ -507,6 +508,7 @@ describe('H15 — end-to-end service flow: intake to close', () => {
         assetSn: '',
         flowTemplateId: IDS.flowTemplate,
         branchId: IDS.branchPusat,
+        reportedComplaint: 'Tidak bisa dicas',
       },
     });
     expect(res.status).toBe(201);

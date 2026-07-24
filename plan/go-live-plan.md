@@ -142,12 +142,16 @@ fitur multi-cabang dibangun paralel. Trade-off: validasi awal hanya di satu temp
 
 ### Urutan tahap
 - **Tahap 0 (sekarang):** dokumen ini + tutup **Phase 6** (test cetak fisik + merge) sebagai milestone bersih.
-- **Tahap A — Inti servis + cetak** (nilai tertinggi, karena servis 50% & paling khas):
-  - Konfigurasi 2 flow template (ditunggu/disimpan)
-  - Field intake sandi/pola
-  - Jenis dokumen "tanda terima" + pemicu cetak per-tahap + label
-  - Change order (konfirmasi ulang harga)
-  - CRUD metode pembayaran (e-wallet)
+- **Tahap A — Inti servis + cetak** ✅ **selesai 2026-07-24** (nilai tertinggi, karena
+  servis 50% & paling khas) — lihat
+  [`plan/A-service-flow-templates.md`](A-service-flow-templates.md) untuk detail bukti:
+  - [x] Keluhan/kerusakan, mode ditunggu/disimpan (bisa diubah di tengah alur), sandi/pola
+  - [x] Change order — ternyata sudah didukung mekanisme yang ada, tidak perlu kode baru
+  - [x] Label (kedua alur, saat diagnosa+harga, tanpa harga) + tanda terima (alur
+        disimpan, dengan harga+sandi) + tombol cetak invoice A4 di halaman tiket
+        (sebelumnya tidak ada sama sekali)
+  - [ ] CRUD metode pembayaran (e-wallet) — **belum dikerjakan, lanjut di Tahap A
+        berikutnya atau kapan pun dibutuhkan**
 - **Tahap B — Pilot 1 cabang (mode bayangan):** onboarding stok asli, pakai harian berdampingan dengan `pos_sederhana`. **Di sinilah stok mulai beres.** Kumpulkan masalah nyata.
 - **Tahap C — Siap multi-cabang:** pisah data per cabang + multi-role fleksibel → roll-out ke semua cabang.
 - **Tahap D — Aturan kasir:** batas diskon per peran, retur/tukar, tempo per pelanggan (dari gesekan Tahap B).

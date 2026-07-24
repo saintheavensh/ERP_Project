@@ -3,7 +3,13 @@ import { z } from 'zod';
 // Matches the varchar-with-comment convention already used in db/schema/printer.ts
 // (no pg enum type on these columns) — validated here at the Zod layer instead,
 // same as every other module's types.ts.
-export const DOCUMENT_TYPES = ['receipt', 'invoice_a4', 'label'] as const;
+// 'tanda_terima' — Tahap A (plan/A-service-flow-templates.md): a unit-storage receipt
+// for the 'disimpan' service path, printed at the same moment as 'label' (diagnosis +
+// price given) — see modules/printer/document.ts renderServiceTicketDocument(). Unlike
+// 'receipt'/'invoice_a4' (sourced from pos_invoices), 'label' and 'tanda_terima' are
+// sourced directly from a service_ticket — there is no invoice yet at that point in
+// the flow.
+export const DOCUMENT_TYPES = ['receipt', 'invoice_a4', 'label', 'tanda_terima'] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 export const PAPER_SIZES = ['58mm', '80mm', 'A4'] as const;

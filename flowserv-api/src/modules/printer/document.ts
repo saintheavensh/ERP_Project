@@ -1,8 +1,8 @@
 import { db } from '../../db/connection';
-import { posInvoices, printerAssignments, printerTemplates } from '../../db/schema';
+import { posInvoices, printerAssignments, printerTemplates, serviceTickets } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
-import { buildDocumentData, renderThermalBlocks, type InvoiceBundle } from './render';
+import { buildDocumentData, renderThermalBlocks, renderTicketThermalBlocks, type InvoiceBundle, type ServiceTicketBundle } from './render';
 import type { DocumentType, PaperSize, LayoutConfig, DocumentData, ThermalBlock, ConnectionType } from './types';
 
 export interface RenderedDocument {
@@ -13,18 +13,23 @@ export interface RenderedDocument {
   // the caller asked for a paperSize different from what's assigned (a
   // preview), or when nothing is assigned yet at all.
   assignment: { deviceId: string; deviceName: string; connectionType: ConnectionType } | null;
-  data: DocumentData;
+  // DocumentData for 'receipt'/'invoice_a4' (invoice-sourced); ServiceTicketBundle
+  // for 'label'/'tanda_terima' (ticket-sourced, Tahap A) — the A4 component only
+  // ever reads the former, since the latter two are thermal-only (see
+  // renderServiceTicketDocument's A4 guard below).
+  data: DocumentData | ServiceTicketBundle;
   // Only for thermal paper — A4 never touches blocks (spec rule 2), the FE
   // renders `data` directly with HTML/CSS for window.print().
   blocks?: ThermalBlock[];
 }
 
 /**
- * The only two document types wired to a real data source in this phase
- * (plan Q2) — both are a pos_invoice. 'label' has seeded templates (Q2) but
- * no print trigger and no underlying entity model decided yet.
+ * pos_invoice-sourced document types (plan Q2's MVP scope). 'label' and
+ * 'tanda_terima' are sourced from a service_ticket instead — see
+ * renderServiceTicketDocument() below (Tahap A).
  */
 const SUPPORTED_DOCUMENT_TYPES: readonly DocumentType[] = ['receipt', 'invoice_a4'];
+const SUPPORTED_TICKET_DOCUMENT_TYPES: readonly DocumentType[] = ['label', 'tanda_terima'];
 
 export async function renderPosInvoiceDocument(
   tenantId: string,
@@ -144,6 +149,122 @@ export async function renderPosInvoiceDocument(
     template: { id: resolvedTemplate.id, name: resolvedTemplate.name },
     assignment: resolvedAssignment,
     data,
+    blocks,
+  };
+}
+
+/**
+ * Tahap A (plan/A-service-flow-templates.md) — 'label' and 'tanda_terima', sourced
+ * directly from a service_ticket rather than a pos_invoice: at "diagnosis + price
+ * given" (the print trigger, see modules/tickets/service.ts generateQuotation),
+ * there is no invoice yet. Thermal-only by design (a label is a small sticker, a
+ * tanda terima is handed over on the spot) — an A4 template for either is rejected
+ * rather than silently mishandled, since no A4 layout for a ticket document exists
+ * anywhere in this codebase.
+ */
+export async function renderServiceTicketDocument(
+  tenantId: string,
+  documentType: DocumentType,
+  ticketId: string,
+  requestedPaperSize?: PaperSize
+): Promise<RenderedDocument> {
+  if (!SUPPORTED_TICKET_DOCUMENT_TYPES.includes(documentType)) {
+    throw new BusinessError('DOCUMENT_TYPE_NOT_SUPPORTED', `'${documentType}' printing is not wired to a ticket data source`, 400);
+  }
+
+  const ticket = await db.query.serviceTickets.findFirst({
+    where: and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)),
+    with: { tenant: true, branch: true, customer: true, customerAsset: true },
+  });
+  if (!ticket) throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+
+  const branchAssignment = await db.query.printerAssignments.findFirst({
+    where: and(
+      eq(printerAssignments.tenantId, tenantId),
+      eq(printerAssignments.branchId, ticket.branchId),
+      eq(printerAssignments.documentType, documentType)
+    ),
+    with: { device: true, template: true },
+  });
+
+  interface ResolvedTemplateRef { id: string; name: string; paperSize: string; layoutConfig: unknown }
+  let resolvedTemplate: ResolvedTemplateRef | null = null;
+  let resolvedAssignment: RenderedDocument['assignment'] = null;
+
+  if (requestedPaperSize) {
+    if (branchAssignment && branchAssignment.template.paperSize === requestedPaperSize) {
+      resolvedTemplate = branchAssignment.template;
+      resolvedAssignment = {
+        deviceId: branchAssignment.device.id,
+        deviceName: branchAssignment.device.name,
+        connectionType: branchAssignment.device.connectionType as ConnectionType,
+      };
+    } else {
+      const fallback = await db.query.printerTemplates.findFirst({
+        where: and(
+          eq(printerTemplates.tenantId, tenantId),
+          eq(printerTemplates.documentType, documentType),
+          eq(printerTemplates.paperSize, requestedPaperSize),
+          eq(printerTemplates.isDefault, true)
+        ),
+      });
+      if (!fallback) throw new BusinessError('NO_TEMPLATE', `No ${documentType} template for paper size ${requestedPaperSize}`, 404);
+      resolvedTemplate = fallback;
+    }
+  } else if (branchAssignment) {
+    resolvedTemplate = branchAssignment.template;
+    resolvedAssignment = {
+      deviceId: branchAssignment.device.id,
+      deviceName: branchAssignment.device.name,
+      connectionType: branchAssignment.device.connectionType as ConnectionType,
+    };
+  } else {
+    // No branch assignment and no explicit size — fall back to whichever
+    // paper size the tenant's default template for this documentType uses
+    // (label/tanda terima realistically only ever have one physical size in
+    // practice, so unlike 'receipt' there's no genuine ambiguity to reject).
+    const fallback = await db.query.printerTemplates.findFirst({
+      where: and(
+        eq(printerTemplates.tenantId, tenantId),
+        eq(printerTemplates.documentType, documentType),
+        eq(printerTemplates.isDefault, true)
+      ),
+    });
+    if (!fallback) throw new BusinessError('NO_TEMPLATE', `No ${documentType} template configured for this tenant`, 404);
+    resolvedTemplate = fallback;
+  }
+
+  const paperSize = resolvedTemplate.paperSize as PaperSize;
+  if (paperSize !== '58mm' && paperSize !== '80mm') {
+    throw new BusinessError('UNSUPPORTED_PAPER_SIZE', `'${documentType}' only supports thermal paper (58mm/80mm), not ${paperSize}`, 400);
+  }
+
+  const assetLabel = [ticket.customerAsset.assetType, ticket.customerAsset.brand, ticket.customerAsset.model]
+    .filter(Boolean)
+    .join(' ');
+
+  const bundle: ServiceTicketBundle = {
+    createdAt: ticket.createdAt.toISOString(),
+    storeName: ticket.tenant.name,
+    branch: { name: ticket.branch.name, address: ticket.branch.address ?? undefined },
+    customerName: ticket.customer.name,
+    assetLabel,
+    reportedComplaint: ticket.reportedComplaint ?? '(tidak dicatat)',
+    unlockCode: ticket.unlockCode ?? undefined,
+    serviceMode: ticket.serviceMode,
+    // approvedTotal is the cumulative quoted amount across every generateQuotation
+    // cycle (including change orders, Tahap A.2) — null until the first quote.
+    quotedAmount: ticket.approvedTotal !== null ? Number(ticket.approvedTotal) : undefined,
+  };
+
+  const blocks = renderTicketThermalBlocks(documentType as 'label' | 'tanda_terima', paperSize, bundle);
+
+  return {
+    documentType,
+    paperSize,
+    template: { id: resolvedTemplate.id, name: resolvedTemplate.name },
+    assignment: resolvedAssignment,
+    data: bundle,
     blocks,
   };
 }

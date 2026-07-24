@@ -73,6 +73,7 @@ test('a real invoice with pure labor revenue flows through to the P&L table', as
       assetModel: 'P5',
       flowTemplateId: '80000000-0000-4000-8000-000000000001',
       branchId: '00000000-0000-0000-0000-000000000000',
+      reportedComplaint: 'Baterai boros',
     },
   });
   const ticketId = (await intakeRes.json()).data.id;

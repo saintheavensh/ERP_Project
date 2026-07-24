@@ -29,12 +29,23 @@ const layoutInvoiceA4: LayoutConfig = {
   },
 };
 
-// Defined per plan Q2 but not yet wired to a print trigger anywhere in the FE.
-const layoutLabelGaransi: LayoutConfig = {
+// Tahap A — repurposed from the speculative "Label Garansi" (never had a print
+// trigger) into the real, owner-confirmed unit-identification label. layoutConfig
+// is barely used by renderTicketThermalBlocks() (label/tanda_terima content is
+// fixed, not field-toggleable like an invoice) — kept only so this row still
+// validates against the shared layoutConfigSchema every template uses.
+const layoutLabel: LayoutConfig = {
   header: { showStoreName: true, showAddress: false, showPhone: false, showLogo: false },
   items: { showLineSubtotal: false, showDescription: false },
   extra: { showCashierName: false, showTicketInfo: false, showSignature: false },
-  footer: { note: 'Garansi 7 hari', warrantyPolicy: null },
+  footer: { note: null, warrantyPolicy: null },
+};
+
+const layoutTandaTerima: LayoutConfig = {
+  header: { showStoreName: true, showAddress: false, showPhone: false, showLogo: false },
+  items: { showLineSubtotal: false, showDescription: false },
+  extra: { showCashierName: false, showTicketInfo: false, showSignature: false },
+  footer: { note: null, warrantyPolicy: null },
 };
 
 export async function seedPrinter(tx: SeedTx): Promise<void> {
@@ -101,10 +112,19 @@ export async function seedPrinter(tx: SeedTx): Promise<void> {
     {
       id: IDS.templatePrinterLabelGaransi,
       tenantId: IDS.tenantMain,
-      name: 'Label Garansi 58mm',
+      name: 'Label Unit Servis 58mm',
       documentType: 'label',
       paperSize: '58mm',
-      layoutConfig: layoutLabelGaransi,
+      layoutConfig: layoutLabel,
+      isDefault: true,
+    },
+    {
+      id: IDS.templatePrinterTandaTerima,
+      tenantId: IDS.tenantMain,
+      name: 'Tanda Terima Unit 80mm',
+      documentType: 'tanda_terima',
+      paperSize: '80mm',
+      layoutConfig: layoutTandaTerima,
       isDefault: true,
     },
   ]).onConflictDoNothing();
@@ -137,6 +157,27 @@ export async function seedPrinter(tx: SeedTx): Promise<void> {
       documentType: 'receipt',
       printerDeviceId: IDS.devicePrinterThermalCabang,
       printerTemplateId: IDS.templatePrinterReceipt58,
+    },
+    // Tahap A — label (58mm) assigned at Cabang (its thermal device is 58mm);
+    // tanda_terima (80mm) assigned at Pusat (its thermal device is 80mm).
+    // Pusat deliberately has no label assignment and Cabang none for
+    // tanda_terima, exercising the tenant-default fallback for both, same as
+    // 6A.1's existing Cabang/invoice_a4 asymmetry.
+    {
+      id: IDS.assignPrinterCabangLabel,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchCabang,
+      documentType: 'label',
+      printerDeviceId: IDS.devicePrinterThermalCabang,
+      printerTemplateId: IDS.templatePrinterLabelGaransi,
+    },
+    {
+      id: IDS.assignPrinterPusatTandaTerima,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      documentType: 'tanda_terima',
+      printerDeviceId: IDS.devicePrinterThermalPusat,
+      printerTemplateId: IDS.templatePrinterTandaTerima,
     },
   ]).onConflictDoNothing();
 }

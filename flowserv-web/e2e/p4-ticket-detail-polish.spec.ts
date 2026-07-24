@@ -42,6 +42,7 @@ async function createIntakeTicket(page: Page, customerName: string) {
       assetModel: 'P4E2E',
       flowTemplateId: STANDARD_REPAIR_FLOW,
       branchId: '00000000-0000-0000-0000-000000000000',
+      reportedComplaint: 'Layar bergaris',
     },
   });
   const body = await res.json();

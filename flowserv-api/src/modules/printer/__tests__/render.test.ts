@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { buildDocumentData, renderThermalBlocks, truncate, padRow, formatMoney, THERMAL_CHAR_WIDTH } from '../render';
+import { buildDocumentData, renderThermalBlocks, renderTicketThermalBlocks, truncate, padRow, formatMoney, THERMAL_CHAR_WIDTH } from '../render';
 import type { LayoutConfig } from '../types';
-import type { InvoiceBundle } from '../render';
+import type { InvoiceBundle, ServiceTicketBundle } from '../render';
 
 const bareLayout: LayoutConfig = {
   header: { showStoreName: true, showAddress: false, showPhone: false, showLogo: false },
@@ -160,6 +160,77 @@ describe('renderThermalBlocks — 58mm vs 80mm', () => {
 
   it('ends every document with a cut block', () => {
     const blocks = renderThermalBlocks('58mm', buildDocumentData('receipt', bareLayout, bundle));
+    expect(blocks[blocks.length - 1]).toEqual({ type: 'cut' });
+  });
+});
+
+describe('renderTicketThermalBlocks (Tahap A — label + tanda_terima)', () => {
+  const ticketBundleQuoted: ServiceTicketBundle = {
+    createdAt: '2026-07-24 10:00',
+    storeName: 'Demo Service Center',
+    branch: { name: 'Pusat', address: 'Jl. Sudirman No. 1, Jakarta', phone: '021-5551234' },
+    customerName: 'Budi',
+    assetLabel: 'Smartphone Samsung Galaxy A54',
+    reportedComplaint: 'Layar retak dan tidak bisa charge',
+    unlockCode: '1234',
+    serviceMode: 'disimpan',
+    quotedAmount: 225000,
+  };
+
+  const ticketBundleUnquoted: ServiceTicketBundle = {
+    ...ticketBundleQuoted,
+    unlockCode: undefined,
+    quotedAmount: undefined,
+  };
+
+  it('label never includes a price, even when one is available', () => {
+    const blocks = renderTicketThermalBlocks('label', '58mm', ticketBundleQuoted);
+    expect(blocks.some((b) => b.type === 'total')).toBe(false);
+    expect(blocks.some((b) => b.type === 'text' && b.value.includes('225.000'))).toBe(false);
+  });
+
+  it('label includes nama, kerusakan, and tanggal masuk', () => {
+    // 58mm (32 chars) truncates the long complaint text -- that's truncate()
+    // doing its job, so assert on a prefix rather than the full string.
+    const blocks = renderTicketThermalBlocks('label', '58mm', ticketBundleQuoted);
+    const joined = blocks.map((b) => ('value' in b ? b.value : '')).join(' ');
+    expect(joined).toContain('Budi');
+    expect(joined).toContain('Layar retak');
+    expect(joined).toContain('2026-07-24 10:00');
+
+    // 80mm (48 chars) fits the complaint in full -- confirms it's truncation,
+    // not the text being wrong/missing.
+    const wideBlocks = renderTicketThermalBlocks('label', '80mm', ticketBundleQuoted);
+    const wideJoined = wideBlocks.map((b) => ('value' in b ? b.value : '')).join(' ');
+    expect(wideJoined).toContain('Layar retak dan tidak bisa charge');
+  });
+
+  it('tanda_terima includes the agreed price and unlock code', () => {
+    const blocks = renderTicketThermalBlocks('tanda_terima', '58mm', ticketBundleQuoted);
+    const total = blocks.find((b) => b.type === 'total');
+    expect(total).toBeDefined();
+    expect((total as { value: string }).value).toContain('225.000');
+    expect(blocks.some((b) => b.type === 'text' && b.value.includes('1234'))).toBe(true);
+  });
+
+  it('tanda_terima before quotation shows a placeholder, not a fabricated price', () => {
+    const blocks = renderTicketThermalBlocks('tanda_terima', '58mm', ticketBundleUnquoted);
+    expect(blocks.some((b) => b.type === 'total')).toBe(false);
+    expect(blocks.some((b) => b.type === 'text' && b.value.includes('menunggu diagnosa'))).toBe(true);
+  });
+
+  it('respects the 32/48-char width for each paper size', () => {
+    const blocks58 = renderTicketThermalBlocks('tanda_terima', '58mm', ticketBundleQuoted);
+    const total58 = blocks58.find((b) => b.type === 'total') as { value: string };
+    expect(total58.value.length).toBe(32);
+
+    const blocks80 = renderTicketThermalBlocks('tanda_terima', '80mm', ticketBundleQuoted);
+    const total80 = blocks80.find((b) => b.type === 'total') as { value: string };
+    expect(total80.value.length).toBe(48);
+  });
+
+  it('ends with a cut block', () => {
+    const blocks = renderTicketThermalBlocks('label', '58mm', ticketBundleQuoted);
     expect(blocks[blocks.length - 1]).toEqual({ type: 'cut' });
   });
 });

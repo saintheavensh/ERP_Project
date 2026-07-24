@@ -1,8 +1,10 @@
 # Tahap A — Service Flow Templates + Print Triggers (plan)
 
-> **Status: in progress, started 2026-07-24.** Branch: `golive/a-service-flow-templates`
+> **Status: A.1–A.4 complete, 2026-07-24.** Branch: `golive/a-service-flow-templates`
 > (branched from `phase-6/printer` HEAD, so the printer agent/scan/test-print work is
-> available). Parent doc: [`plan/go-live-plan.md`](go-live-plan.md) Tahap A.
+> available). Parent doc: [`plan/go-live-plan.md`](go-live-plan.md) Tahap A. Full suite:
+> 207 backend unit + 21 backend e2e + 78/80 Playwright (2 non-defect failures — see A.4's
+> regression note). `npx tsc --noEmit` + `npx svelte-check`: 0 errors.
 > **Convention:** this file lives only while Tahap A is active; on completion its
 > evidence moves to `go-live-plan.md`'s progress log, same as every `H*`/`F*`/`6*` file.
 
@@ -153,5 +155,63 @@
       225.000, both charges' status `approved`, nothing corrupted. Remaining work
       for this item is UI framing only (label the "add charge + re-quote" action
       as "Ada Temuan Baru?" on the workspace) — folded into A.4.
-- [ ] A.3 Print document types: label + tanda_terima
-- [ ] A.4 Wire print triggers into ticket workspace
+- [x] A.3 Print document types: label + tanda_terima — 2026-07-24. `DOCUMENT_TYPES`
+      extended with `'tanda_terima'`. New `ServiceTicketBundle` + pure
+      `renderTicketThermalBlocks(documentType, paperSize, bundle)` in `render.ts` —
+      `'label'` never includes a price even once one exists (owner's explicit
+      spec: a label is an ID tag, not a financial document); `'tanda_terima'`
+      adds the agreed price + sandi/pola, showing a placeholder ("menunggu
+      diagnosa") before the first quotation rather than fabricating a number.
+      Thermal-only by design (58mm/80mm) — an A4 template for either is rejected
+      (`UNSUPPORTED_PAPER_SIZE`), since no A4 layout exists anywhere for a
+      ticket-sourced document. New `renderServiceTicketDocument()` in
+      `document.ts` (parallel to `renderPosInvoiceDocument`, same branch/tenant-
+      default resolution logic) — `quotedAmount` reads `service_tickets
+      .approvedTotal` directly (already proven cumulative-correct by A.2).
+      `routes/print.ts` now dispatches by documentType: `label`/`tanda_terima` →
+      ticket id; `receipt`/`invoice_a4` → invoice id (unchanged). Seed: the
+      speculative "Label Garansi" template (never had a print trigger) was
+      repurposed into the real "Label Unit Servis" content; new "Tanda Terima
+      Unit 80mm" template. Assignments deliberately asymmetric across branches
+      again (label→Cabang/58mm, tanda_terima→Pusat/80mm — each branch's real
+      thermal device paper size), exercising the tenant-default fallback for
+      both types, same convention as 6A.1. 6 new unit tests (`render.test.ts`).
+      Live-verified end to end on a real ticket: label at Pusat (no assignment)
+      falls back to 58mm default, never shows price even after quoting;
+      tanda_terima at Pusat resolves its real 80mm assignment, shows sandi/pola
+      + "Harga Disepakati 300.000" correctly padded to 48 chars. `npx tsc
+      --noEmit`: 0 errors. `npx vitest run`: 207/207.
+- [x] A.4 Wire print triggers into ticket workspace — 2026-07-24.
+      `PrintButton.svelte`'s `documentType` union widened to include `'label'`/
+      `'tanda_terima'` — no other change needed, since the URL shape
+      (`/print/documents/:documentType/:id`) is identical regardless of which
+      id-space `:id` is in. `TicketCharges.svelte`: once `state.isQuoted` (a
+      quote exists — works for the FIRST quote and every change-order re-quote
+      from A.2 alike), shows "Cetak Label" always and "Cetak Tanda Terima" only
+      when `serviceMode === 'disimpan'`. After `generateInvoice()` succeeds,
+      shows "Cetak Invoice A4" — this is a **real gap closed**, not just new
+      scope: the ticket workspace never had any print affordance before this,
+      even though H17's service invoice is a real `pos_invoices` row the exact
+      same `PrintButton` already handles for POS. Scoping note: the invoice
+      print button only appears in the same session right after generating
+      (`ticket.detail.svelte.ts`'s new `lastInvoiceId` field) — reloading the
+      page loses it until `GET /tickets/:id` joins the linked invoice back,
+      which is a real but separate gap, not silently pretended-solved here.
+      `npx svelte-check`: 0 errors.
+- [x] **Regression found + fixed**: making `reportedComplaint` required on intake
+      (A.1) broke every existing caller that predates it — 2 in the backend e2e
+      suite (`e2e-service-flow.test.ts`, excluded from the plain `vitest run`,
+      only caught by `npm run test:e2e`) and 6 Playwright specs (`p2`, `p4`,
+      `p5`, `p11` via direct API calls; `intake-to-close` and
+      `f7-create-ticket-from-device` via the real form, needing an actual
+      `page.fill('#complaint', ...)` added). All 8 fixed. Also found and fixed
+      while chasing this: `.env`'s `DATABASE_URL_TEST` had a placeholder
+      password ("your_password") that never matched the real one, and the
+      `flowserv_test` database itself didn't exist on this machine — `npm run
+      test:e2e` had presumably never been run successfully in this environment
+      before. Fixed both (local-only `.env`, gitignored) and created the
+      database directly; `npm run test:e2e` now passes 21/21. Full suite after
+      all fixes: 207 backend unit + 21 backend e2e + 78/80 Playwright (the 2
+      "failures" are the printer agent genuinely running on this machine during
+      the test run, not a defect — see printer-scan.spec.ts's own comment on
+      this exact scenario).

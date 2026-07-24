@@ -54,6 +54,9 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
   await page.fill('#model', 'Galaxy A10');
+  // Tahap A — keluhan is required (400 without it); the field's default
+  // (ditunggu) needs no interaction.
+  await page.fill('#complaint', 'Layar retak, tidak bisa menyala');
   // Flow template select: option index 1 is the first real workflow (Standard Repair).
   await page.selectOption('#flow', { index: 1 });
   await shot(page, '02-intake-filled');
