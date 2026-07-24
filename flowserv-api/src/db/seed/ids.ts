@@ -59,6 +59,9 @@ export const IDS = {
   permBranchManage: 'd1000000-0000-4000-8000-000000000023',
   permUserManage: 'd1000000-0000-4000-8000-000000000024',
   permSettingsManageCompany: 'd1000000-0000-4000-8000-000000000025',
+  // Phase 6 (6A.1) — printer device/template/assignment CRUD. Admin-only,
+  // same pattern as permAuditView/permBranchManage.
+  permPrinterManage: 'd1000000-0000-4000-8000-000000000026',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',
@@ -158,4 +161,25 @@ export const IDS = {
   ticketInProgress: 'a1000000-0000-4000-8000-000000000006',
   ticketStageIntake: 'a1000000-0000-4000-8000-000000000007',
   ticketStageDiagnosis: 'a1000000-0000-4000-8000-000000000008',
+
+  // Phase 6 (6A.1) — printer devices are per-branch (physical printer);
+  // templates are tenant-wide (document_type + paper_size layout);
+  // assignments tie one branch's document_type to one device + one template.
+  devicePrinterThermalPusat: 'b1000000-0000-4000-8000-000000000001',
+  devicePrinterA4Pusat: 'b1000000-0000-4000-8000-000000000002',
+  devicePrinterThermalCabang: 'b1000000-0000-4000-8000-000000000003',
+
+  templatePrinterReceipt58: 'b2000000-0000-4000-8000-000000000001',
+  templatePrinterReceipt80: 'b2000000-0000-4000-8000-000000000002',
+  templatePrinterInvoiceA4: 'b2000000-0000-4000-8000-000000000003',
+  // Defined per plan Q2 but not yet wired to a print trigger anywhere.
+  templatePrinterLabelGaransi: 'b2000000-0000-4000-8000-000000000004',
+
+  assignPrinterPusatReceipt: 'b3000000-0000-4000-8000-000000000001',
+  assignPrinterPusatInvoiceA4: 'b3000000-0000-4000-8000-000000000002',
+  // Deliberately the only assignment for branchCabang — proves 6A.4's
+  // "no assignment for this branch+docType -> fall back to the tenant
+  // default template" path against real seed data (Cabang has no invoice_a4
+  // assignment at all).
+  assignPrinterCabangReceipt: 'b3000000-0000-4000-8000-000000000003',
 } as const;
