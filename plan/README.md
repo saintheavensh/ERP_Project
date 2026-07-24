@@ -23,11 +23,14 @@ P9 (Settings CRUD) was the last remaining task. Its detail plan (`P7-plus-phase5
 which covered P7 through P9) has been **deleted on completion**, per this file's own
 convention — see the Progress log below for the full per-step evidence and commit hashes.
 
-**Next: Phase 6 (Printer Integration)** — zero code exists for it yet, but the detail plan is
-now written: **[`plan/phase-6-printer.md`](./phase-6-printer.md)** (task breakdown 6A–6D, the
-shared-render-engine decision D1, and three open decisions Q1–Q3 awaiting the user's answer).
-Coding has **not** started — no `phase-6/printer` branch yet. Read that plan + "Later phases"
-below before starting.
+**Now on Phase 6 (Printer Integration)**, branch `phase-6/printer`. Plan:
+**[`plan/phase-6-printer.md`](./phase-6-printer.md)** (task breakdown 6A–6D, decision D1, and
+the resolved Q1–Q3 scope decisions — no physical printer available, build test-covered without
+hardware; MVP is POS receipt + A4 invoice; Python 3.14.0 confirmed available). **6A (the entire
+backend foundation) is done**: seed + `printer.manage` permission, the pure render engine
+(D1's shared layout logic), config CRUD (`/v1/printer/*`), and the render endpoint
+(`/v1/print/documents/*`) — all independently verified live against a real POS invoice, no
+hardware or FE needed. Next: 6B (Settings UI + preview + A4 print), then 6C (Python agent).
 
 ---
 
@@ -71,6 +74,15 @@ below before starting.
 
   Test baseline: **183 backend unit + 21 API e2e + 65 Playwright browser specs**, all green.
   `svelte-check` 723 files 0 errors.
+- **Phase 6 so far — 6A (backend foundation)**: `printer.manage` permission + seed data
+  (3 devices/4 templates/3 assignments, deliberately asymmetric across branches);
+  the pure render engine (`modules/printer/render.ts` — D1's shared layout logic,
+  15 unit tests); config CRUD (`/v1/printer/devices|templates|assignments`, admin-only,
+  with real paperSize/documentType/branch mismatch validation); the render endpoint
+  (`/v1/print/documents/:documentType/:id?paperSize=`, resolves branch assignment →
+  tenant default → `PAPER_SIZE_REQUIRED` if ambiguous). All verified live against a real
+  POS invoice from the actual checkout API — no printer hardware or FE needed.
+  Test baseline: **198 backend unit** (was 183, +15), all green. `npx tsc --noEmit` clean.
 
 ### ⏳ Deferred / not built — tracked so nothing is forgotten
 | Item | Why | Lands in |
@@ -81,7 +93,7 @@ below before starting.
 | **RBAC** branch + multi-role in JWT; permission-driven sidebar | hardcoded role checks today | Phase 7, alongside the RBAC management UI |
 | Real **P&L / Chart of Accounts / journal** (double-entry) | ledger single-sided by design | Phase 2+ / Phase 8 |
 | **RBAC management UI** (permission matrix, custom roles) | | Phase 7.3 |
-| **Printer** config UI + Python agent | | Phase 6 |
+| **Printer** config UI (Settings tab, preview, "Cetak" button) + Python agent | backend CRUD/render (6A) is done; UI is 6B, agent is 6C | Phase 6 |
 | Settings: **Operational** (flow defaults, QC checklists, approval thresholds), **Financial** (currency/tax/fiscal year), **Document & Printing**, **Notification** (SET-004/005/006/007) | P9 scoped to Company/Branches/Users+Roles only, per the plan | Printing→Phase 6; rest→Phase 8 as their owning feature lands |
 
 ### Floating gaps (fold into whichever task touches them)
@@ -180,4 +192,25 @@ Template Builder (WYSIWYG, depends on Phase 6), **RBAC Management UI** (visual p
       permissions, login now checks `users.status`, last-Super-Admin lockout guard, tabbed
       `/settings` shell. `e2e/p9-settings.spec.ts` (7 tests). Full suite 65 tests green.
 
-**Phase 5 is complete.** Next: Phase 6 (Printer Integration) — see "Later phases" below.
+**Phase 5 is complete**, merged to `main` (fast-forward `26f06f4`, docs commit `4fae57f`).
+
+**Phase 6** (branch `phase-6/printer`), plan: [`plan/phase-6-printer.md`](./phase-6-printer.md):
+- [x] 6A.1 Seed: `printer.manage` permission + device/template/assignment rows — 2026-07-24.
+      3 devices, 4 templates (incl. deferred `label`), 3 assignments deliberately asymmetric
+      across branches (Cabang has no `invoice_a4` assignment, for 6A.4's fallback path).
+      `npm run db:reset` twice — idempotent. `npx vitest run`: 183/183 (unchanged).
+- [x] 6A.2 Pure render engine (`modules/printer/render.ts`) — 2026-07-24. `buildDocumentData()`
+      + `renderThermalBlocks()` per decision D1 — the one place layout/alignment happens, shared
+      by preview and the future Python agent. 15 unit tests. `npx vitest run`: 198/198 (+15).
+- [x] 6A.3 Config CRUD (`routes/printer.ts` + `modules/printer/service.ts`) — 2026-07-24.
+      `/v1/printer/devices|templates|assignments`, admin-only. `upsertAssignment()` validates
+      device-branch, template-documentType, and device/template paperSize match. Verified live
+      (curl, enforce mode): 403/200/201/422×3/404/400 all confirmed against real requests.
+- [x] 6A.4 Render endpoint (`routes/print.ts` + `modules/printer/document.ts`) — 2026-07-24.
+      `GET /v1/print/documents/:documentType/:id?paperSize=`, `requireAuth` only. Verified live
+      end-to-end against a real POS invoice from the actual checkout API: branch-assignment
+      resolution, the Cabang fallback path, `?paperSize=` override, 400/404/422 error paths,
+      exact 48/32-char block-width checks. `npx tsc --noEmit` clean throughout 6A.
+
+**6A (entire backend foundation) is done.** Next: 6B (Settings UI — Printer tab, thermal
+preview, A4 print, "Cetak" button), then 6C (Python agent) — see `plan/phase-6-printer.md`.

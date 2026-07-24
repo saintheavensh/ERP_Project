@@ -13,16 +13,26 @@
 
 ---
 
-## Current Phase: `Phase 5 — COMPLETE` → next: Phase 6 (Printer Integration)
+## Current Phase: `Phase 6 — IN PROGRESS (6A done)` — Printer Integration
 
+> **⚠️ Updated 2026-07-24 (later).** Phase 5 merged to `main` (fast-forward to `26f06f4`,
+> then a docs commit `4fae57f`). **Phase 6 work started on `phase-6/printer`.** The plan
+> is [`plan/phase-6-printer.md`](plan/phase-6-printer.md) — task breakdown 6A–6D, the
+> shared-render-engine decision (D1), and the resolved scope decisions (Q1: no physical
+> printer available, build test-covered without hardware via python-escpos's Dummy/File
+> backend; Q2: MVP is POS receipt + A4 invoice, `label` deferred; Q3: Python 3.14.0
+> confirmed available). **6A (the entire backend foundation — seed, pure render engine,
+> config CRUD, render endpoint) is done and independently verified**, see the Phase 6
+> section below for full evidence. 6B (frontend), 6C (Python agent), 6D (verify/docs)
+> are not started.
+>
 > **⚠️ Updated 2026-07-24.** **Phase 5 (Core UI Polish) is complete.** P9 (Settings
 > CRUD — Company/Branches/Users & Roles, closing the long-open 2A.1 create-user
 > endpoint) was the last remaining task; see the Phase 5 section below for the full
 > per-task breakdown (P1.5 through P9, ~12 sub-tasks across BE+FE). The per-task
 > `plan/P*.md` files for this phase were **deleted on completion**, same convention as
 > the H-track and Track F — durable evidence lives in this file and in git history on
-> `phase-5/core-ui`. **Phase 6 (Printer Integration) has not been started; zero code
-> exists for it yet.** Read `plan/README.md`'s "Later phases" section before starting.
+> `phase-5/core-ui`.
 >
 > **⚠️ Updated 2026-07-23.** The **Hardening Track (H0–H17) is complete and merged to
 > `main`** (commits `d32e881`→`aa341c6`). It built most of Phases 3.5, 4.5, and the
@@ -829,15 +839,66 @@ missing.
 
 ## PHASE 6 — Printer Integration (Python)
 > **Goal:** Build local thermal printer agent.
-> **Read first:** specification/09-printer-integration.md
+> **Read first:** specification/09-printer-integration.md,
+> [`plan/phase-6-printer.md`](plan/phase-6-printer.md) (task breakdown 6A–6D, the shared-
+> render-engine decision D1, and the resolved Q1–Q3 scope decisions).
 > **Branch:** `phase-6/printer`
+>
+> **Status (2026-07-24): 6A (backend foundation) is done.** Zero physical printer is
+> available in this environment (plan Q1) — everything below is built and verified
+> without hardware; the real ESC/POS print is a checklist deferred to 6D.1. Q2 scoped
+> this phase's MVP to the POS receipt + A4 invoice only; `label` has seed data but no
+> print trigger yet.
 
-- [ ] 6.1 Flask app: POST /print endpoint
-- [ ] 6.2 Default template per paper size (58mm/80mm)
-- [ ] 6.3 FE: Printer settings page (devices, templates, assignments)
-- [ ] 6.4 Verify: physical print test
-- [ ] 6.5 PyInstaller packaging
-- [ ] 6.6 Git commit: `feat: phase 6 complete — printer integration`
+- [x] 6A.1 Seed: `printer.manage` permission (admin-only, not granted to Manager) +
+      3 devices / 4 templates / 3 assignments, deliberately asymmetric across branches
+      (Cabang has no `invoice_a4` assignment) to exercise the fallback path 6A.4 needed.
+      Verified: `npm run db:reset` twice — idempotent; direct DB query confirmed row
+      shapes and that the permission is granted only to Super Admin.
+- [x] 6A.2 Pure render engine (`modules/printer/render.ts`, decision D1): `buildDocumentData()`
+      is the one place `layoutConfig` is read (shared by both paper mechanisms);
+      `renderThermalBlocks()` turns it into a flat `ThermalBlock[]` for 58/80mm with
+      `padRow()`/`truncate()` doing all column alignment server-side — row/total blocks
+      carry an already-padded single string, so neither the Python agent (6C) nor the
+      preview component (6B) ever recomputes alignment. 15 unit tests (width-fit on
+      every emitted block, long-name truncation, the "detail increases with paper size"
+      data-inclusion table, conditional footer). `npx vitest run`: 198/198 (was 183).
+- [x] 6A.3 Config CRUD (`routes/printer.ts` + `modules/printer/service.ts`, mounted at
+      `/v1/printer`, admin-only). `upsertAssignment()` validates three real constraints,
+      not just existence: device belongs to the assignment's branch, template's
+      `documentType` matches the slot, and device `paperSize` matches template
+      `paperSize` (the one that actually breaks physical output if wrong). Verified live
+      (curl, `RBAC_MODE=enforce`): Manager → 403; Super Admin → 200/201 CRUD; cross-tenant
+      branch → 404; invalid enum → 400; all three assignment-mismatch guards → 422 with
+      the specific code; upsert updates the existing `(branchId, documentType)` row
+      rather than duplicating it.
+- [x] 6A.4 Render endpoint (`routes/print.ts` + `modules/printer/document.ts`,
+      `GET /v1/print/documents/:documentType/:id?paperSize=`, `requireAuth` only —
+      **not** admin-gated, since printing your own sale isn't a printer-admin action).
+      Fetches the real `pos_invoice` (+lines, customer, branch, tenant, linked ticket's
+      technician), resolves branch assignment → tenant default → `PAPER_SIZE_REQUIRED`
+      if genuinely ambiguous (`receipt` with no assignment and no explicit size).
+      `technicianName` is the only "ticket info" field wired — `service_tickets` has no
+      complaint/diagnosis columns in this schema, a real already-known gap, not invented
+      here. Verified live end-to-end against a real POS invoice from the actual checkout
+      API (not a fixture): branch-assignment resolution (Pusat 80mm, Cabang 58mm),
+      Cabang's missing `invoice_a4` assignment falling back to the tenant default
+      (`assignment: null`), an explicit `?paperSize=` override producing the same
+      fallback shape, 400 on `label`, 404 on a missing/cross-tenant invoice, 400
+      `PAPER_SIZE_REQUIRED` on a freshly-created branch with zero assignments, and exact
+      48-char/32-char block-width verification. Dev DB reset to clean seed state
+      afterward. `npx tsc --noEmit` clean throughout 6A; `npx vitest run`: 198/198.
+- [ ] 6B FE: Printer Settings tab (devices/templates/assignment matrix), thermal
+      monospace preview, A4 `window.print()` path, "Cetak" button on POS/ticket detail.
+      Not started.
+- [ ] 6C Python agent (`printer-agent/`, separate from `flowserv-api` per spec rule 1):
+      Flask `POST /print` (localhost-only), block→ESC/POS translator tested against
+      python-escpos's `Dummy`/`File` backend (no hardware needed), PyInstaller packaging.
+      Not started. Python 3.14.0 confirmed available on this machine.
+- [ ] 6D Verify + docs: full Playwright + backend unit + agent pytest sweep; physical
+      print checklist (hardware-dependent, deferred to the user per plan Q1); close out
+      `plan/phase-6-printer.md` and this section.
+- [ ] 6.6 Git commit + merge `phase-6/printer` → `main` once 6B/6C/6D close out the phase.
 
 ---
 

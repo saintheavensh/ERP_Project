@@ -1,6 +1,9 @@
 # Phase 6 — Printer Integration (plan)
 
-> **Status:** planning. Zero code exists yet. Branch: `phase-6/printer` (fresh from `main`).
+> **Status (2026-07-24): 6A done.** Backend foundation (seed, pure render engine, config
+> CRUD, render endpoint) is built and independently verified live, with zero printer
+> hardware and zero FE — see `PHASES.md`'s Phase 6 section and this file's Progress log
+> below for full evidence. Branch: `phase-6/printer`. Next: 6B (FE).
 > **Read first:** [`specification/09-printer-integration.md`](../specification/09-printer-integration.md).
 > **Convention:** this file lives only while Phase 6 is active. On completion it is deleted;
 > durable evidence moves to `PHASES.md` + git (same as every `H*`/`F*`/`P*` file before it).
@@ -189,3 +192,46 @@ complete, verifiable config-and-A4-print feature.
 - **R3 — width formatting bugs.** Off-by-one column alignment is the classic thermal bug.
   Mitigation: 6A.2 is a *pure* function with explicit 32/48-char alignment tests — the reason
   layout lives in tested TS, not in the Python agent.
+
+## 7. Progress log
+
+- [x] **6A.1** Seed + `printer.manage` permission — 2026-07-24, commit `8233bb7`. 3 devices
+      (Pusat 80mm+A4, Cabang 58mm), 4 templates (receipt 58/80mm, invoice_a4, label),
+      3 assignments deliberately asymmetric (Cabang has no `invoice_a4` row, to exercise
+      6A.4's tenant-default fallback against real seed data). `npm run db:reset` run twice —
+      idempotent. Direct DB query confirmed shapes + that the permission is Super-Admin-only.
+      `npx vitest run`: 183/183 (unchanged).
+- [x] **6A.2** Pure render engine — 2026-07-24, commit `610bd02`. `modules/printer/render.ts`:
+      `buildDocumentData()` (the one place `layoutConfig` is read) + `renderThermalBlocks()`
+      (all column alignment via `padRow()`/`truncate()`, producing already-padded block
+      strings so nothing downstream recomputes alignment). Revised `ThermalBlock`'s row/total
+      shape from 6A.1's draft (`left`/`right` → single padded `value`) to actually satisfy
+      "one shared render module." 15 unit tests. `npx vitest run`: 198/198 (+15).
+- [x] **6A.3** Config CRUD — 2026-07-24, commit `f27d70b`. `routes/printer.ts` +
+      `modules/printer/service.ts`, mounted at `/v1/printer`, admin-only. `upsertAssignment()`
+      validates device-branch, template-documentType, and device/template paperSize match —
+      real constraints, not just existence checks. Verified live (curl against a running dev
+      server in `RBAC_MODE=enforce`): Manager → 403; Super Admin → 200 list/201 create/200
+      update; cross-tenant branch → 404; invalid `connectionType` → 400 (Zod); all three
+      assignment mismatch guards → 422 with the specific code; upsert updates the existing
+      `(branchId, documentType)` row rather than duplicating it. Dev DB reset to clean seed
+      state afterward. `npx vitest run`: 198/198, no regression.
+- [x] **6A.4** Render endpoint — 2026-07-24, commit `257aaf0`. `routes/print.ts` +
+      `modules/printer/document.ts`, `GET /v1/print/documents/:documentType/:id?paperSize=`,
+      `requireAuth` only (not admin-gated — printing your own sale isn't a printer-admin
+      action). Rejects `label` (`DOCUMENT_TYPE_NOT_SUPPORTED`, no data source wired yet).
+      Found along the way: `service_tickets` has no complaint/diagnosis columns in this
+      schema (a real, already-known gap) — scoped `DocumentData.extra` down to just
+      `technicianName`, the one field with a real relation, rather than inventing the rest.
+      Verified live end-to-end against a **real POS invoice created through the actual
+      checkout API** (not a fixture): Pusat receipt → its real 80mm assignment; Cabang
+      receipt → its real 58mm assignment; Cabang `invoice_a4` (no assignment exists) →
+      tenant-default A4 fallback with `assignment: null`; explicit `?paperSize=58mm` on
+      Pusat (whose real assignment is 80mm) → same fallback shape; `label` → 400; missing
+      invoice → 404; cross-tenant invoice → 404; a freshly-created branch with zero printer
+      assignments → 400 `PAPER_SIZE_REQUIRED`; exact block-width check — every 80mm
+      row/total block is precisely 48 characters. Dev DB reset to clean seed state
+      afterward. `npx tsc --noEmit` clean throughout 6A. `npx vitest run`: 198/198.
+
+**6A is complete — the entire backend foundation, verified without any printer hardware or
+frontend, per Q1.** Next: 6B (Settings UI).
