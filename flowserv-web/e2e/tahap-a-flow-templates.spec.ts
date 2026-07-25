@@ -104,7 +104,7 @@ test.describe('desktop (1280x800)', () => {
     // ("Edit Customer") would otherwise substring-match a bare { name: 'Edit' }.
     const passcodeRow = page.getByText('Sandi / Pola').locator('..');
     await passcodeRow.getByRole('button', { name: 'Edit' }).click();
-    await page.locator('input[placeholder="mis. 1234 atau pola L-terbalik"]').fill('5678');
+    await page.locator('#passcode').fill('5678');
     await page.getByRole('button', { name: 'Simpan' }).click();
     await page.waitForLoadState('networkidle');
 
@@ -128,6 +128,32 @@ test.describe('desktop (1280x800)', () => {
     // inner flex row; the value <p> is a sibling of that row under the same
     // outer container, hence '../..' rather than '..'.
     await expect(page.getByText('Sandi / Pola').locator('../..').getByText('-', { exact: true })).toBeVisible();
+  });
+
+  test('sandi/pola: draw a pattern at intake, recorded precisely + shown on detail', async ({ page }) => {
+    await login(page);
+    await page.goto('/tickets/intake');
+    await page.waitForLoadState('networkidle');
+
+    await page.fill('#name', `Tahap A Pattern ${Date.now()}`);
+    await page.selectOption('#type', 'Smartphone');
+
+    // Switch to "Pola" mode and tap the dots 1 -> 2 -> 3 -> 6 -> 9.
+    await page.getByRole('button', { name: 'Pola', exact: true }).click();
+    const pad = page.getByTestId('pattern-pad');
+    for (const i of [1, 2, 3, 6, 9]) {
+      await pad.getByRole('button', { name: `Titik ${i}`, exact: true }).click();
+    }
+    await expect(pad.getByText('Urutan: 1-2-3-6-9')).toBeVisible();
+
+    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
+    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+
+    // Detail shows the precise pattern (visual grid + textual sequence), not a
+    // vague "L terbalik".
+    await expect(page.getByText('Pola 1-2-3-6-9', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('pattern-pad')).toBeVisible();
   });
 });
 

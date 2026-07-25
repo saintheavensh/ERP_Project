@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TicketIntakeState } from '$lib/states/tickets/ticket.intake.svelte';
+  import PasscodeField from './PasscodeField.svelte';
 
   let { state } = $props<{ state: TicketIntakeState }>();
 
@@ -149,9 +150,9 @@
     <!-- Tahap A — go-live gap Tier-1 #2. Optional; recorded now, given back at
          handover (QC Akhir). Shown for both new and pre-selected devices. -->
     <div class="mt-4">
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="passcode">Sandi / Pola (Opsional)</label>
-      <input id="passcode" type="text" bind:value={state.form.devicePasscode} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. 1234 atau pola L-terbalik">
-      <p class="text-xs text-slate-500 mt-1">Dicatat untuk memudahkan pengerjaan, dikembalikan ke pelanggan saat serah-terima.</p>
+      <span class="block text-sm font-medium text-slate-700 mb-1">Sandi / Pola (Opsional)</span>
+      <PasscodeField value={state.form.devicePasscode} onchange={(v) => (state.form.devicePasscode = v)} id="passcode" />
+      <p class="text-xs text-slate-500 mt-1">Pilih <strong>Pola</strong> lalu gambar polanya agar tercatat pasti (bukan "L terbalik"). Dikembalikan ke pelanggan saat serah-terima.</p>
     </div>
   </div>
 

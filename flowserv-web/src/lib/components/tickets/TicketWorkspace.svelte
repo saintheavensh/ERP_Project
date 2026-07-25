@@ -2,6 +2,9 @@
   import type { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
   import TicketCharges from './TicketCharges.svelte';
   import PrintButton from '$lib/components/print/PrintButton.svelte';
+  import PasscodeField from './PasscodeField.svelte';
+  import PatternPad from './PatternPad.svelte';
+  import { parsePattern, passcodeText } from '$lib/utils/pattern';
 
   let { state } = $props<{ state: TicketDetailState }>();
 </script>
@@ -85,17 +88,19 @@
           {/if}
         </div>
         {#if state.passcodeEditing}
-          <div class="mt-1 flex items-center gap-2">
-            <input
-              type="text"
-              bind:value={state.passcodeDraft}
-              placeholder="mis. 1234 atau pola L-terbalik"
-              class="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
-            >
-            <button onclick={() => state.savePasscode()} disabled={state.passcodeLoading} class="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-2 py-1 rounded-lg">
-              {state.passcodeLoading ? '...' : 'Simpan'}
-            </button>
-            <button onclick={() => state.passcodeEditing = false} class="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1">Batal</button>
+          <div class="mt-1">
+            <PasscodeField value={state.passcodeDraft} onchange={(v) => (state.passcodeDraft = v)} id="passcode" />
+            <div class="mt-2 flex items-center gap-2">
+              <button onclick={() => state.savePasscode()} disabled={state.passcodeLoading} class="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-1 rounded-lg">
+                {state.passcodeLoading ? '...' : 'Simpan'}
+              </button>
+              <button onclick={() => state.passcodeEditing = false} class="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1">Batal</button>
+            </div>
+          </div>
+        {:else if parsePattern(state.ticket?.devicePasscode)}
+          <div class="mt-1">
+            <PatternPad value={state.ticket.devicePasscode} readonly />
+            <p class="text-sm font-mono text-slate-900 mt-1">{passcodeText(state.ticket.devicePasscode)}</p>
           </div>
         {:else}
           <p class="text-sm font-mono text-slate-900 mt-1">{state.ticket?.devicePasscode || '-'}</p>
