@@ -155,6 +155,40 @@ test.describe('desktop (1280x800)', () => {
     await expect(page.getByText('Pola 1-2-3-6-9', { exact: true })).toBeVisible();
     await expect(page.getByTestId('pattern-pad')).toBeVisible();
   });
+
+  test('sandi/pola: DRAW by dragging across the dots (swipe like a real phone)', async ({ page }) => {
+    await login(page);
+    await page.goto('/tickets/intake');
+    await page.waitForLoadState('networkidle');
+
+    await page.fill('#name', `Tahap A Draw ${Date.now()}`);
+    await page.selectOption('#type', 'Smartphone');
+    await page.getByRole('button', { name: 'Pola', exact: true }).click();
+
+    // Drag across the diagonal 1 -> 5 -> 9 without clicking each dot. viewBox is
+    // 0..180, the svg renders at ~160px, so scale screen px by width/180.
+    const svg = page.getByTestId('pattern-pad').locator('svg');
+    const box = (await svg.boundingBox())!;
+    const at = (vx: number, vy: number) => ({
+      x: box.x + (vx / 180) * box.width,
+      y: box.y + (vy / 180) * box.height,
+    });
+    const p1 = at(30, 30), p5 = at(90, 90), p9 = at(150, 150);
+
+    await page.mouse.move(p1.x, p1.y);
+    await page.mouse.down();
+    await page.mouse.move(p5.x, p5.y, { steps: 8 });
+    await page.mouse.move(p9.x, p9.y, { steps: 8 });
+    await page.mouse.up();
+
+    const pad = page.getByTestId('pattern-pad');
+    await expect(pad.getByText('Urutan: 1-5-9')).toBeVisible();
+
+    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
+    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await expect(page.getByText('Pola 1-5-9', { exact: true })).toBeVisible();
+  });
 });
 
 test.describe('mobile (375x667)', () => {
