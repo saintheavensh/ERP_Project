@@ -43,6 +43,7 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#brand', 'Samsung');
     await page.fill('#model', 'A05');
     await page.fill('#complaint', 'LCD retak parah');
+    await page.fill('#passcode', '1234'); // sandi -> harus muncul di label QC
     await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
@@ -58,6 +59,8 @@ test.describe('desktop (1280x800)', () => {
     await expect(preview).toBeVisible();
     await expect(preview.getByText(uniqueName)).toBeVisible();
     await expect(preview.getByText(/Kerusakan: LCD retak parah/)).toBeVisible();
+    // Sandi/pola dicetak di label stoker untuk QC (bukan di nota pelanggan).
+    await expect(preview.getByText(/Sandi: 1234/)).toBeVisible();
     await expect(preview).toHaveAttribute('data-paper-size', '58mm');
   });
 

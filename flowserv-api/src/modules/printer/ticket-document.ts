@@ -2,6 +2,7 @@ import { db } from '../../db/connection';
 import { serviceTickets, customers, customerAssets, branches, tenants } from '../../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
+import { passcodePrintLabel } from '../../lib/passcode';
 import { buildDocumentData, truncate } from './render';
 import { resolveTemplateAndAssignment, type RenderedDocument } from './document';
 import type { DocumentType, PaperSize, LayoutConfig, ThermalBlock } from './types';
@@ -27,6 +28,7 @@ export interface TicketDocumentBundle {
   assetDescription: string; // e.g. "Smartphone Samsung Galaxy A10"
   reportedComplaint?: string;
   intakeDate: string; // ISO
+  passcode?: string; // sandi/pola HP — HANYA untuk label stoker (QC), bukan nota
 }
 
 function formatDateShort(iso: string): string {
@@ -45,6 +47,11 @@ export function buildLabelBlocks(layoutConfig: LayoutConfig, bundle: TicketDocum
   blocks.push({ type: 'text', value: truncate(bundle.assetDescription, width), align: 'left' });
   blocks.push({ type: 'text', value: truncate(`Kerusakan: ${bundle.reportedComplaint || '-'}`, width), align: 'left' });
   blocks.push({ type: 'text', value: `Masuk: ${formatDateShort(bundle.intakeDate)}`, align: 'left' });
+  // Sandi/pola dicetak di label stoker (nempel di unit) supaya teknisi QC bisa
+  // membuka HP — sengaja TIDAK ada di nota/receipt pelanggan.
+  if (bundle.passcode) {
+    blocks.push({ type: 'text', value: truncate(passcodePrintLabel(bundle.passcode), width), align: 'left', bold: true });
+  }
   if (layoutConfig.footer.note) {
     blocks.push({ type: 'line' });
     blocks.push({ type: 'text', value: truncate(layoutConfig.footer.note, width), align: 'center' });
@@ -127,6 +134,7 @@ export async function renderTicketDocument(
     assetDescription: assetDescription || row.asset.assetType,
     reportedComplaint: row.ticket.reportedComplaint ?? undefined,
     intakeDate: row.ticket.createdAt.toISOString(),
+    passcode: row.ticket.devicePasscode ?? undefined,
   };
 
   const width = THERMAL_CHAR_WIDTH[paperSize];
