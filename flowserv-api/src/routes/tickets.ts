@@ -100,7 +100,7 @@ ticketsRouter.get('/:id', async (c) => {
       // Tahap A — device catalog. Null when the asset isn't linked to a
       // catalog entry (freeform brand/model text, the common case until the
       // catalog is populated).
-      deviceModel: { id: deviceModels.id, imageUrl: deviceModels.imageUrl, specs: deviceModels.specs, suggestedServices: deviceModels.suggestedServices },
+      deviceModel: { id: deviceModels.id, imageUrl: deviceModels.imageUrl, specs: deviceModels.specs },
     })
     .from(serviceTickets)
     .innerJoin(customers, eq(serviceTickets.customerId, customers.id))

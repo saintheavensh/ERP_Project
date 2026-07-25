@@ -43,7 +43,6 @@ export const deviceModels = pgTable('device_models', {
   // tidak wajib punya data ini.
   imageUrl: text('image_url'),
   specs: jsonb('specs').$type<Record<string, string>>(),
-  suggestedServices: jsonb('suggested_services').$type<string[]>(),
 }, (table) => ({
   brandIdx: index('device_models_brand_idx').on(table.deviceBrandId),
 }));

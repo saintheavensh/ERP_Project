@@ -27,7 +27,7 @@ async function login(page: Page, email = 'admin@demo.com', password = 'admin123'
 test.describe('desktop (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('Device catalog admin: create a brand + model with specs/image/suggested services', async ({ page }) => {
+  test('Device catalog admin: create a brand + model with specs/image', async ({ page }) => {
     await login(page);
     await page.goto('/devices');
     await page.waitForLoadState('networkidle');
@@ -52,17 +52,14 @@ test.describe('desktop (1280x800)', () => {
     await page.locator('#image-url-fallback').fill('https://example.com/x1.jpg');
     await page.locator('input[placeholder="mis. RAM"]').fill('RAM');
     await page.locator('input[placeholder="mis. 4 GB"]').fill('6 GB');
-    await page.locator('#model-services').fill('Ganti LCD, Ganti Baterai');
     await page.getByRole('button', { name: 'Simpan' }).click();
     await page.waitForLoadState('networkidle');
 
-    // Scoped to this model's own row (by its unique name) — the "1
-    // spesifikasi"/"2 saran servis" text is shared phrasing that other
-    // catalog entries (including the seeded Galaxy A10/iPhone X) also show.
+    // Scoped to this model's own row (by its unique name) — "1 spesifikasi" is
+    // shared phrasing other catalog entries (Galaxy A10/iPhone X) also show.
     const modelRow = page.locator('div.p-4.flex.items-center.gap-4').filter({ hasText: modelName });
     await expect(modelRow).toBeVisible();
     await expect(modelRow.getByText('1 spesifikasi')).toBeVisible();
-    await expect(modelRow.getByText('2 saran servis')).toBeVisible();
   });
 
   test('Device catalog admin: actually uploading a file (not just pasting a URL) works end-to-end', async ({ page }) => {
@@ -117,7 +114,9 @@ test.describe('desktop (1280x800)', () => {
     await expect(preview.getByText('RAM')).toBeVisible();
     await expect(preview.getByText('2 GB', { exact: true })).toBeVisible();
 
-    await preview.getByRole('button', { name: 'Ganti LCD' }).click();
+    // Saran servis kini menempel di bagian intake (selalu tampil), bukan di
+    // katalog device — keputusan 2026-07-25.
+    await page.getByTestId('service-suggestions').getByRole('button', { name: 'Ganti LCD' }).click();
     await expect(page.locator('#complaint')).toHaveValue('Ganti LCD');
 
     await page.selectOption('#flow', { label: 'Servis - Ditunggu' });

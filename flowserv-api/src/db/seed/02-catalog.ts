@@ -31,7 +31,6 @@ export async function seedCatalog(tx: SeedTx): Promise<void> {
       name: 'Galaxy A10',
       imageUrl: 'https://images.samsung.com/is/image/samsung/assets/id/galaxy-a10/gallery/galaxy-a10-black-front.jpg',
       specs: { RAM: '2 GB', Storage: '32 GB', Battery: '3400 mAh', Display: '6.2" HD+' },
-      suggestedServices: ['Ganti LCD', 'Ganti Baterai', 'Ganti Konektor Cas'],
     },
     { id: IDS.deviceModelAsusX, deviceBrandId: IDS.deviceBrandAsus, name: 'X441U' },
     { id: IDS.deviceModelRedmi9, deviceBrandId: IDS.deviceBrandXiaomi, name: 'Redmi 9' },
@@ -42,7 +41,6 @@ export async function seedCatalog(tx: SeedTx): Promise<void> {
       name: 'iPhone X',
       imageUrl: 'https://www.apple.com/newsroom/images/product/iphone/standard/apple_iphonex_hero_09122017_big.jpg.large.jpg',
       specs: { RAM: '3 GB', Storage: '64/256 GB', Battery: '2716 mAh', Display: '5.8" OLED' },
-      suggestedServices: ['Ganti LCD', 'Ganti Baterai', 'Ganti Back Glass'],
     },
   ]).onConflictDoNothing();
 

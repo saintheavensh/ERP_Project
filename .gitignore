@@ -44,5 +44,6 @@ coverage/
 flowserv-api/public/uploads/*
 !flowserv-api/public/uploads/.gitkeep
 
-# Device-catalog source export (provenance only — importer reads the derived JSON)
-flowserv-api/src/db/seed/data/*.xlsx
+# Device-catalog source exports (provenance only — importer reads the derived
+# JSON; converted via scripts-convert-devices.py). Never commit the raw xlsx.
+*.xlsx

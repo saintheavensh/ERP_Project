@@ -8,19 +8,19 @@ import { IDS } from './ids';
 
 dotenv.config();
 
-// Real device catalog data (image + curated specs), imported from a static
-// export the owner had from a previous project -- NOT a live scraper. See
-// plan/tahap-a-device-catalog-invoice-mode.md for why this is a standalone,
-// explicitly-run import (`npm run import:devices`) rather than part of the
-// automatic `db:seed` pipeline: this is real onboarding data (~1780 devices),
-// not a small deterministic test fixture, so it shouldn't slow down or bloat
-// every dev `db:reset`. Safe to re-run: brands are found-or-created by name,
-// models are skipped if a (brand, name) pair already exists.
+// Real device catalog data (curated specs, NO images per 2026-07-25 decision),
+// imported from a static export the owner had -- NOT a live scraper. This is a
+// standalone script (`npm run import:devices`), kept out of the `db:seed`
+// pipeline so plain `db:seed` / unit tests stay fast with only the 5 curated
+// models. It IS chained into `db:reset` (after db:seed) so the normal dev/pilot
+// workflow gets the full ~1780-model catalog for real autocomplete + sparepart
+// compatibility. Safe to re-run: brands are found-or-created by name, models
+// are skipped if a (brand, name) pair already exists.
 //
-// data/devices-catalog.json was derived from data/devices_export.xlsx (kept
-// alongside it for provenance) by a one-off conversion script -- not an xlsx
-// parsing library, since the `xlsx` npm package carries unpatched high-severity
-// CVEs (prototype pollution, ReDoS) not worth adding for a single local import.
+// data/devices-catalog.json was derived from the owner's "devices_export (1).xlsx"
+// by scripts-convert-devices.py (openpyxl) -- not the `xlsx` npm package, which
+// carries unpatched high-severity CVEs (prototype pollution, ReDoS) not worth
+// adding for a single local import. The xlsx itself is gitignored (provenance).
 
 interface RawDevice {
   brand: string;
@@ -76,7 +76,6 @@ async function main() {
       // sparepart. Gambar ditambahkan on-demand per model lewat fitur ImageUpload.
       imageUrl: null,
       specs: d.specs,
-      suggestedServices: null,
     });
   }
 

@@ -2,6 +2,15 @@
   import type { TicketIntakeState } from '$lib/states/tickets/ticket.intake.svelte';
 
   let { state } = $props<{ state: TicketIntakeState }>();
+
+  // Saran servis umum — menempel di bagian intake (Keluhan/Kerusakan), BUKAN di
+  // katalog device (keputusan 2026-07-25). Daftar statis, mudah diedit; bisa
+  // dijadikan konfigurasi per-tenant nanti bila diperlukan (fondasi dulu).
+  const COMMON_SERVICE_SUGGESTIONS = [
+    'Ganti LCD', 'Ganti Baterai', 'Ganti Konektor Cas', 'Mati Total',
+    'Kena Air', 'Ganti Tombol Power', 'Ganti Speaker', 'Ganti Mic',
+    'Ganti Kamera', 'Software / Flash Ulang', 'Lupa Pola/Sandi',
+  ];
 </script>
 
 <form onsubmit={(e) => { e.preventDefault(); state.submitIntake(); }} class="space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-200">
@@ -108,36 +117,21 @@
         </div>
       </div>
 
-      <!-- Tahap A — device catalog match: spesifikasi (teks) + saran servis.
-           Cuma tampil kalau autocomplete di atas match ke katalog.
-           Gambar sengaja tidak ditampilkan di intake — teks saja, fondasi dulu
+      <!-- Tahap A — device catalog match: spesifikasi (teks) saja untuk
+           identifikasi unit. Cuma tampil kalau autocomplete di atas match ke
+           katalog. Gambar & saran servis TIDAK di sini — saran servis pindah ke
+           bagian intake (Keluhan/Kerusakan), tidak menempel ke device
            (keputusan 2026-07-25). -->
-      {#if state.selectedDeviceModel}
+      {#if state.selectedDeviceModel && state.selectedDeviceModel.specs && Object.keys(state.selectedDeviceModel.specs).length > 0}
         <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg" data-testid="device-catalog-preview">
-          <div class="flex-1 min-w-0 space-y-2">
-            {#if state.selectedDeviceModel.specs && Object.keys(state.selectedDeviceModel.specs).length > 0}
-              <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5">
-                {#each Object.entries(state.selectedDeviceModel.specs) as [key, value]}
-                  <div class="contents">
-                    <dt class="text-slate-400">{key}</dt>
-                    <dd class="text-slate-700">{value}</dd>
-                  </div>
-                {/each}
-              </dl>
-            {/if}
-            {#if state.selectedDeviceModel.suggestedServices?.length}
-              <div>
-                <p class="text-xs text-slate-500 mb-1">Saran servis (klik untuk isi ke Keluhan/Kerusakan):</p>
-                <div class="flex flex-wrap gap-1.5">
-                  {#each state.selectedDeviceModel.suggestedServices as service}
-                    <button type="button" class="px-2 py-1 text-xs bg-white border border-slate-200 rounded-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors" onclick={() => state.appendSuggestedService(service)}>
-                      {service}
-                    </button>
-                  {/each}
-                </div>
+          <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5">
+            {#each Object.entries(state.selectedDeviceModel.specs) as [key, value]}
+              <div class="contents">
+                <dt class="text-slate-400">{key}</dt>
+                <dd class="text-slate-700">{value}</dd>
               </div>
-            {/if}
-          </div>
+            {/each}
+          </dl>
         </div>
       {/if}
     {/if}
@@ -163,6 +157,15 @@
     <div class="mb-4">
       <label class="block text-sm font-medium text-slate-700 mb-1" for="complaint">Keluhan / Kerusakan</label>
       <textarea id="complaint" bind:value={state.form.reportedComplaint} rows="2" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. LCD retak, tidak bisa charge"></textarea>
+      <!-- Saran servis umum — klik untuk menambah ke Keluhan. Tidak bergantung
+           pada device yang dipilih. -->
+      <div class="flex flex-wrap gap-1.5 mt-2" data-testid="service-suggestions">
+        {#each COMMON_SERVICE_SUGGESTIONS as service}
+          <button type="button" class="px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors" onclick={() => state.appendSuggestedService(service)}>
+            + {service}
+          </button>
+        {/each}
+      </div>
     </div>
     <div>
       <label class="block text-sm font-medium text-slate-700 mb-1" for="flow">Service Flow *</label>

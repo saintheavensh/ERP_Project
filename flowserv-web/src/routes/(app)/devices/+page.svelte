@@ -6,6 +6,19 @@
   let { data } = $props();
   let brands = $derived(data.brands || []);
 
+  // Katalog bisa berisi ribuan model (import dari xlsx). Jangan render semua —
+  // default tampilkan sedikit per merk; ketik untuk mencari (fondasi dulu;
+  // pencarian server-side bisa menyusul kalau perlu). Ini juga menjaga halaman
+  // tetap ringan di HP.
+  let deviceSearch = $state('');
+  const MODELS_PREVIEW = 8;
+  function visibleModels(brand: any): { list: any[]; hidden: number } {
+    const all = brand.deviceModels || [];
+    const q = deviceSearch.trim().toLowerCase();
+    if (q) return { list: all.filter((m: any) => m.name.toLowerCase().includes(q)), hidden: 0 };
+    return { list: all.slice(0, MODELS_PREVIEW), hidden: Math.max(0, all.length - MODELS_PREVIEW) };
+  }
+
   let showBrandModal = $state(false);
   let brandForm = $state({ name: '' });
   let brandLoading = $state(false);
@@ -40,14 +53,13 @@
     name: '',
     imageUrl: '',
     specRows: [{ key: '', value: '' }] as Array<{ key: string; value: string }>,
-    suggestedServicesText: '',
   });
   let modelLoading = $state(false);
   let modelError = $state('');
 
   function openNewModel(brandId: string) {
     editingModelId = null;
-    modelForm = { deviceBrandId: brandId, name: '', imageUrl: '', specRows: [{ key: '', value: '' }], suggestedServicesText: '' };
+    modelForm = { deviceBrandId: brandId, name: '', imageUrl: '', specRows: [{ key: '', value: '' }] };
     modelError = '';
     showModelModal = true;
   }
@@ -60,7 +72,6 @@
       name: model.name,
       imageUrl: model.imageUrl || '',
       specRows: Object.keys(specs).length > 0 ? Object.entries(specs).map(([key, value]) => ({ key, value: String(value) })) : [{ key: '', value: '' }],
-      suggestedServicesText: (model.suggestedServices || []).join(', '),
     };
     modelError = '';
     showModelModal = true;
@@ -81,16 +92,10 @@
     for (const row of modelForm.specRows) {
       if (row.key.trim()) specs[row.key.trim()] = row.value;
     }
-    const suggestedServices = modelForm.suggestedServicesText
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0);
-
     const payload = {
       name: modelForm.name,
       imageUrl: modelForm.imageUrl.trim() || null,
       specs: Object.keys(specs).length > 0 ? specs : null,
-      suggestedServices: suggestedServices.length > 0 ? suggestedServices : null,
     };
 
     try {
@@ -122,6 +127,7 @@
       <h1 class="text-2xl font-bold text-slate-900">Katalog Device</h1>
       <p class="text-slate-500 mt-1">Merk & model HP untuk kompatibilitas sparepart, dan (opsional) gambar/spesifikasi/saran servis yang tampil saat intake tiket.</p>
     </div>
+    <input type="text" bind:value={deviceSearch} placeholder="Cari model (mis. A10, iPhone)..." class="w-full sm:w-64 px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
     <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors" onclick={() => { brandForm = { name: '' }; brandError = ''; showBrandModal = true; }}>
       Merk Baru
     </button>
@@ -129,13 +135,14 @@
 
   <div class="space-y-4">
     {#each brands as brand (brand.id)}
+      {@const vm = visibleModels(brand)}
       <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h2 class="font-semibold text-slate-900">{brand.name}</h2>
+          <h2 class="font-semibold text-slate-900">{brand.name} <span class="text-xs font-normal text-slate-400">({(brand.deviceModels || []).length})</span></h2>
           <button class="text-sm text-blue-600 hover:text-blue-800 font-medium" onclick={() => openNewModel(brand.id)}>+ Model</button>
         </div>
         <div class="divide-y divide-slate-100">
-          {#each brand.deviceModels || [] as model (model.id)}
+          {#each vm.list as model (model.id)}
             <div class="p-4 flex items-center gap-4">
               {#if model.imageUrl}
                 <img src={resolveImageUrl(model.imageUrl)} alt="" class="w-10 h-10 object-cover rounded border border-slate-200 flex-shrink-0" />
@@ -146,14 +153,16 @@
                 <p class="font-medium text-slate-900">{model.name}</p>
                 <p class="text-xs text-slate-500">
                   {model.specs ? `${Object.keys(model.specs).length} spesifikasi` : 'Belum ada spesifikasi'}
-                  {#if model.suggestedServices?.length} · {model.suggestedServices.length} saran servis{/if}
                 </p>
               </div>
               <button class="text-sm text-slate-500 hover:text-slate-800 font-medium" onclick={() => openEditModel(brand.id, model)}>Edit</button>
             </div>
           {:else}
-            <p class="p-4 text-sm text-slate-500">Belum ada model untuk merk ini.</p>
+            <p class="p-4 text-sm text-slate-500">{deviceSearch.trim() ? 'Tidak ada model yang cocok di merk ini.' : 'Belum ada model untuk merk ini.'}</p>
           {/each}
+          {#if vm.hidden > 0}
+            <p class="p-3 text-xs text-slate-400">…dan {vm.hidden} model lain. Ketik di kotak cari untuk menemukan.</p>
+          {/if}
         </div>
       </div>
     {:else}
@@ -227,10 +236,6 @@
               </div>
             {/each}
           </div>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="model-services">Saran Servis (Opsional, pisahkan koma)</label>
-          <input id="model-services" type="text" bind:value={modelForm.suggestedServicesText} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="mis. Ganti LCD, Ganti Baterai">
         </div>
         <div class="pt-2 flex justify-end gap-3">
           <button type="button" class="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors" onclick={() => showModelModal = false}>Batal</button>

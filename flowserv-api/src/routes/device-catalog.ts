@@ -63,7 +63,6 @@ deviceCatalogRouter.get('/models', async (c) => {
         name: deviceModels.name,
         imageUrl: deviceModels.imageUrl,
         specs: deviceModels.specs,
-        suggestedServices: deviceModels.suggestedServices,
         deviceBrandId: deviceModels.deviceBrandId,
         brandName: deviceBrands.name,
       })
@@ -89,7 +88,6 @@ deviceCatalogRouter.get('/models', async (c) => {
 });
 
 const specsSchema = z.record(z.string(), z.string()).nullish();
-const suggestedServicesSchema = z.array(z.string().min(1)).nullish();
 // Either a full external URL (the hand-seeded demo entries) or a relative
 // path our own upload endpoint / the bulk import returns ("/uploads/...").
 // z.string().url() alone would reject every relative path, which is exactly
@@ -103,7 +101,6 @@ const createModelSchema = z.object({
   name: z.string().min(1).max(100),
   imageUrl: imageUrlSchema,
   specs: specsSchema,
-  suggestedServices: suggestedServicesSchema,
 });
 
 deviceCatalogRouter.post('/models', requirePermission('inventory.manage_items'), zValidator('json', createModelSchema), auditMiddleware({ action: 'device_model.create', entityType: 'device_model', bodyFields: ['deviceBrandId', 'name', 'imageUrl'] }), async (c) => {
@@ -121,7 +118,6 @@ deviceCatalogRouter.post('/models', requirePermission('inventory.manage_items'),
       name: data.name,
       imageUrl: data.imageUrl ?? null,
       specs: data.specs ?? null,
-      suggestedServices: data.suggestedServices ?? null,
     }).returning();
 
     return successResponse(c, model, undefined, 201);
@@ -134,7 +130,6 @@ const updateModelSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   imageUrl: imageUrlSchema,
   specs: specsSchema,
-  suggestedServices: suggestedServicesSchema,
 });
 
 deviceCatalogRouter.patch('/models/:id', requirePermission('inventory.manage_items'), zValidator('json', updateModelSchema), auditMiddleware({ action: 'device_model.update', entityType: 'device_model', entityIdParam: 'id' }), async (c) => {
@@ -155,7 +150,6 @@ deviceCatalogRouter.patch('/models/:id', requirePermission('inventory.manage_ite
     if (data.name !== undefined) patch.name = data.name;
     if (data.imageUrl !== undefined) patch.imageUrl = data.imageUrl;
     if (data.specs !== undefined) patch.specs = data.specs;
-    if (data.suggestedServices !== undefined) patch.suggestedServices = data.suggestedServices;
     if (Object.keys(patch).length === 0) {
       const current = await db.query.deviceModels.findFirst({ where: eq(deviceModels.id, id) });
       return successResponse(c, current);
