@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { TicketIntakeState } from '$lib/states/tickets/ticket.intake.svelte';
-  import { resolveImageUrl } from '$lib/utils/image';
 
   let { state } = $props<{ state: TicketIntakeState }>();
 </script>
@@ -109,13 +108,12 @@
         </div>
       </div>
 
-      <!-- Tahap A — device catalog match: gambar/spesifikasi + saran servis.
-           Cuma tampil kalau autocomplete di atas match ke katalog. -->
+      <!-- Tahap A — device catalog match: spesifikasi (teks) + saran servis.
+           Cuma tampil kalau autocomplete di atas match ke katalog.
+           Gambar sengaja tidak ditampilkan di intake — teks saja, fondasi dulu
+           (keputusan 2026-07-25). -->
       {#if state.selectedDeviceModel}
-        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg flex gap-4" data-testid="device-catalog-preview">
-          {#if state.selectedDeviceModel.imageUrl}
-            <img src={resolveImageUrl(state.selectedDeviceModel.imageUrl)} alt="" class="w-16 h-16 object-cover rounded-lg border border-slate-200 flex-shrink-0">
-          {/if}
+        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg" data-testid="device-catalog-preview">
           <div class="flex-1 min-w-0 space-y-2">
             {#if state.selectedDeviceModel.specs && Object.keys(state.selectedDeviceModel.specs).length > 0}
               <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5">

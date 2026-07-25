@@ -38,3 +38,11 @@ npm-debug.log*
 
 # Testing
 coverage/
+
+# Runtime uploads — user/device images added on-demand, never committed as seed
+# (device-catalog bulk photos were dropped 2026-07-25; images are added later per model)
+flowserv-api/public/uploads/*
+!flowserv-api/public/uploads/.gitkeep
+
+# Device-catalog source export (provenance only — importer reads the derived JSON)
+flowserv-api/src/db/seed/data/*.xlsx

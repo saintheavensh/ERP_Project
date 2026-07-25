@@ -98,7 +98,7 @@ test.describe('desktop (1280x800)', () => {
     expect(src).toMatch(/\/uploads\/devices\/.+\.png$/);
   });
 
-  test('Intake: catalog match shows image/specs + suggested-service chip fills Keluhan', async ({ page }) => {
+  test('Intake: catalog match shows specs (text) + suggested-service chip fills Keluhan', async ({ page }) => {
     await login(page);
     await page.goto('/tickets/intake');
     await page.waitForLoadState('networkidle');

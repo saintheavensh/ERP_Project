@@ -71,7 +71,10 @@ async function main() {
     toInsert.push({
       deviceBrandId: brandId,
       name: d.model,
-      imageUrl: d.imageUrl,
+      // Foto katalog bulk (30MB) sengaja tidak dishipkan (keputusan 2026-07-25,
+      // opsi a): data specs cukup untuk autocomplete intake + kompatibilitas
+      // sparepart. Gambar ditambahkan on-demand per model lewat fitur ImageUpload.
+      imageUrl: null,
       specs: d.specs,
       suggestedServices: null,
     });
