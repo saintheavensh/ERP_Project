@@ -93,11 +93,22 @@
         </div>
         <div class="relative">
           <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Brand</label>
-          <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+          <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchBrand()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+          {#if state.showBrandDropdown && state.brandResults.length > 0}
+            <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto" data-testid="brand-dropdown">
+              {#each state.brandResults as b}
+                <li>
+                  <button type="button" class="w-full text-left px-4 py-2 hover:bg-slate-50 border-b last:border-0" onclick={() => state.selectBrand(b)}>
+                    <div class="font-medium text-slate-900">{b.name}</div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
         <div class="relative">
           <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model</label>
-          <input id="model" type="text" bind:value={state.form.assetModel} oninput={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Galaxy S23">
+          <input id="model" type="text" bind:value={state.form.assetModel} oninput={() => state.searchDeviceModel()} onfocus={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder={state.selectedBrandId ? 'Pilih / ketik model...' : 'e.g. Galaxy S23'}>
 
           {#if state.showDeviceDropdown && state.deviceModelResults.length > 0}
             <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto">

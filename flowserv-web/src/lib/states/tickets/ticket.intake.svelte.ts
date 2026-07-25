@@ -43,16 +43,59 @@ export class TicketIntakeState {
   selectedDeviceModel = $state<any | null>(null);
   private deviceSearchTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Brand autocomplete: typing Brand suggests brands; picking one scopes the
+  // Model search below to that brand only.
+  brandResults = $state<any[]>([]);
+  showBrandDropdown = $state(false);
+  selectedBrandId = $state('');
+  private brandSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  searchBrand() {
+    // Editing the brand invalidates any prior brand/model selection.
+    this.selectedBrandId = '';
+    this.form.deviceModelId = '';
+    this.selectedDeviceModel = null;
+    this.showBrandDropdown = true;
+    if (this.brandSearchTimer) clearTimeout(this.brandSearchTimer);
+    const q = this.form.assetBrand.trim();
+    if (q.length < 1) { this.brandResults = []; return; }
+    this.brandSearchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/device-catalog/brands?q=${encodeURIComponent(q)}`, {
+          headers: { Authorization: `Bearer ${this.token}` },
+        });
+        if (res.ok) this.brandResults = (await res.json()).data || [];
+      } catch {
+        // Brand search failing must never block manual entry.
+      }
+    }, 250);
+  }
+
+  selectBrand(b: any) {
+    this.form.assetBrand = b.name;
+    this.selectedBrandId = b.id;
+    this.brandResults = [];
+    this.showBrandDropdown = false;
+    // Model picks are now scoped to this brand — clear any stale one.
+    this.form.deviceModelId = '';
+    this.selectedDeviceModel = null;
+  }
+
   searchDeviceModel() {
     this.form.deviceModelId = '';
     this.selectedDeviceModel = null;
     this.showDeviceDropdown = true;
     if (this.deviceSearchTimer) clearTimeout(this.deviceSearchTimer);
-    const q = `${this.form.assetBrand} ${this.form.assetModel}`.trim();
-    if (q.length < 2) { this.deviceModelResults = []; return; }
+    const modelQ = this.form.assetModel.trim();
+    // With a chosen brand we can list its models even before typing; without
+    // one, require 2+ chars of model text to search across all brands.
+    if (!this.selectedBrandId && modelQ.length < 2) { this.deviceModelResults = []; return; }
+    const params = new URLSearchParams();
+    if (this.selectedBrandId) params.set('brandId', this.selectedBrandId);
+    if (modelQ) params.set('q', modelQ);
     this.deviceSearchTimer = setTimeout(async () => {
       try {
-        const res = await fetch(`${API_BASE}/device-catalog/models?q=${encodeURIComponent(q)}`, {
+        const res = await fetch(`${API_BASE}/device-catalog/models?${params.toString()}`, {
           headers: { Authorization: `Bearer ${this.token}` },
         });
         if (res.ok) this.deviceModelResults = (await res.json()).data || [];
@@ -66,8 +109,10 @@ export class TicketIntakeState {
     this.form.deviceModelId = m.id;
     this.form.assetBrand = m.brandName;
     this.form.assetModel = m.name;
+    this.selectedBrandId = m.deviceBrandId ?? '';
     this.selectedDeviceModel = m;
     this.showDeviceDropdown = false;
+    this.showBrandDropdown = false;
   }
 
   appendSuggestedService(text: string) {

@@ -22,8 +22,21 @@ deviceCatalogRouter.use('*', requireAuth);
 // Open to any authenticated user: the intake form needs this list.
 deviceCatalogRouter.get('/brands', async (c) => {
   const { tenantId } = getAuthContext(c);
+  const q = c.req.query('q');
 
   try {
+    // Lightweight brand autocomplete (intake): return just id/name, never nest
+    // the (potentially thousands of) models. The no-`q` path below keeps the
+    // nested shape the /devices admin page relies on.
+    if (q !== undefined) {
+      const rows = await db
+        .select({ id: deviceBrands.id, name: deviceBrands.name })
+        .from(deviceBrands)
+        .where(and(eq(deviceBrands.tenantId, tenantId), sql`${deviceBrands.name} ILIKE ${'%' + q.trim() + '%'}`))
+        .orderBy(deviceBrands.name)
+        .limit(20);
+      return successResponse(c, rows);
+    }
     const brands = await db.query.deviceBrands.findMany({
       where: eq(deviceBrands.tenantId, tenantId),
       with: { deviceModels: true },
@@ -55,6 +68,7 @@ deviceCatalogRouter.post('/brands', requirePermission('inventory.manage_items'),
 deviceCatalogRouter.get('/models', async (c) => {
   const { tenantId } = getAuthContext(c);
   const q = c.req.query('q')?.trim();
+  const brandId = c.req.query('brandId')?.trim();
 
   try {
     const rows = await db
@@ -69,14 +83,15 @@ deviceCatalogRouter.get('/models', async (c) => {
       .from(deviceModels)
       .innerJoin(deviceBrands, eq(deviceModels.deviceBrandId, deviceBrands.id))
       .where(
-        // The intake form sends "<assetBrand> <assetModel>" as one combined
-        // query string (both fields feed the same search), so matching must
-        // be against the concatenation — matching each field separately
-        // against the whole combined string would never hit (neither "Samsung"
-        // nor "Galaxy A10" alone contains "Samsung Galaxy A10").
-        q
-          ? and(eq(deviceBrands.tenantId, tenantId), sql`(${deviceBrands.name} || ' ' || ${deviceModels.name}) ILIKE ${'%' + q + '%'}`)
-          : eq(deviceBrands.tenantId, tenantId)
+        and(
+          eq(deviceBrands.tenantId, tenantId),
+          // When the intake form has a chosen brand, scope models to it so the
+          // Model autocomplete only shows that brand's models. `q` then matches
+          // the model name within the brand; with no brand it matches the
+          // combined "<brand> <model>" string (both fields feed one search).
+          brandId ? eq(deviceModels.deviceBrandId, brandId) : undefined,
+          q ? sql`(${deviceBrands.name} || ' ' || ${deviceModels.name}) ILIKE ${'%' + q + '%'}` : undefined,
+        )
       )
       .orderBy(deviceBrands.name, deviceModels.name)
       .limit(20);

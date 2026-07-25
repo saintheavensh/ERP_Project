@@ -129,6 +129,30 @@ test.describe('desktop (1280x800)', () => {
     await expect(workspaceCard.getByText('RAM')).toBeVisible();
   });
 
+  test('Intake: brand autocomplete, then Model search is scoped to the picked brand', async ({ page }) => {
+    await login(page);
+    await page.goto('/tickets/intake');
+    await page.waitForLoadState('networkidle');
+
+    await page.fill('#name', `Brand Scope ${Date.now()}`);
+    await page.selectOption('#type', 'Smartphone');
+
+    // Typing the brand shows a brand autocomplete; pick Samsung.
+    await page.fill('#brand', 'Sam');
+    const brandDrop = page.getByTestId('brand-dropdown');
+    await expect(brandDrop.getByRole('button', { name: 'Samsung', exact: true })).toBeVisible({ timeout: 5_000 });
+    await brandDrop.getByRole('button', { name: 'Samsung', exact: true }).click();
+
+    // Model search is now scoped to Samsung — typing "A10" returns the Samsung
+    // model (the backend brandId filter is proven separately; this proves the
+    // brand-pick -> scoped-model-search wiring end to end).
+    await page.fill('#model', 'A10');
+    await expect(page.getByRole('button', { name: 'Samsung Galaxy A10', exact: true })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Samsung Galaxy A10', exact: true }).click();
+    await expect(page.locator('#model')).toHaveValue('Galaxy A10');
+    await expect(page.locator('#brand')).toHaveValue('Samsung');
+  });
+
   test('Settings: invoice display mode persists across reload', async ({ page }) => {
     await login(page);
     await page.goto('/settings?tab=sales');
