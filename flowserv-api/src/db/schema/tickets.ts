@@ -31,6 +31,11 @@ export const customers = pgTable('customers', {
   // baru TIDAK boleh utang sampai owner/manager mengizinkannya secara eksplisit.
   // Gerbang ini dicek saat checkout POS metode 'tempo' (422 TEMPO_NOT_ALLOWED).
   allowTempo: boolean('allow_tempo').notNull().default(false),
+  // Tahap-B — kategori pelanggan: 'service' (bawa unit servis) vs 'sparepart'
+  // (beli sparepart/eceran). LABEL LUNAK, bukan pembatas: pelanggan 'sparepart'
+  // tetap bisa dipilih untuk tiket servis (picker intake filter by nama, bukan
+  // tipe). Dipakai untuk pengelompokan & filter daftar pelanggan.
+  customerType: text('customer_type').notNull().default('service'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('customers_tenant_idx').on(table.tenantId),

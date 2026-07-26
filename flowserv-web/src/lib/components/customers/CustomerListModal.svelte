@@ -20,6 +20,15 @@
           <label class="block text-sm font-medium text-slate-700 mb-1" for="name">Full Name *</label>
           <input id="name" type="text" bind:value={state.newCustomer.name} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="John Doe">
         </div>
+        <!-- Tahap-B — kategori pelanggan. Label saja: pelanggan 'sparepart' tetap
+             bisa dipilih untuk tiket servis. -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="customer-type">Kategori</label>
+          <select id="customer-type" bind:value={state.newCustomer.customerType} class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="service">Pelanggan Servis</option>
+            <option value="sparepart">Pelanggan Sparepart</option>
+          </select>
+        </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="phone">Phone Number</label>
           <input id="phone" type="tel" bind:value={state.newCustomer.phone} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="08123456789">

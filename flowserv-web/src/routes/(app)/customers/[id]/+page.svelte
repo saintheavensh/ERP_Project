@@ -25,6 +25,21 @@
         {state.customer?.phone || 'No Phone'} &bull; {state.customer?.email || 'No Email'}
       </p>
     </div>
+    <!-- Tahap-B — kategori pelanggan (label lunak). Bisa diubah cepat di sini. -->
+    <div class="flex items-center gap-2 md:ml-auto" data-testid="customer-type-control">
+      <span class="text-xs font-medium px-2 py-1 rounded {(state.customer?.customerType || 'service') === 'sparepart' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'}" data-testid="customer-type-badge">
+        {(state.customer?.customerType || 'service') === 'sparepart' ? 'Pelanggan Sparepart' : 'Pelanggan Servis'}
+      </span>
+      <select
+        aria-label="Ubah kategori pelanggan"
+        value={state.customer?.customerType || 'service'}
+        onchange={(e) => state.setCustomerType(e.currentTarget.value as 'service' | 'sparepart')}
+        disabled={state.typeSaving}
+        class="text-sm border border-slate-200 rounded-lg px-2 py-1 bg-white disabled:opacity-50 outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="service">Servis</option>
+        <option value="sparepart">Sparepart</option>
+      </select>
+    </div>
   </div>
 
   <!-- D1 — izin tempo (utang) per pelanggan. Owner/manager bisa memberi/mencabut

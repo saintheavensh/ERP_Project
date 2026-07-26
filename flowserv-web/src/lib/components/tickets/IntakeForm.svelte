@@ -32,7 +32,13 @@
             {#each state.filteredCustomers as c}
               <li>
                 <button type="button" class="w-full text-left px-4 py-2 hover:bg-slate-50 border-b last:border-0" onclick={() => state.selectCustomer(c)}>
-                  <div class="font-medium text-slate-900">{c.name}</div>
+                  <div class="font-medium text-slate-900 flex items-center gap-2">
+                    {c.name}
+                    <!-- Tahap-B — pelanggan sparepart tetap muncul & bisa dipilih untuk servis. -->
+                    {#if (c.customerType || 'service') === 'sparepart'}
+                      <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">Sparepart</span>
+                    {/if}
+                  </div>
                   <div class="text-xs text-slate-500">{c.phone || 'No phone'}</div>
                 </button>
               </li>

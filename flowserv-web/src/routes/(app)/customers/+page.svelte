@@ -15,11 +15,20 @@
 <div class="p-4 md:p-6 max-w-6xl mx-auto">
   <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
     <h1 class="text-2xl font-bold text-slate-900">Customers</h1>
-    <button
-      onclick={() => state.showModal = true}
-      class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-      Add Customer
-    </button>
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- Tahap-B — filter kategori pelanggan -->
+      <select bind:value={state.typeFilter} aria-label="Filter kategori"
+        class="px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">Semua Kategori</option>
+        <option value="service">Pelanggan Servis</option>
+        <option value="sparepart">Pelanggan Sparepart</option>
+      </select>
+      <button
+        onclick={() => state.showModal = true}
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        Add Customer
+      </button>
+    </div>
   </div>
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -28,6 +37,7 @@
       <thead class="bg-slate-50 text-slate-500 border-b border-gray-200">
         <tr>
           <th class="px-6 py-4 font-medium">Name</th>
+          <th class="px-6 py-4 font-medium">Kategori</th>
           <th class="px-6 py-4 font-medium">Phone</th>
           <th class="px-6 py-4 font-medium">Email</th>
           <th class="px-6 py-4 font-medium text-right">Actions</th>
@@ -37,6 +47,11 @@
         {#each state.customers as customer}
           <tr class="hover:bg-slate-50 transition-colors">
             <td class="px-6 py-4 font-medium text-slate-900">{customer.name}</td>
+            <td class="px-6 py-4">
+              <span class="text-xs font-medium px-2 py-0.5 rounded {(customer.customerType || 'service') === 'sparepart' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'}">
+                {(customer.customerType || 'service') === 'sparepart' ? 'Sparepart' : 'Servis'}
+              </span>
+            </td>
             <td class="px-6 py-4 text-slate-600">{customer.phone || '-'}</td>
             <td class="px-6 py-4 text-slate-600">{customer.email || '-'}</td>
             <td class="px-6 py-4 text-right">
@@ -47,7 +62,7 @@
           </tr>
         {:else}
           <tr>
-            <td colspan="4" class="px-6 py-8 text-center text-slate-500">
+            <td colspan="5" class="px-6 py-8 text-center text-slate-500">
               No customers found. Click "Add Customer" to create one.
             </td>
           </tr>

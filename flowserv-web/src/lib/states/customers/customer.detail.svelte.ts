@@ -21,12 +21,43 @@ export class CustomerDetailState {
   // reflect immediately. Null = show whatever the loaded customer says.
   tempoOverride = $state<boolean | null>(null);
 
+  // Tahap-B — optimistic override for the category, same reason as tempoOverride.
+  typeOverride = $state<'service' | 'sparepart' | null>(null);
+
   get customer() {
     const c = this.data.customer;
-    if (c && this.tempoOverride !== null) return { ...c, allowTempo: this.tempoOverride };
-    return c;
+    if (!c) return c;
+    const merged = { ...c };
+    if (this.tempoOverride !== null) merged.allowTempo = this.tempoOverride;
+    if (this.typeOverride !== null) merged.customerType = this.typeOverride;
+    return merged;
   }
   get assets() { return this.data.assets; }
+
+  typeSaving = $state(false);
+  async setCustomerType(type: 'service' | 'sparepart') {
+    this.typeSaving = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/customers/${this.customer.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({
+          name: this.customer.name,
+          phone: this.customer.phone || '',
+          email: this.customer.email || '',
+          customerType: type,
+        }),
+      });
+      const result = await res.json();
+      if (res.ok) { this.typeOverride = type; await invalidateAll(); }
+      else this.errorMsg = result.error?.message || 'Gagal memperbarui kategori';
+    } catch {
+      this.errorMsg = 'Network error';
+    } finally {
+      this.typeSaving = false;
+    }
+  }
 
   // D1 — grant/revoke tempo (utang) for this customer. Reuses PUT /customers/:id
   // (editCustomerSchema requires name), so we resend the current identity fields
