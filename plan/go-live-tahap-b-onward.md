@@ -32,7 +32,7 @@ Branch `go-live/tahap-a` = **17 commit di depan `origin/main`** dan **sudah memu
 | Tahap A #3 — Pemicu cetak (label / tanda terima / nota) + field keluhan | ✅ SELESAI |
 | Tahap A #4 — CRUD metode pembayaran (e-wallet Dana/OVO/GoPay) | ✅ SELESAI |
 | Ekstra — Katalog device (gambar/spesifikasi/saran) + invoice display mode | ✅ SELESAI |
-| **Tahap A #5 — Change Order (konfirmasi ulang harga)** | ⚠️ **BELUM ditutup di branch ini** — satu-satunya sisa Tier-1 |
+| **Tahap A #5 — Change Order (konfirmasi ulang harga)** | ✅ SELESAI 2026-07-25 (data layer sudah dukung; framing UI + verifikasi ditambahkan — lihat B1) |
 | Tier-1 #1 — Pisah data per cabang | ⏸️ **Ditunda** (keputusan pilot 1 cabang) |
 
 **Baseline test (klaim dokumen Tahap A):** ±201 backend unit + 99 Playwright + 42 pytest agent.
@@ -125,28 +125,36 @@ dulu, ditambahkan on-demand nanti. Waktu terbaik = **sebelum merge ke `main`**, 
 
 ---
 
-## 4. Milestone B1 — Change Order *(sisa Tier-1 terakhir — 🟡)*
+## 4. Milestone B1 — Change Order ✅ *(selesai 2026-07-25 — sisa Tier-1 terakhir ditutup)*
 
 **Kenapa:** satu-satunya item Tier-1 yang belum ditutup di branch ini. Bagian nyata alur
 pemilik: saat pembongkaran ketemu kerusakan tambahan → **konfirmasi ulang harga** → setuju →
 lanjut.
 
-**Temuan awal (dari investigasi line lokal, perlu diverifikasi ulang di branch ini):**
-`addCharge()` + `generateQuotation()` (`modules/tickets/service.ts`) **sudah repeatable** —
-siklus quote kedua membuat baris `approval_requests` baru untuk selisih charge-nya saja,
-sementara `service_tickets.approvedTotal` menumpuk benar lintas siklus. Artinya "change order"
-kemungkinan **sudah didukung di lapisan data**, tinggal framing UI + pemicu cetak ulang.
+**Terbukti:** `addCharge()` + `generateQuotation()` (`modules/tickets/service.ts`) **sudah
+repeatable** — siklus quote kedua membuat baris `approval_requests` baru untuk selisih charge-nya
+saja, `service_tickets.approvedTotal` menumpuk benar. Tidak ada node-guard yang menghalangi
+re-quote mid-repair (`addCharge` cuma cek tiket ada; `generateQuotation` cuma butuh charge
+`estimated`). "Change order" **sudah didukung di lapisan data** — yang kurang cuma framing UI.
 
-- [ ] **B1.1** Live-verify di `go-live/tahap-a`: setelah quote #1, `addCharge` lagi → quote #2.
-      Konfirmasi baris `approval_requests` kedua benar (bukan kumulatif), `approvedTotal` benar
-      kumulatif, tidak ada korupsi data. *(DoD: urutan request+response terekam.)*
-- [ ] **B1.2** Jika terbukti jalan: framing UI — aksi **"Ada Temuan Baru?"** di
-      `TicketWorkspace`/`TicketCharges` = `addCharge` + re-quote, diberi label sesuai model
-      mental teknisi. Setelah re-quote, tawarkan **cetak ulang Label / Tanda Terima** (isi harga
-      baru) memakai `PrintButton` yang sudah ada. *(DoD: Playwright — temuan baru → quote kedua →
-      tombol cetak ulang muncul.)*
-- [ ] **B1.3** Jika ada celah nyata (mis. tak bisa re-quote setelah masuk node Pengerjaan):
-      catat sebagai keputusan flow (bukan langsung tambah kode), diskusikan dulu.
+- [x] **B1.1** Live-verify di `go-live/tahap-a` (curl, terekam): intake → jasa 100rb → quote #1
+      (`quotedAmount=100.000`, `approvedTotal=100.000`, approvalReq `448d5282`) → tambah temuan
+      250rb → quote #2 (`quotedAmount=250.000` **hanya delta**, `approvedTotal=350.000`
+      **kumulatif**, approvalReq **baru** `e64235b6`). Dua baris `approval_requests` benar, tak
+      ada korupsi.
+- [x] **B1.2** Framing UI di `TicketCharges.svelte`: begitu tiket sudah pernah di-quote DAN ada
+      biaya estimasi baru, muncul panel amber **"Temuan Baru (Change Order)"** yang menjelaskan
+      pelanggan hanya menyetujui biaya tambahan, menampilkan delta + total-disetujui-baru, dengan
+      tombol **"Minta Persetujuan Tambahan"** (= `requestApproval()` yang sama). Saat sudah
+      di-quote tapi belum ada temuan baru, ditambah hint discoverability yang menyebut jalur
+      change-order. 2 Playwright test (desktop: panel muncul, delta 250rb + total 350rb, approve →
+      disetujui 350rb; mobile: tak overflow). **Cetak-ulang Label/Tanda Terima sengaja TIDAK
+      ditambahkan** — kedua dokumen itu tak memuat harga (label = keluhan+sandi, tanda-terima =
+      bukti terima), jadi tombol "cetak ulang isi harga baru" akan menyesatkan (anti-pattern
+      Track-F "kelihatan jalan, tak berarti"). Nota (yang memuat harga) sudah tercetak dari
+      invoice di akhir alur, memakai `approvedTotal` kumulatif yang benar.
+- [x] **B1.3** Tidak ada celah flow: re-quote tetap bisa di node mana pun (tak ada guard). Tak
+      ada keputusan flow yang perlu didiskusikan — data layer sudah menangani change order utuh.
 
 ---
 
@@ -244,7 +252,7 @@ Semua bisa manual dulu; membangun sekarang = menunda go-live tanpa manfaat sepad
 
 ```
 Milestone 0  Konsolidasi branch → main            [housekeeping, dulukan]
-Milestone B1 Change Order                          🟡  (sisa Tier-1)
+Milestone B1 Change Order                          ✅  (sisa Tier-1 — SELESAI 2026-07-25)
 Milestone B2 Siap Pilot: deploy LAN + onboarding   🔴  (buka Tahap B) ── PILOT 1 CABANG MULAI
 Milestone D  Tempo → Batas diskon → Retur          🟡  (paralel/menyusul pilot)
 Milestone C  Pisah cabang + multi-role             ⏸️  (sebelum roll-out semua cabang)
