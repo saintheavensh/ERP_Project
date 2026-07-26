@@ -172,19 +172,24 @@ re-quote mid-repair (`addCharge` cuma cek tiket ada; `generateQuotation` cuma bu
 Sebagian dari Phase 9 (`PHASES.md` 9.7–9.9) + Phase 10.5, dipilih yang relevan untuk 1 cabang.
 
 ### Deployment jaringan lokal
-- [ ] **B2.1** Pastikan API bind ke LAN. `flowserv-api/src/index.ts` `serve()` tidak set
-      `hostname` → cek apakah `@hono/node-server` sudah mengikat `0.0.0.0` (default) sehingga HP/
-      tablet di WiFi yang sama bisa akses via `192.168.x.x:3001`. Set eksplisit bila perlu.
-      *(DoD: akses dari HP lain di WiFi sama → halaman login muncul.)*
-- [ ] **B2.2** Pastikan frontend (`flowserv-web`) `API_BASE` bisa diarahkan ke IP LAN server
-      (bukan `localhost`) lewat env — sudah ada `lib/api/config.ts` (dari 3.5E.1); verifikasi
-      untuk skenario multi-device. *(DoD: dari HP lain, aksi API sungguh berhasil, bukan cuma
-      halaman statis.)*
-- [ ] **B2.3** **Skrip start satu-klik** untuk seluruh stack (Postgres + API + web +
-      printer-agent). Catatan: `.bat` manual start/stop printer-agent **hanya ada di branch lokal
-      `golive/a-service-flow-templates`** (commit `716d882`), **belum di branch ini** — port ke
-      sini + bungkus jadi satu skrip root. *(DoD: satu klik → keempat proses hidup, health check
-      hijau.)*
+- [x] **B2.1 ✅ (2026-07-26).** API sekarang bind `0.0.0.0` secara **eksplisit** (`HOST` env,
+      default `0.0.0.0`) di `index.ts`, dan mencetak URL LAN saat start
+      (`LAN: http://<ip>:3001/v1/health`). Terbukti: API menjawab di `http://172.20.10.3:3001`
+      (IP LAN mesin ini), bukan cuma localhost — jadi Node memang sudah bind semua interface,
+      kini eksplisit + terlihat. *(DoD "login dari HP" = user-run di mesin pilot dengan HP nyata.)*
+- [x] **B2.2 ✅ (2026-07-26).** `lib/api/config.ts` baca `PUBLIC_API_URL` (client-side); default
+      localhost, di-set ke `http://<ip-LAN>:3001` untuk LAN. Peluncur B2.3 meng-**auto-set**-nya
+      ke IP LAN + jalankan `vite dev --host` supaya HP bisa memuat web DAN memanggil API di IP
+      LAN (bukan localhost HP). `.env.example` web sudah mendokumentasikan ini. *(DoD "aksi API
+      dari HP" = user-run.)*
+- [x] **B2.3 ✅ (2026-07-26).** **`start-flowserv.bat`** (+ `start-flowserv.ps1`): satu double-
+      click → deteksi IP LAN → buka 3 jendela (API 0.0.0.0:3001, Web `vite --host` dengan
+      `PUBLIC_API_URL` diarahkan ke IP LAN, Printer Agent `dist/printer-agent.exe`), cek Postgres
+      (peringatan bila mati), lalu cetak URL untuk HP (`http://<ip>:5173`). Postgres tetap servis
+      Windows (tak ikut diluncurkan, hanya dicek). `start-dev.bat` lama dipertahankan sebagai
+      peluncur dev minimal (API+web saja). Diverifikasi: `.ps1` lolos parse, deteksi IP → real
+      `172.20.10.3`, `tsc` bersih, log startup API tampil benar. *(DoD "keempat proses hidup" =
+      user-run di mesin pilot — skripnya siap.)*
 - [ ] **B2.4** **6D.1 — Test cetak fisik** (Phase 6): jalankan di printer thermal + printer label
       asli. Struk POS (thermal), label unit servis (label), tanda terima, nota A4. Ini
       **hardware-dependent, dijalankan pemilik**. *(DoD: kertas benar-benar tercetak & terpotong;
