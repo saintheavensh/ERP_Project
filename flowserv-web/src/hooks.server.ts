@@ -21,8 +21,9 @@ export const handle: Handle = async ({ event, resolve }) => {
           event.locals.token = token;
         }
       } else {
-        // Token is invalid or expired
-        event.cookies.delete('flowserv_token', { path: '/' });
+        // Token is invalid or expired. Same Secure caveat as logout: over plain-
+        // HTTP LAN a Secure delete-cookie is ignored, so scope Secure to HTTPS.
+        event.cookies.delete('flowserv_token', { path: '/', secure: event.url.protocol === 'https:' });
       }
     } catch (err) {
       console.error('Auth verification failed', err);
