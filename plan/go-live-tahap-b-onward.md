@@ -227,10 +227,21 @@ paling aman:
       detail pelanggan pakai `fetch` global + `new State(data)` yang meng-capture data awal, jadi
       `invalidateAll()` tak me-refresh in-place (customer baru baru tampak setelah navigasi ulang;
       toggle diselamatkan optimistic override). Pola app-wide, layak dirapikan tersendiri.
-- [ ] **D2 — Batas diskon per peran (🟡, RBAC threshold).** Owner/manager set plafon diskon;
-      kasir tak bisa diskon melebihi plafon (SAL-006, requirement §5.6). *Siasat sementara di
-      pilot: kasir tak diberi hak diskon sama sekali, hanya manager.* *(DoD: kasir diskon >
-      plafon → 403/422; manager → sukses.)*
+- [x] **D2 — Batas diskon per peran ✅ (selesai 2026-07-26, pendekatan interim).** Permission
+      baru `pos.apply_discount` (granted Manager + Super Admin, **bukan** Cashier). Digate
+      **kondisional**: hanya saat `discountAmount > 0` — kasir tetap bisa checkout diskon 0.
+      Dipasang di dua write-site: `POST /pos/invoices` (checkout) & `POST /tickets/:id/invoice`
+      (faktur servis), lewat `enforcePermission()` baru di `middleware/rbac.ts` (membungkus logika
+      `requirePermission` yang sama supaya bisa dipanggil di dalam handler). FE: kolom "Diskon"
+      di `CartSidebar` disembunyikan untuk peran tanpa hak (kasir tak melihatnya; backend tetap
+      403 kalau dipaksa). Verifikasi live (curl, RBAC_MODE=enforce): kasir diskon 5rb → **403
+      PERMISSION_DENIED**, kasir diskon 0 → **201**, manager diskon 5rb → **201**. 2 Playwright
+      (kasir tak lihat kolom, manager lihat). `tsc`+`svelte-check` bersih, backend 212 unit.
+      **Catatan penting go-live:** gate ini (dan SEMUA gate RBAC) hanya benar-benar memblokir
+      saat `RBAC_MODE=enforce`. `.env` lokal tadinya `report` — sudah di-set `enforce` (state yang
+      memang dibutuhkan pilot). Break-glass: balik ke `report` bila perlu (lihat CLAUDE.md).
+      *"Plafon" numerik (diskon boleh sampai X%) sengaja ditunda — interim ini biner (boleh/tidak),
+      cukup untuk pilot; plafon per-peran menyusul bila pemilik butuh kasir boleh diskon kecil.*
 - [ ] **D3 — Retur / tukar barang (🟡, paling berisiko — hati-hati).** Stok balik + reversal
       ledger (SAL-005). Salah bikin = stok & uang kacau. **Sebaiknya SETELAH pilot menunjukkan
       bentuk retur nyata**, bukan menebak sekarang. *(DoD: retur → stok naik tepat qty, ledger

@@ -1,4 +1,4 @@
-import type { MiddlewareHandler } from 'hono';
+import type { Context, MiddlewareHandler } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/connection';
 import { rolePermissions, permissions } from '../db/schema';
@@ -67,6 +67,21 @@ export async function hasPermission(roleId: string, code: string): Promise<boole
 // follows it — a resolved `(c: Context, next: Next) => ...` can't be
 // re-instantiated per call site the way a generic MiddlewareHandler can.
 export const requirePermission = (code: string): MiddlewareHandler => async (c, next) => {
+  const blocked = await enforcePermission(c, code);
+  if (blocked) return blocked;
+  await next();
+};
+
+/**
+ * Programmatic permission check for a CONDITIONAL gate INSIDE a handler — e.g.
+ * a POS discount that only some roles may apply (D2). Route-level
+ * requirePermission can't express this: it would gate the whole endpoint, but a
+ * cashier must still be able to check out at zero discount. Returns an error
+ * Response to return immediately if blocked, or null to proceed. Same decision
+ * (and same [RBAC] would-deny logging + break-glass behaviour) as
+ * requirePermission.
+ */
+export async function enforcePermission(c: Context, code: string): Promise<Response | null> {
   const { userId, roleId, roleName } = getAuthContext(c);
 
   // Super Admin never needs the grant query — evaluateRbac would bypass on
@@ -82,5 +97,5 @@ export const requirePermission = (code: string): MiddlewareHandler => async (c, 
     return errorResponse(c, 'PERMISSION_DENIED', `Missing permission: ${code}`, undefined, 403);
   }
 
-  await next();
-};
+  return null;
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  let { pos } = $props<{ pos: any }>();
+  let { pos, canDiscount = true } = $props<{ pos: any; canDiscount?: boolean }>();
 
   let showServiceForm = $state(false);
   let serviceType = $state<'labor' | 'fee'>('labor');
@@ -111,10 +111,14 @@
         <span>Subtotal</span>
         <span>{pos.formatRp(pos.cart.subtotal)}</span>
       </div>
-      <div class="flex justify-between text-sm items-center">
-        <span class="text-slate-600">Diskon (Rp)</span>
-        <input type="number" bind:value={pos.cart.discountAmount} min="0" max={pos.cart.subtotal} class="w-24 text-right px-2 py-1 border border-slate-300 rounded text-sm bg-white outline-none focus:border-blue-500">
-      </div>
+      <!-- D2 — diskon hanya untuk manager/owner (pos.apply_discount). Kasir tak
+           melihat kolom ini; backend tetap menolak 403 kalau dipaksa. -->
+      {#if canDiscount}
+        <div class="flex justify-between text-sm items-center" data-testid="discount-row">
+          <span class="text-slate-600">Diskon (Rp)</span>
+          <input type="number" bind:value={pos.cart.discountAmount} min="0" max={pos.cart.subtotal} class="w-24 text-right px-2 py-1 border border-slate-300 rounded text-sm bg-white outline-none focus:border-blue-500">
+        </div>
+      {/if}
       <div class="pt-2 mt-2 border-t border-slate-200 flex justify-between items-end">
         <span class="font-medium text-slate-800">Total</span>
         <span class="text-xl font-bold text-blue-600">{pos.formatRp(pos.cart.grandTotal)}</span>

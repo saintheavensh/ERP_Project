@@ -41,5 +41,10 @@ export const load = async ({ locals }) => {
     return basePrice > 0 || hasBrandPrices;
   });
 
-  return { branches, products, customers, paymentMethods, token };
+  // D2 — the cart hides the discount input for roles without pos.apply_discount
+  // (the backend enforces it regardless; this is just so a cashier isn't shown
+  // a control that would 403).
+  const roleName = locals.user?.roleName ?? null;
+
+  return { branches, products, customers, paymentMethods, token, roleName };
 };

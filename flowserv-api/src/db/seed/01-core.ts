@@ -63,6 +63,9 @@ const PERMISSIONS = [
   // Tahap A (go-live gap Tier-1 #4) — payment-method CRUD. Admin-only, same
   // pattern as permBranchManage — NOT in any role grant below.
   { id: IDS.permPaymentManage, code: 'payment.manage', description: 'Create, edit, or deactivate tenant payment methods' },
+  // D2 — apply a discount at POS/service billing. Manager + Super Admin only,
+  // enforced only when discountAmount > 0. Pilot rule: "hanya manager boleh diskon".
+  { id: IDS.permPosApplyDiscount, code: 'pos.apply_discount', description: 'Apply a discount on a POS sale or service invoice' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
@@ -82,6 +85,7 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'finance.record_payment', 'catalog.manage', 'customer.manage',
     'supplier.manage', 'purchasing.manage_orders', 'purchasing.manage_invoices',
     'ticket.cancel',
+    'pos.apply_discount', // D2 — manager may discount; cashier may not
   ],
   [IDS.roleTechnician]: [
     'ticket.create', 'ticket.diagnose', 'inventory.reserve_part',

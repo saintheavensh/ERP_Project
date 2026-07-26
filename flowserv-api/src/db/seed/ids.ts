@@ -66,6 +66,10 @@ export const IDS = {
   // granted to Manager (same pattern as permBranchManage). GET stays open to
   // any authenticated user because the POS checkout reads the list.
   permPaymentManage: 'd1000000-0000-4000-8000-000000000027',
+  // D2 (go-live tahap-B) — apply a POS/service discount. Granted to Manager +
+  // Super Admin, NOT Cashier: the pilot rule is "only a manager may discount".
+  // Enforced only when discountAmount > 0 (a zero-discount sale needs no grant).
+  permPosApplyDiscount: 'd1000000-0000-4000-8000-000000000028',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',

@@ -8,9 +8,13 @@
   import DraftsModal from '$lib/components/pos/DraftsModal.svelte';
 
   let { data } = $props();
-  
+
   // svelte-ignore state_referenced_locally
   const pos = createPosState(data);
+
+  // D2 — only manager/owner may apply a discount (matches the pos.apply_discount
+  // grant on the backend). Cashier doesn't see the field at all.
+  const canDiscount = $derived(data.roleName === 'Super Admin' || data.roleName === 'Manager');
 
   onMount(() => {
     pos.cart.restoreCart();
@@ -67,7 +71,7 @@
        lg up (original desktop behavior, cart back to a fixed-width column). -->
   <div class="flex flex-col lg:flex-row flex-1 lg:overflow-hidden">
     <ProductGrid {pos} />
-    <CartSidebar {pos} />
+    <CartSidebar {pos} {canDiscount} />
   </div>
 </div>
 

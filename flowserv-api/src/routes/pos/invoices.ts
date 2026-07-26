@@ -5,7 +5,7 @@ import { eq, and, desc, inArray } from 'drizzle-orm';
 import { zValidator } from '@hono/zod-validator';
 import { successResponse, errorResponse, getRequestId, buildSuccessEnvelope } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
-import { requirePermission } from '../../middleware/rbac';
+import { requirePermission, enforcePermission } from '../../middleware/rbac';
 import { auditMiddleware } from '../../middleware/audit';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../../lib/pagination';
 import { BusinessError } from '../../lib/errors';
@@ -128,6 +128,14 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
   const tempoCheck = evaluateTempoEligibility({ paymentMethod: data.paymentMethod, customerAllowTempo });
   if (!tempoCheck.allowed) {
     return errorResponse(c, tempoCheck.code!, tempoCheck.message!, undefined, 422);
+  }
+
+  // D2 — a discount requires pos.apply_discount (manager/owner). Conditional, so
+  // a cashier can still check out at zero discount; only a non-zero discount
+  // needs the grant. 403 if missing.
+  if (data.discountAmount > 0) {
+    const blocked = await enforcePermission(c, 'pos.apply_discount');
+    if (blocked) return blocked;
   }
 
   // Hitung total

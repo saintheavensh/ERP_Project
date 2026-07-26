@@ -6,7 +6,7 @@ import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ti
 import { ticketStatusEnum } from '../db/schema/enums';
 import { eq, and, desc } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
-import { requirePermission } from '../middleware/rbac';
+import { requirePermission, enforcePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse, getRequestId } from '../lib/response';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../lib/pagination';
@@ -576,6 +576,13 @@ ticketsRouter.post('/:id/invoice', requirePermission('pos.process_payment'), zVa
   const { tenantId, userId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const input = c.req.valid('json');
+
+  // D2 — same discount gate as POS checkout: only pos.apply_discount may bill a
+  // non-zero discount on a service invoice.
+  if (input.discountAmount > 0) {
+    const blocked = await enforcePermission(c, 'pos.apply_discount');
+    if (blocked) return blocked;
+  }
 
   const idempotencyKey = c.req.header('Idempotency-Key');
   if (idempotencyKey) {
