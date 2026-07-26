@@ -27,6 +27,10 @@ export const customers = pgTable('customers', {
   name: text('name').notNull(),
   phone: text('phone'),
   email: text('email'),
+  // D1 (go-live tahap-B) — kelayakan tempo per pelanggan. Default false: pelanggan
+  // baru TIDAK boleh utang sampai owner/manager mengizinkannya secara eksplisit.
+  // Gerbang ini dicek saat checkout POS metode 'tempo' (422 TEMPO_NOT_ALLOWED).
+  allowTempo: boolean('allow_tempo').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('customers_tenant_idx').on(table.tenantId),

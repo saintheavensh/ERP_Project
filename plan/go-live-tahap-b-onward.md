@@ -205,10 +205,20 @@ Per `go-live-plan.md` sebagian ini "dari gesekan pilot", tapi tiga di bawah suda
 dibutuhkan** (pemilik sebut eksplisit) — boleh dibangun paralel dengan pilot, diurut dari yang
 paling aman:
 
-- [ ] **D1 — Tempo per pelanggan (🟢🟡, kecil, aman).** Penanda boolean/limit di `customers`
-      (`allow_tempo`, opsional `tempo_limit`). Checkout POS tolak metode `tempo` bila pelanggan
-      tak berhak (422). Requirement §5.2 go-live-plan. *(DoD: unit test aturan + checkout tempo
-      pelanggan tak-berhak → 422; berhak → sukses.)*
+- [x] **D1 — Tempo per pelanggan ✅ (selesai 2026-07-26).** Kolom `customers.allow_tempo`
+      (boolean, default **false** — pelanggan baru tak boleh utang sampai diizinkan). Gerbang
+      murni `lib/tempo.ts` `evaluateTempoEligibility()` (4 unit test) dipasang di checkout POS
+      (`routes/pos/invoices.ts`): metode `tempo` untuk pelanggan tak-berhak → **422
+      TEMPO_NOT_ALLOWED**, metode lain selalu lolos. FE: checkbox "Boleh bayar tempo" di modal
+      buat-pelanggan + kartu toggle beri/cabut di halaman detail pelanggan (optimistic update,
+      2 Playwright test). Verifikasi live (curl, terekam): tak-berhak → 422; PUT allowTempo=true
+      → 200; berhak → 201 (paymentStatus `unpaid`); cash tetap 201. `tempo_limit` sengaja
+      **belum** ditambah — enforcement plafon butuh hitung AR outstanding per pelanggan; menambah
+      kolom tanpa enforcement = dead-schema, jadi ditunda sampai ada kebutuhan nyata. *DoD
+      terpenuhi.* **Catatan floating gap ditemukan (bukan D1):** `+page.server.ts` daftar &
+      detail pelanggan pakai `fetch` global + `new State(data)` yang meng-capture data awal, jadi
+      `invalidateAll()` tak me-refresh in-place (customer baru baru tampak setelah navigasi ulang;
+      toggle diselamatkan optimistic override). Pola app-wide, layak dirapikan tersendiri.
 - [ ] **D2 — Batas diskon per peran (🟡, RBAC threshold).** Owner/manager set plafon diskon;
       kasir tak bisa diskon melebihi plafon (SAL-006, requirement §5.6). *Siasat sementara di
       pilot: kasir tak diberi hak diskon sama sekali, hanya manager.* *(DoD: kasir diskon >
