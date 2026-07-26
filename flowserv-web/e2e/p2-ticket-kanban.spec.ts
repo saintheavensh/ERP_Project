@@ -142,11 +142,22 @@ test.describe('mobile viewport (375x667)', () => {
 test.describe('desktop viewport (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('template dropdown is hidden when only one service flow template exists', async ({ page }) => {
+  // Tahap A added two more service-domain flow templates (Ditunggu/Disimpan)
+  // alongside Standard Repair, so the board's `templates.length > 1` switcher
+  // (+page.svelte) now renders — this replaces the old single-template
+  // "dropdown is hidden" assertion, which described a seed state that no
+  // longer exists.
+  test('template dropdown appears now that multiple service flow templates exist', async ({ page }) => {
     await login(page, 'admin@demo.com');
     await page.goto('/tickets/board');
     await page.waitForLoadState('networkidle');
-    await expect(page.locator('select')).toHaveCount(0);
+    const select = page.locator('select');
+    await expect(select).toHaveCount(1);
+    await expect(select.locator('option', { hasText: 'Standard Repair' })).toHaveCount(1);
+    await expect(select.locator('option', { hasText: 'Servis - Ditunggu' })).toHaveCount(1);
+    await expect(select.locator('option', { hasText: 'Servis - Disimpan' })).toHaveCount(1);
+    // Defaults to Standard Repair (the sole isDefault template) even with more rows now present.
+    await expect(select).toHaveValue('80000000-0000-4000-8000-000000000001');
     await shot(page, '05-desktop-board');
   });
 

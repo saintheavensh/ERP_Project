@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { PosHistoryState } from '$lib/states/pos/history.svelte';
+  import PrintButton from '$lib/components/print/PrintButton.svelte';
 
   let { state } = $props<{ state: PosHistoryState }>();
 </script>
@@ -138,6 +139,8 @@
       
       <div class="p-4 border-t border-slate-100 bg-slate-50 flex flex-wrap justify-between items-center gap-2">
         <div class="flex flex-wrap gap-2">
+          <PrintButton token={state.token} documentType="receipt" id={state.selectedInvoiceDetail.id} label="Cetak Struk" />
+          <PrintButton token={state.token} documentType="invoice_a4" id={state.selectedInvoiceDetail.id} label="Cetak Invoice A4" />
           {#if state.selectedInvoiceDetail.status !== 'voided'}
             {#if state.selectedInvoiceDetail.paymentStatus !== 'paid'}
               <button onclick={() => state.openPayModal(state.selectedInvoiceDetail)} class="px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 font-medium rounded-lg transition-colors border border-green-200 mr-2">

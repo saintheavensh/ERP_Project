@@ -1,0 +1,18 @@
+# Per-machine printer connection config -- every cashier computer has its own,
+# never committed. Copy config.example.json to start.
+config.json
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# File-mode raw ESC/POS output (debug artifact, plan 6D.1's inspection file)
+printer_output.bin
+agent.log

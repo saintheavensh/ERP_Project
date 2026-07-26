@@ -59,6 +59,13 @@ export const IDS = {
   permBranchManage: 'd1000000-0000-4000-8000-000000000023',
   permUserManage: 'd1000000-0000-4000-8000-000000000024',
   permSettingsManageCompany: 'd1000000-0000-4000-8000-000000000025',
+  // Phase 6 (6A.1) — printer device/template/assignment CRUD. Admin-only,
+  // same pattern as permAuditView/permBranchManage.
+  permPrinterManage: 'd1000000-0000-4000-8000-000000000026',
+  // Tahap A (go-live gap Tier-1 #4) — payment-method CRUD. Admin-only, NOT
+  // granted to Manager (same pattern as permBranchManage). GET stays open to
+  // any authenticated user because the POS checkout reads the list.
+  permPaymentManage: 'd1000000-0000-4000-8000-000000000027',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',
@@ -158,4 +165,90 @@ export const IDS = {
   ticketInProgress: 'a1000000-0000-4000-8000-000000000006',
   ticketStageIntake: 'a1000000-0000-4000-8000-000000000007',
   ticketStageDiagnosis: 'a1000000-0000-4000-8000-000000000008',
+
+  // Phase 6 (6A.1) — printer devices are per-branch (physical printer);
+  // templates are tenant-wide (document_type + paper_size layout);
+  // assignments tie one branch's document_type to one device + one template.
+  devicePrinterThermalPusat: 'b1000000-0000-4000-8000-000000000001',
+  devicePrinterA4Pusat: 'b1000000-0000-4000-8000-000000000002',
+  devicePrinterThermalCabang: 'b1000000-0000-4000-8000-000000000003',
+
+  templatePrinterReceipt58: 'b2000000-0000-4000-8000-000000000001',
+  templatePrinterReceipt80: 'b2000000-0000-4000-8000-000000000002',
+  templatePrinterInvoiceA4: 'b2000000-0000-4000-8000-000000000003',
+  // Defined per plan Q2, wired to a print trigger by Tahap A (go-live gap Tier-1 #3).
+  templatePrinterLabelGaransi: 'b2000000-0000-4000-8000-000000000004',
+  // Tahap A — new document type, thermal-only (80mm) for MVP.
+  templatePrinterTandaTerima: 'b2000000-0000-4000-8000-000000000005',
+
+  assignPrinterPusatReceipt: 'b3000000-0000-4000-8000-000000000001',
+  assignPrinterPusatInvoiceA4: 'b3000000-0000-4000-8000-000000000002',
+  // Deliberately the only assignment for branchCabang — proves 6A.4's
+  // "no assignment for this branch+docType -> fall back to the tenant
+  // default template" path against real seed data (Cabang has no invoice_a4
+  // assignment at all).
+  assignPrinterCabangReceipt: 'b3000000-0000-4000-8000-000000000003',
+
+  // Tahap A (go-live gap Tier-1 #4) — payment methods. `type` is the finite
+  // category (cash/transfer/qris/ewallet/tempo); `name` is the specific brand.
+  // Three e-wallets share type 'ewallet' on purpose — the POS radio binds on
+  // id (not type), so Dana/OVO/GoPay each render as a distinct, selectable option.
+  paymentTunai: 'b4000000-0000-4000-8000-000000000001',
+  paymentTransfer: 'b4000000-0000-4000-8000-000000000002',
+  paymentQris: 'b4000000-0000-4000-8000-000000000003',
+  paymentDana: 'b4000000-0000-4000-8000-000000000004',
+  paymentOvo: 'b4000000-0000-4000-8000-000000000005',
+  paymentGopay: 'b4000000-0000-4000-8000-000000000006',
+  paymentTempo: 'b4000000-0000-4000-8000-000000000007',
+  // Second tenant — a minimal set so its POS isn't empty either.
+  paymentSecondTunai: 'b4000000-0000-4000-8000-000000000008',
+  paymentSecondQris: 'b4000000-0000-4000-8000-000000000009',
+
+  // Tahap A (go-live gap Tier-1 #2) — two new service flow templates
+  // (Ditunggu/Disimpan), added alongside the existing "Standard Repair"
+  // WITHOUT touching it (see plan/tahap-a-flow-templates.md §2 — Standard
+  // Repair's fixed node/transition IDs are hardcoded across several existing
+  // tests). Neither new template is isDefault — Standard Repair stays the
+  // sole default so the Kanban board's default-template resolution is
+  // unaffected by adding these rows.
+  flowTemplateDitunggu: '84000000-0000-4000-8000-000000000001',
+  flowTemplateDisimpan: '84000000-0000-4000-8000-000000000002',
+
+  nodeDitungguIntake: '85000000-0000-4000-8000-000000000001',
+  nodeDitungguDiagnosis: '85000000-0000-4000-8000-000000000002',
+  nodeDitungguApproval: '85000000-0000-4000-8000-000000000003',
+  nodeDitungguQcAwal: '85000000-0000-4000-8000-000000000004',
+  nodeDitungguRepair: '85000000-0000-4000-8000-000000000005',
+  nodeDitungguQcAkhir: '85000000-0000-4000-8000-000000000006',
+  nodeDitungguSelesai: '85000000-0000-4000-8000-000000000007',
+
+  nodeDisimpanIntake: '85000000-0000-4000-8000-000000000008',
+  nodeDisimpanDiagnosis: '85000000-0000-4000-8000-000000000009',
+  nodeDisimpanUnitDisimpan: '85000000-0000-4000-8000-000000000010',
+  nodeDisimpanApproval: '85000000-0000-4000-8000-000000000011',
+  nodeDisimpanQcAwal: '85000000-0000-4000-8000-000000000012',
+  nodeDisimpanRepair: '85000000-0000-4000-8000-000000000013',
+  nodeDisimpanQcAkhir: '85000000-0000-4000-8000-000000000014',
+  nodeDisimpanSelesai: '85000000-0000-4000-8000-000000000015',
+
+  // Ditunggu: linear chain + one shortcut (Approval -> Selesai, mirrors the
+  // existing transApprovalToCompletion on Standard Repair for the
+  // "ternyata tidak ada kerusakan" case).
+  transDitungguIntakeToDiagnosis: '86000000-0000-4000-8000-000000000001',
+  transDitungguDiagnosisToApproval: '86000000-0000-4000-8000-000000000002',
+  transDitungguApprovalToQcAwal: '86000000-0000-4000-8000-000000000003',
+  transDitungguApprovalToSelesai: '86000000-0000-4000-8000-000000000004',
+  transDitungguQcAwalToRepair: '86000000-0000-4000-8000-000000000005',
+  transDitungguRepairToQcAkhir: '86000000-0000-4000-8000-000000000006',
+  transDitungguQcAkhirToSelesai: '86000000-0000-4000-8000-000000000007',
+
+  // Disimpan: same shape with Unit Disimpan inserted after Diagnosis.
+  transDisimpanIntakeToDiagnosis: '86000000-0000-4000-8000-000000000008',
+  transDisimpanDiagnosisToUnitDisimpan: '86000000-0000-4000-8000-000000000009',
+  transDisimpanUnitDisimpanToApproval: '86000000-0000-4000-8000-000000000010',
+  transDisimpanApprovalToQcAwal: '86000000-0000-4000-8000-000000000011',
+  transDisimpanApprovalToSelesai: '86000000-0000-4000-8000-000000000012',
+  transDisimpanQcAwalToRepair: '86000000-0000-4000-8000-000000000013',
+  transDisimpanRepairToQcAkhir: '86000000-0000-4000-8000-000000000014',
+  transDisimpanQcAkhirToSelesai: '86000000-0000-4000-8000-000000000015',
 } as const;

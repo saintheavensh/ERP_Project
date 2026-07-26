@@ -11,7 +11,12 @@ export class PosCheckoutState {
   commonState: PosCommonState;
 
   showCheckoutModal = $state(false);
-  paymentMethod = $state('cash');
+  // Tahap A — the radio binds on the method's id, not its type, so several
+  // methods sharing one type (Dana/OVO/GoPay are all 'ewallet') each render as
+  // a distinct, selectable option. The backend still receives the derived
+  // `type` string (see selectedType + processCheckout), so its contract is
+  // unchanged.
+  selectedMethodId = $state('');
   selectedCustomerId = $state('');
   customerNameInput = $state('');
   showCustomerDropdown = $state(false);
@@ -27,8 +32,18 @@ export class PosCheckoutState {
     this.commonState = commonState;
   }
 
+  // Only active methods are selectable at checkout (a method can be
+  // deactivated via Settings without deleting its history).
   get paymentMethods() {
-    return this.data.paymentMethods || [];
+    return (this.data.paymentMethods || []).filter((m: any) => m.isActive);
+  }
+
+  // The finite category the backend keys off (cash/transfer/qris/ewallet/tempo).
+  // Falls back to 'cash' when nothing is selected — the same safe default the
+  // store used before, so a tenant with zero seeded methods can still check out.
+  get selectedType(): string {
+    const m = this.paymentMethods.find((pm: any) => pm.id === this.selectedMethodId);
+    return m?.type ?? 'cash';
   }
 
   get customers() {
@@ -59,6 +74,9 @@ export class PosCheckoutState {
   openCheckout() {
     if (this.cartState.cart.length === 0) return;
     this.commonState.errorMsg = '';
+    // Default to the first active method so a radio is pre-selected (and the
+    // derived type is never the empty-list fallback when methods do exist).
+    this.selectedMethodId = this.paymentMethods[0]?.id ?? '';
     // New action → new key. A retry within this same checkout attempt
     // (see processCheckout) must reuse it instead of generating a fresh one.
     this.idempotencyKey = crypto.randomUUID();
@@ -69,7 +87,7 @@ export class PosCheckoutState {
     // customerId is the link that actually enables credit — the backend
     // requires it for 'tempo' too (Zod + a Postgres CHECK), this is just the
     // fast client-side echo of that rule.
-    if (this.paymentMethod === 'tempo' && !this.selectedCustomerId) {
+    if (this.selectedType === 'tempo' && !this.selectedCustomerId) {
       this.commonState.errorMsg = 'Pelanggan wajib dipilih dari daftar untuk pembayaran tempo!';
       return;
     }
@@ -83,7 +101,7 @@ export class PosCheckoutState {
         customerName: this.customerNameInput || undefined,
         customerId: this.selectedCustomerId || undefined,
         serviceTicketId: undefined,
-        paymentMethod: this.paymentMethod,
+        paymentMethod: this.selectedType,
         discountAmount: this.cartState.discountAmount,
         items: this.cartState.cart.map((item: any) =>
           item.sourceType === 'labor' || item.sourceType === 'fee'

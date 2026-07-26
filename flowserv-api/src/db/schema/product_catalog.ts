@@ -36,6 +36,13 @@ export const deviceModels = pgTable('device_models', {
   id: uuid('id').primaryKey().defaultRandom(),
   deviceBrandId: uuid('device_brand_id').notNull().references(() => deviceBrands.id),
   name: text('name').notNull(), // "A3s", "A5s", dst
+  // Tahap A — katalog device untuk intake (gambar/spesifikasi/saran servis).
+  // Input manual per tenant (bukan scraping eksternal, bukan tabel baru — lihat
+  // plan/tahap-a-device-catalog-invoice-mode.md untuk alasannya). Semua nullable:
+  // model yang cuma dipakai untuk kompatibilitas sparepart (fungsi asli tabel ini)
+  // tidak wajib punya data ini.
+  imageUrl: text('image_url'),
+  specs: jsonb('specs').$type<Record<string, string>>(),
 }, (table) => ({
   brandIdx: index('device_models_brand_idx').on(table.deviceBrandId),
 }));

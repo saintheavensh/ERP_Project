@@ -30,7 +30,10 @@ export const posCheckoutSchema = z.object({
   // real customer link; walk-in cash sales may leave this null.
   customerId: z.string().uuid().optional(),
   serviceTicketId: z.string().uuid().optional(),
-  paymentMethod: z.enum(['cash', 'transfer', 'qris', 'split', 'tempo']),
+  // Tahap A — 'ewallet' added for Dana/OVO/GoPay. The FE sends the selected
+  // method's `type` (not its id), so the tempo->unpaid logic below and the
+  // paymentStatus derivation still key off this finite category unchanged.
+  paymentMethod: z.enum(['cash', 'transfer', 'qris', 'ewallet', 'split', 'tempo']),
   discountAmount: z.coerce.number().min(0).default(0),
   items: z.array(posCheckoutLineSchema).min(1, 'Keranjang tidak boleh kosong'),
 }).refine((data) => data.paymentMethod !== 'tempo' || !!data.customerId, {

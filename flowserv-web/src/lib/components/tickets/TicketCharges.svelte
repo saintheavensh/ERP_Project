@@ -31,6 +31,11 @@
   }
 
   const hasEstimated = $derived(state.charges.some((c: any) => c.status === 'estimated'));
+  const estimatedCount = $derived(state.charges.filter((c: any) => c.status === 'estimated').length);
+  // Change order: tiket sudah pernah di-quote (approvedTotal terisi) DAN ada biaya
+  // estimasi baru = temuan tambahan saat pembongkaran. Re-quote hanya menagih
+  // selisihnya (chargeTotals.estimated); approvedTotal menumpuk kumulatif.
+  const isChangeOrder = $derived(state.isQuoted && hasEstimated);
 </script>
 
 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -155,20 +160,48 @@
         </div>
       </div>
 
-      <!-- Request approval -->
-      <div class="flex items-center justify-between pt-1">
-        <p class="text-xs text-slate-500">
-          {#if state.isQuoted}
-            Quote sudah dikirim untuk persetujuan pelanggan.
-          {:else}
-            Bekukan estimasi menjadi quote untuk disetujui pelanggan.
-          {/if}
-        </p>
-        <button onclick={() => state.requestApproval()} disabled={state.chargeLoading || !hasEstimated}
-          class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-40">
-          Minta Persetujuan
-        </button>
-      </div>
+      <!-- Request approval / change order -->
+      {#if isChangeOrder}
+        <!-- B1 (Tahap A #5) — temuan baru setelah quote pertama. Diberi framing
+             eksplisit supaya teknisi paham ini "konfirmasi ulang harga", bukan
+             quote biasa: pelanggan hanya diminta menyetujui BIAYA TAMBAHAN. -->
+        <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-2" data-testid="change-order-panel">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/></svg>
+            <h3 class="font-semibold text-amber-800 text-sm">Temuan Baru (Change Order)</h3>
+          </div>
+          <p class="text-xs text-amber-700">
+            Ada {estimatedCount} biaya baru senilai
+            <b>{idr(state.chargeTotals.estimated)}</b> setelah quote pertama.
+            Minta persetujuan ulang — pelanggan hanya diminta menyetujui biaya
+            tambahan ini. Total disetujui akan menjadi
+            <b>{idr(state.chargeTotals.approved + state.chargeTotals.estimated)}</b>.
+          </p>
+          <div class="flex justify-end">
+            <button onclick={() => state.requestApproval()} disabled={state.chargeLoading}
+              data-testid="change-order-approve"
+              class="bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-40">
+              Minta Persetujuan Tambahan
+            </button>
+          </div>
+        </div>
+      {:else}
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <p class="text-xs text-slate-500 max-w-md">
+            {#if state.isQuoted}
+              Quote sudah dikirim untuk persetujuan pelanggan.
+              <span class="text-amber-700">Menemukan kerusakan tambahan saat pembongkaran? Tambahkan biaya di atas, lalu minta persetujuan ulang (change order).</span>
+            {:else}
+              Bekukan estimasi menjadi quote untuk disetujui pelanggan.
+            {/if}
+          </p>
+          <button onclick={() => state.requestApproval()} disabled={state.chargeLoading || !hasEstimated}
+            data-testid="request-approval"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-40">
+            Minta Persetujuan
+          </button>
+        </div>
+      {/if}
 
       <!-- H17 — generate service invoice (consumed parts + approved labor) -->
       {#if state.canInvoice}

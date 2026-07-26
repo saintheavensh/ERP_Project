@@ -30,7 +30,7 @@
           <!-- Customer Input -->
           <div>
             <label for="customerName" class="block text-sm font-medium text-slate-700 mb-2">
-              Pelanggan {pos.checkout.paymentMethod === 'tempo' ? '(Wajib untuk Tempo)' : '(Opsional)'}
+              Pelanggan {pos.checkout.selectedType === 'tempo' ? '(Wajib untuk Tempo)' : '(Opsional)'}
             </label>
             <div class="relative">
               <input
@@ -68,8 +68,8 @@
             <span class="block text-sm font-medium text-slate-700 mb-2">Metode Pembayaran</span>
             <div class="grid grid-cols-2 gap-3">
               {#each pos.checkout.paymentMethods as pm}
-                <label class="relative flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors {pos.checkout.paymentMethod === pm.type ? 'border-blue-500 bg-blue-50/50 text-blue-700 ring-1 ring-blue-500' : 'border-slate-200 text-slate-600'}">
-                  <input type="radio" name="payment" value={pm.type} bind:group={pos.checkout.paymentMethod} class="sr-only">
+                <label class="relative flex items-center justify-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors {pos.checkout.selectedMethodId === pm.id ? 'border-blue-500 bg-blue-50/50 text-blue-700 ring-1 ring-blue-500' : 'border-slate-200 text-slate-600'}">
+                  <input type="radio" name="payment" value={pm.id} bind:group={pos.checkout.selectedMethodId} class="sr-only">
                   <span class="text-sm font-medium">{pm.name}</span>
                 </label>
               {/each}
@@ -78,7 +78,7 @@
                 <p class="text-sm text-slate-500 col-span-2 text-center py-2">Tidak ada metode pembayaran aktif.</p>
               {/if}
             </div>
-            {#if pos.checkout.paymentMethod === 'tempo'}
+            {#if pos.checkout.selectedType === 'tempo'}
               <p class="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-start">
                 <svg class="w-4 h-4 mr-1 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Pelanggan terdaftar WAJIB dipilih dari daftar saat memilih pembayaran tempo.
@@ -91,7 +91,7 @@
       <div class="p-6 border-t border-slate-100 bg-slate-50/50 shrink-0">
         <button 
           onclick={() => pos.checkout.processCheckout()}
-          disabled={pos.commonState.processing || (pos.checkout.paymentMethod === 'tempo' && !pos.checkout.selectedCustomerId)}
+          disabled={pos.commonState.processing || (pos.checkout.selectedType === 'tempo' && !pos.checkout.selectedCustomerId)}
           class="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-sm transition-colors flex items-center justify-center"
         >
           {#if pos.commonState.processing}

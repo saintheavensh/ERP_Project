@@ -6,7 +6,7 @@ export class CustomerListState {
   token: string;
 
   showModal = $state(false);
-  newCustomer = $state({ name: '', phone: '', email: '' });
+  newCustomer = $state({ name: '', phone: '', email: '', allowTempo: false });
   loading = $state(false);
   errorMsg = $state('');
 
@@ -33,7 +33,7 @@ export class CustomerListState {
       const result = await res.json();
       if (res.ok) {
         this.showModal = false;
-        this.newCustomer = { name: '', phone: '', email: '' };
+        this.newCustomer = { name: '', phone: '', email: '', allowTempo: false };
         await invalidateAll();
       } else {
         this.errorMsg = result.error?.message || 'Failed to create customer';

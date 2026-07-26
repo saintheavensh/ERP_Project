@@ -55,6 +55,14 @@ const PERMISSIONS = [
   { id: IDS.permBranchManage, code: 'branch.manage', description: 'Create or edit branches' },
   { id: IDS.permUserManage, code: 'user.manage', description: 'Create users and change their status/role' },
   { id: IDS.permSettingsManageCompany, code: 'settings.manage_company', description: 'Edit the company/tenant profile' },
+
+  // Phase 6 (6A.1) — printer devices/templates/assignments. Admin-only, same
+  // pattern as permAuditView — deliberately NOT granted to Manager below.
+  { id: IDS.permPrinterManage, code: 'printer.manage', description: 'Manage printer devices, templates, and document assignments' },
+
+  // Tahap A (go-live gap Tier-1 #4) — payment-method CRUD. Admin-only, same
+  // pattern as permBranchManage — NOT in any role grant below.
+  { id: IDS.permPaymentManage, code: 'payment.manage', description: 'Create, edit, or deactivate tenant payment methods' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both

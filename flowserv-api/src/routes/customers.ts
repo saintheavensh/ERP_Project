@@ -16,6 +16,7 @@ const createCustomerSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
+  allowTempo: z.boolean().optional(), // D1 — izin utang; default false di DB
 });
 
 // List customers
@@ -49,7 +50,7 @@ customersRouter.get('/:id', async (c) => {
 });
 
 // Create customer
-customersRouter.post('/', requirePermission('customer.manage'), zValidator('json', createCustomerSchema), auditMiddleware({ action: 'customer.create', entityType: 'customer', bodyFields: ['name', 'phone', 'email'] }), async (c) => {
+customersRouter.post('/', requirePermission('customer.manage'), zValidator('json', createCustomerSchema), auditMiddleware({ action: 'customer.create', entityType: 'customer', bodyFields: ['name', 'phone', 'email', 'allowTempo'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
   
@@ -58,8 +59,9 @@ customersRouter.post('/', requirePermission('customer.manage'), zValidator('json
     name: data.name,
     phone: data.phone || null,
     email: data.email || null,
+    allowTempo: data.allowTempo ?? false,
   }).returning();
-  
+
   return successResponse(c, result[0], undefined, 201);
 });
 
@@ -68,9 +70,10 @@ const editCustomerSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional().or(z.literal('')),
   email: z.string().email().optional().or(z.literal('')),
+  allowTempo: z.boolean().optional(), // D1 — izin utang per pelanggan
 });
 
-customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('json', editCustomerSchema), auditMiddleware({ action: 'customer.update', entityType: 'customer', entityIdParam: 'id', bodyFields: ['name', 'phone', 'email'] }), async (c) => {
+customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('json', editCustomerSchema), auditMiddleware({ action: 'customer.update', entityType: 'customer', entityIdParam: 'id', bodyFields: ['name', 'phone', 'email', 'allowTempo'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const customerId = c.req.param('id');
   const data = c.req.valid('json');
@@ -84,6 +87,7 @@ customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('js
     name: data.name,
     phone: data.phone || null,
     email: data.email || null,
+    ...(data.allowTempo !== undefined ? { allowTempo: data.allowTempo } : {}),
   }).where(eq(customers.id, customerId)).returning();
   
   return successResponse(c, result[0]);

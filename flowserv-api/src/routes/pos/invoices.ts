@@ -10,6 +10,7 @@ import { auditMiddleware } from '../../middleware/audit';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../../lib/pagination';
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
+import { evaluateTempoEligibility } from '../../lib/tempo';
 import { findIdempotentResponse, recordIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../../lib/idempotency';
 import { posCheckoutSchema } from './types';
 import { consumeStock } from '../../modules/inventory/service';
@@ -108,15 +109,25 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
   // Resolve the customer snapshot: customerId is the link, customerName is
   // what the invoice says at the time — it must survive a rename/delete later.
   let resolvedCustomerName = data.customerName || 'Pelanggan Umum';
+  let customerAllowTempo = false;
   if (data.customerId) {
     const [customer] = await db
-      .select({ name: customers.name })
+      .select({ name: customers.name, allowTempo: customers.allowTempo })
       .from(customers)
       .where(and(eq(customers.id, data.customerId), eq(customers.tenantId, tenantId)));
     if (!customer) {
       return errorResponse(c, 'CUSTOMER_NOT_FOUND', 'Customer not found', undefined, 404);
     }
     resolvedCustomerName = customer.name;
+    customerAllowTempo = customer.allowTempo;
+  }
+
+  // D1 — only a customer explicitly allowed by owner/manager can buy on tempo.
+  // 422 (business-rule violation), not 400: the request is well-formed, the
+  // customer just isn't eligible for credit.
+  const tempoCheck = evaluateTempoEligibility({ paymentMethod: data.paymentMethod, customerAllowTempo });
+  if (!tempoCheck.allowed) {
+    return errorResponse(c, tempoCheck.code!, tempoCheck.message!, undefined, 422);
   }
 
   // Hitung total

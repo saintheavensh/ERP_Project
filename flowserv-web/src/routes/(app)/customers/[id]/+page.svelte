@@ -27,6 +27,38 @@
     </div>
   </div>
 
+  <!-- D1 — izin tempo (utang) per pelanggan. Owner/manager bisa memberi/mencabut
+       kapan pun; gerbang ini yang dicek saat checkout POS metode Tempo. -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8" data-testid="tempo-card">
+    <div class="px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center gap-3">
+      <div>
+        <h2 class="font-semibold text-slate-800">Pembayaran Tempo (Utang)</h2>
+        <p class="text-sm mt-0.5">
+          {#if state.customer?.allowTempo}
+            <span class="inline-flex items-center gap-1 text-green-700 font-medium" data-testid="tempo-status">
+              <span class="w-2 h-2 rounded-full bg-green-500"></span> Diizinkan
+            </span>
+          {:else}
+            <span class="inline-flex items-center gap-1 text-slate-500 font-medium" data-testid="tempo-status">
+              <span class="w-2 h-2 rounded-full bg-slate-400"></span> Tidak diizinkan
+            </span>
+          {/if}
+          <span class="text-slate-400 text-xs block mt-0.5">Menentukan apakah pelanggan ini boleh checkout dengan metode Tempo.</span>
+        </p>
+      </div>
+      <button
+        onclick={() => state.setAllowTempo(!state.customer?.allowTempo)}
+        disabled={state.tempoSaving}
+        data-testid="tempo-toggle"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 {state.customer?.allowTempo ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-blue-600 hover:bg-blue-700 text-white'}">
+        {state.tempoSaving ? 'Menyimpan…' : state.customer?.allowTempo ? 'Cabut izin tempo' : 'Izinkan tempo'}
+      </button>
+    </div>
+    {#if state.errorMsg}
+      <div class="px-4 sm:px-6 pb-3 text-sm text-red-600">{state.errorMsg}</div>
+    {/if}
+  </div>
+
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
     <div class="px-4 sm:px-6 py-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-2 bg-slate-50">
       <h2 class="font-semibold text-lg text-slate-800">Registered Devices / Assets</h2>

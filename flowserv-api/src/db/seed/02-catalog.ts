@@ -20,12 +20,28 @@ export async function seedCatalog(tx: SeedTx): Promise<void> {
     { id: IDS.deviceBrandApple, tenantId: IDS.tenantMain, name: 'Apple' },
   ]).onConflictDoNothing();
 
+  // Tahap A — katalog device (gambar/spesifikasi/saran servis). Cuma dua model
+  // yang diisi sebagai contoh nyata untuk didemokan; sisanya sengaja dibiarkan
+  // kosong (imageUrl/specs/suggestedServices semua nullable) — persis kondisi
+  // "device belum dikatalogkan" yang harus tetap bisa dipakai di intake.
   await tx.insert(deviceModels).values([
-    { id: IDS.deviceModelA10, deviceBrandId: IDS.deviceBrandSamsung, name: 'Galaxy A10' },
+    {
+      id: IDS.deviceModelA10,
+      deviceBrandId: IDS.deviceBrandSamsung,
+      name: 'Galaxy A10',
+      imageUrl: 'https://images.samsung.com/is/image/samsung/assets/id/galaxy-a10/gallery/galaxy-a10-black-front.jpg',
+      specs: { RAM: '2 GB', Storage: '32 GB', Battery: '3400 mAh', Display: '6.2" HD+' },
+    },
     { id: IDS.deviceModelAsusX, deviceBrandId: IDS.deviceBrandAsus, name: 'X441U' },
     { id: IDS.deviceModelRedmi9, deviceBrandId: IDS.deviceBrandXiaomi, name: 'Redmi 9' },
     { id: IDS.deviceModelA3s, deviceBrandId: IDS.deviceBrandOppo, name: 'A3s' },
-    { id: IDS.deviceModelIphoneX, deviceBrandId: IDS.deviceBrandApple, name: 'iPhone X' },
+    {
+      id: IDS.deviceModelIphoneX,
+      deviceBrandId: IDS.deviceBrandApple,
+      name: 'iPhone X',
+      imageUrl: 'https://www.apple.com/newsroom/images/product/iphone/standard/apple_iphonex_hero_09122017_big.jpg.large.jpg',
+      specs: { RAM: '3 GB', Storage: '64/256 GB', Battery: '2716 mAh', Display: '5.8" OLED' },
+    },
   ]).onConflictDoNothing();
 
   // Merk SPAREPART — beda konsep dari deviceBrands di atas: ini menentukan

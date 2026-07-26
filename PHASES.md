@@ -13,16 +13,31 @@
 
 ---
 
-## Current Phase: `Phase 5 — COMPLETE` → next: Phase 6 (Printer Integration)
+## Current Phase: `Phase 6 — IN PROGRESS (6A + 6B done)` — Printer Integration
 
+> **⚠️ Updated 2026-07-24 (later still).** **6B (frontend) is done** — Printer Settings
+> tab (devices CRUD, read-only template list, assignment matrix) and the full Cetak flow
+> (thermal preview, A4 print, agent-send with graceful offline fallback) wired into the
+> real POS invoice detail modal. See the Phase 6 section below for full evidence. Next:
+> **6C (Python agent)**, then 6D (verify/docs).
+>
+> **⚠️ Updated 2026-07-24 (later).** Phase 5 merged to `main` (fast-forward to `26f06f4`,
+> then a docs commit `4fae57f`). **Phase 6 work started on `phase-6/printer`.** The plan
+> is [`plan/phase-6-printer.md`](plan/phase-6-printer.md) — task breakdown 6A–6D, the
+> shared-render-engine decision (D1), and the resolved scope decisions (Q1: no physical
+> printer available, build test-covered without hardware via python-escpos's Dummy/File
+> backend; Q2: MVP is POS receipt + A4 invoice, `label` deferred; Q3: Python 3.14.0
+> confirmed available). **6A (the entire backend foundation — seed, pure render engine,
+> config CRUD, render endpoint) is done and independently verified**, see the Phase 6
+> section below for full evidence.
+>
 > **⚠️ Updated 2026-07-24.** **Phase 5 (Core UI Polish) is complete.** P9 (Settings
 > CRUD — Company/Branches/Users & Roles, closing the long-open 2A.1 create-user
 > endpoint) was the last remaining task; see the Phase 5 section below for the full
 > per-task breakdown (P1.5 through P9, ~12 sub-tasks across BE+FE). The per-task
 > `plan/P*.md` files for this phase were **deleted on completion**, same convention as
 > the H-track and Track F — durable evidence lives in this file and in git history on
-> `phase-5/core-ui`. **Phase 6 (Printer Integration) has not been started; zero code
-> exists for it yet.** Read `plan/README.md`'s "Later phases" section before starting.
+> `phase-5/core-ui`.
 >
 > **⚠️ Updated 2026-07-23.** The **Hardening Track (H0–H17) is complete and merged to
 > `main`** (commits `d32e881`→`aa341c6`). It built most of Phases 3.5, 4.5, and the
@@ -829,15 +844,210 @@ missing.
 
 ## PHASE 6 — Printer Integration (Python)
 > **Goal:** Build local thermal printer agent.
-> **Read first:** specification/09-printer-integration.md
+> **Read first:** specification/09-printer-integration.md,
+> [`plan/phase-6-printer.md`](plan/phase-6-printer.md) (task breakdown 6A–6D, the shared-
+> render-engine decision D1, and the resolved Q1–Q3 scope decisions).
 > **Branch:** `phase-6/printer`
+>
+> **Status (2026-07-24): 6A + 6B + 6C are done.** Zero physical printer is available in
+> this environment (plan Q1) — everything below is built and verified without hardware
+> (Dummy/File `python-escpos` backends + a packaged `printer-agent.exe` that answers
+> `/health` and `/print`); the real ESC/POS print is a checklist deferred to 6D.1. Q2
+> scoped this phase's MVP to the POS receipt + A4 invoice only; `label` has seed data
+> but no print trigger yet. **Only 6D.1 (physical print, hardware-dependent, user-run)
+> and the final merge to `main` remain.**
 
-- [ ] 6.1 Flask app: POST /print endpoint
-- [ ] 6.2 Default template per paper size (58mm/80mm)
-- [ ] 6.3 FE: Printer settings page (devices, templates, assignments)
-- [ ] 6.4 Verify: physical print test
-- [ ] 6.5 PyInstaller packaging
-- [ ] 6.6 Git commit: `feat: phase 6 complete — printer integration`
+- [x] 6A.1 Seed: `printer.manage` permission (admin-only, not granted to Manager) +
+      3 devices / 4 templates / 3 assignments, deliberately asymmetric across branches
+      (Cabang has no `invoice_a4` assignment) to exercise the fallback path 6A.4 needed.
+      Verified: `npm run db:reset` twice — idempotent; direct DB query confirmed row
+      shapes and that the permission is granted only to Super Admin.
+- [x] 6A.2 Pure render engine (`modules/printer/render.ts`, decision D1): `buildDocumentData()`
+      is the one place `layoutConfig` is read (shared by both paper mechanisms);
+      `renderThermalBlocks()` turns it into a flat `ThermalBlock[]` for 58/80mm with
+      `padRow()`/`truncate()` doing all column alignment server-side — row/total blocks
+      carry an already-padded single string, so neither the Python agent (6C) nor the
+      preview component (6B) ever recomputes alignment. 15 unit tests (width-fit on
+      every emitted block, long-name truncation, the "detail increases with paper size"
+      data-inclusion table, conditional footer). `npx vitest run`: 198/198 (was 183).
+- [x] 6A.3 Config CRUD (`routes/printer.ts` + `modules/printer/service.ts`, mounted at
+      `/v1/printer`, admin-only). `upsertAssignment()` validates three real constraints,
+      not just existence: device belongs to the assignment's branch, template's
+      `documentType` matches the slot, and device `paperSize` matches template
+      `paperSize` (the one that actually breaks physical output if wrong). Verified live
+      (curl, `RBAC_MODE=enforce`): Manager → 403; Super Admin → 200/201 CRUD; cross-tenant
+      branch → 404; invalid enum → 400; all three assignment-mismatch guards → 422 with
+      the specific code; upsert updates the existing `(branchId, documentType)` row
+      rather than duplicating it.
+- [x] 6A.4 Render endpoint (`routes/print.ts` + `modules/printer/document.ts`,
+      `GET /v1/print/documents/:documentType/:id?paperSize=`, `requireAuth` only —
+      **not** admin-gated, since printing your own sale isn't a printer-admin action).
+      Fetches the real `pos_invoice` (+lines, customer, branch, tenant, linked ticket's
+      technician), resolves branch assignment → tenant default → `PAPER_SIZE_REQUIRED`
+      if genuinely ambiguous (`receipt` with no assignment and no explicit size).
+      `technicianName` is the only "ticket info" field wired — `service_tickets` has no
+      complaint/diagnosis columns in this schema, a real already-known gap, not invented
+      here. Verified live end-to-end against a real POS invoice from the actual checkout
+      API (not a fixture): branch-assignment resolution (Pusat 80mm, Cabang 58mm),
+      Cabang's missing `invoice_a4` assignment falling back to the tenant default
+      (`assignment: null`), an explicit `?paperSize=` override producing the same
+      fallback shape, 400 on `label`, 404 on a missing/cross-tenant invoice, 400
+      `PAPER_SIZE_REQUIRED` on a freshly-created branch with zero assignments, and exact
+      48-char/32-char block-width verification. Dev DB reset to clean seed state
+      afterward. `npx tsc --noEmit` clean throughout 6A; `npx vitest run`: 198/198.
+- [x] 6B.1 FE: Printer Settings tab (`PrinterTab.svelte`, fifth tab on the P9 shell,
+      `?tab=printers`). Devices: full CRUD, mirrors `BranchesTab`'s established pattern.
+      Templates: read-only list — editing `layoutConfig`'s 12 boolean flags is
+      deliberately deferred to the WYSIWYG template builder PHASES.md already scopes to
+      Phase 7.2, not a gap. Assignment matrix: rows = branches, columns = document
+      types; the assign modal filters the template dropdown to the slot's `documentType`
+      and (once a device is picked) that device's `paperSize`, so the client can never
+      submit a combination 6A.3 would reject with `PAPER_SIZE_MISMATCH` —
+      correct-by-construction. 5 new Playwright tests (seeded-data render, the real
+      Cabang seed asymmetry — receipt assigned, `invoice_a4` "Belum diatur", device
+      create+edit, the full "Belum diatur → configured" flow, mobile no-overflow); two
+      `data-testid`s added after the tests caught real strict-mode ambiguity (a
+      template's name / a device's name each render in two places on the page).
+      `npx svelte-check`: 0 errors. No regression on the 7 pre-existing `p9-settings`
+      tests despite editing the shared `+page.svelte`/`+page.server.ts`.
+- [x] 6B.2–6B.4 FE: Cetak flow — built together (`ThermalPreview.svelte`,
+      `A4Invoice.svelte`, `PrintButton.svelte`), since a preview component with no real
+      caller isn't independently meaningful under this file's Definition of Done.
+      `PrintButton` fetches `GET /v1/print/documents/:documentType/:id` (letting the
+      backend resolve the branch's real assignment) and shows whichever preview matches
+      the resolved `paperSize` — `ThermalPreview` renders the real `ThermalBlock[]`
+      verbatim in a monospace box at the exact 32/48-char width (no layout decision in
+      the FE, per D1); `A4Invoice` renders `data` directly as HTML with print-scoped CSS
+      (`#print-area` + a `visibility` trick) so `window.print()` prints only the
+      invoice, not the whole SPA page — the on-screen preview IS the exact markup sent
+      to print, per the spec's WYSIWYG rule. Thermal's "Kirim ke Printer" POSTs to a
+      fixed `127.0.0.1:9100` (`lib/api/printer-agent.ts`, the port 6C's Flask agent
+      must bind to); since the agent doesn't exist yet, a failed/refused POST degrades
+      to a clear "printer agent tidak terdeteksi" message instead of hanging, per the
+      plan's R2 risk mitigation. Wired into `InvoiceDetailModal.svelte`'s footer as
+      "Cetak Struk" / "Cetak Invoice A4" — every `pos_invoice` (walk-in or
+      ticket-linked via H17) surfaces there already. 5 new Playwright tests against
+      real invoices created through the actual checkout API: correct resolved
+      paperSize + real content on the thermal preview; A4 shows its layout and never
+      renders thermal blocks; the agent-offline message actually appears; `window.print()`
+      is actually invoked (spied via `page.addInitScript`, asserted with `expect.poll`);
+      mobile no-overflow. Full Playwright suite (**75 tests**, all specs) passing,
+      including the pre-existing P7 sweep's "POS invoice detail modal does not
+      overflow" check — confirms the two new buttons don't regress that modal.
+      `npx svelte-check`: 0 errors. `npx vitest run`: 198/198 (backend untouched).
+- [x] 6C Python agent (`printer-agent/`, separate from `flowserv-api` per spec rule 1) —
+      **done 2026-07-24.** `printer_agent.py` (Flask, binds `127.0.0.1:9100` only —
+      matches `PRINTER_AGENT_URL` in `flowserv-web/src/lib/api/printer-agent.ts`):
+      `GET /health`, `POST /print`. `escpos_translator.py`: pure `blocks_to_escpos()`,
+      one branch per `ThermalBlock` type (`text`/`line`/`row`/`total`/`cut`), no layout
+      decisions (mirrors D1 — the TS render engine is the only place alignment happens).
+      `connection.py`: factory building a real `python-escpos` `Usb`/`Network`/`Serial`
+      instance, or `Dummy`/`File` with zero hardware, from a per-machine `config.json`
+      (git-ignored; `config.example.json` documents all 5 modes) — defaults to `dummy`
+      when no config exists, so the whole feature demos with no printer anywhere.
+      33 pytest tests (23 at initial 6C, +10 for 6C.5 below): `test_translator.py` (byte-level against `Dummy` — asserts the
+      actual ESC/POS protocol bytes: `ESC E` bold, `ESC a` align, `GS V` cut, exact
+      32/48-char line width, unknown block type raises rather than silently dropping a
+      line), `test_connection.py` (mode selection incl. mocked Usb/Network/Serial ctors),
+      `test_agent.py` (Flask endpoint incl. 400s on bad payload, CORS preflight).
+      Live-verified beyond the test suite: ran the real Flask process, `curl`'d
+      `/health` → 200 and `/print` with a real block document → `{"status":"printed"}`;
+      switched `config.json` to `file` mode and inspected the raw output bytes
+      (`\x1bE\x01...\x1dV\x00`) to confirm the byte stream a real printer would receive.
+      **6C.4 PyInstaller packaging**: `python -m PyInstaller --onefile --name
+      printer-agent --collect-data escpos printer_agent.py` → `dist/printer-agent.exe`.
+      Found and fixed a real packaging bug: without `--collect-data escpos`, the exe
+      answers `/health` but every `/print` fails (`python-escpos` loads a bundled
+      `capabilities.json` data file PyInstaller doesn't auto-detect) — documented in
+      `printer-agent/README.md` so it isn't rediscovered. Verified: ran the built exe
+      standalone (no Python on the invoking shell needed), `/health` → 200, `/print` →
+      `{"status":"printed"}`. `printer-agent/README.md` documents install, all 6
+      connection modes, hardware-free testing, the physical-print checklist (6D.1), and
+      the packaging command with the `--collect-data` gotcha.
+- [x] 6C.5 Windows printer scan-and-pick — **added 2026-07-24** after a direct request:
+      typing a USB vendor/product ID or IP address by hand is unfriendly, and most
+      receipt printers already register themselves as an installed Windows printer
+      queue once their driver is set up. New `win32` connection mode (`connection.py`'s
+      `build_printer()`, via `python-escpos`'s `Win32Raw` — raw ESC/POS through the
+      Windows print spooler, no direct USB/serial wiring). `connection.py`'s
+      `scan_windows_printers()` enumerates installed queues via `pywin32`
+      (`win32print.EnumPrinters`), flagging a `recommended` hint (driver-name keyword
+      match or a non-virtual port) — never filtering, always showing everything so the
+      user's pick stays explicit. Two new agent endpoints: `GET /printers` (scan,
+      read-only) and `GET`/`POST /config` (read/persist the local connection choice —
+      `POST` validates by actually building the printer instance before writing, so a
+      typo surfaces immediately, not on the next real print). Frontend:
+      `PrinterScanPicker.svelte`, shown in `PrinterTab.svelte`'s add/edit device modals
+      only when `connectionType === 'win32'` — "Pindai Printer di Komputer Ini" lists
+      real installed printers, clicking one fills `connectionAddress` (and the device
+      name if still empty) and POSTs the pick to the agent's `/config` so the very next
+      print already uses it, no separate config-file step. `CONNECTION_TYPES` in
+      `flowserv-api/src/modules/printer/types.ts` extended with `'win32'` (additive,
+      no exhaustive switch anywhere depended on the old 4-value set).
+      Found and fixed a real bug while wiring this: `connection.py`'s `usb` branch
+      passed `timeout` as `Usb()`'s 3rd *positional* argument, which is actually
+      `usb_args` (a dict) — silently harmless at the default `timeout=0` (falsy, so
+      `usb_args or {}` masked it) but would raise `'int' object does not support item
+      assignment` the moment a non-zero timeout was configured. Fixed to pass
+      `timeout=` by keyword; the test asserting the old (wrong) positional shape was
+      rewritten to assert against the real `Usb` signature instead of a fake that
+      happened to match the bug.
+      10 new pytest tests (33 total): win32 mode construction, scan sorting/flagging
+      (mocked `win32print`, incl. the `ImportError` non-Windows path →
+      `PrinterScanUnavailableError` → 501), config save/load round-trip, `/printers`
+      and `/config` endpoint behavior. Live-verified beyond pytest, on this actual
+      Windows machine: `GET /printers` returned a real installed "POS-80" printer
+      (`recommended: true`, `isDefault: true`) alongside PDF/Fax/OneNote queues
+      (`recommended: false`); `POST /config` with `{mode:"win32", win32:
+      {printerName:"POS-80"}}` → `{"status":"saved"}`; a subsequent `POST /print` with
+      that config actually spooled to "POS-80" and returned `{"status":"printed"}`
+      with no job left stuck in the Windows print queue afterward. `npx tsc --noEmit`
+      + `npx svelte-check`: 0 errors. `npx vitest run`: 198/198 (backend untouched
+      beyond the additive enum value).
+- [x] 6C.6 Per-printer test print — **added 2026-07-24**, requested to answer "is this
+      printer actually integrated correctly?" without needing a real invoice. New
+      `POST /test-print` (`build_test_print_blocks()` in `escpos_translator.py`, plus a
+      new `pad_row()` helper mirroring `render.ts`'s column alignment) prints a generic
+      diagnostic receipt — exercises every block type a real receipt uses — through
+      whichever printer `config.json` currently points at. FE: a "Test Cetak" link in
+      `PrinterScanPicker.svelte` right after picking a printer, and a "Test Cetak"
+      button per row in `PrinterTab.svelte`'s devices table (any time, not just at
+      setup), both gated to non-A4 devices since A4 never touches the agent (spec
+      rule 2). 9 new pytest tests (42 total): `pad_row`/`build_test_print_blocks` unit
+      tests (3), `/test-print` endpoint behavior — success, bad paperSize, connection
+      failure → 502 (4), plus 2 regression tests for the `_resolve_base_dir()` bug
+      below. `npx svelte-check`: 0 errors.
+      **Found and fixed a real bug while verifying this end-to-end via the packaged
+      exe (not just pytest):** `connection.py`'s `CONFIG_PATH` was computed from
+      `__file__`'s directory — inside a PyInstaller `--onefile` exe, `__file__`
+      resolves to a path *inside* the fresh temp directory the exe extracts itself
+      into on every launch (and deletes on exit), not next to the real `.exe`. This
+      meant `config.json` (the whole reason the agent has a config file — persisting
+      the cashier's printer choice) silently reset to `dummy` on every single run of
+      the packaged exe, and every `POST /config` write vanished the moment the process
+      exited — invisible when testing via `python printer_agent.py` directly (where
+      `__file__` is correct), only surfacing when testing the actual shipped artifact.
+      Fixed with `_resolve_base_dir()`: checks `sys.frozen` (PyInstaller's signal for
+      "running from a bundle") and resolves next to `sys.executable` instead in that
+      case. Verified live: copied `config.json` next to `dist/printer-agent.exe`,
+      confirmed `GET /config` from the running exe correctly returned the persisted
+      `win32`/"POS-80" choice (not `dummy`), and `POST /test-print` against it returned
+      `{"status":"printed","mode":"win32"}`. Rebuilt and redeployed the running agent
+      with the fix. `printer-agent/README.md`'s packaging section now states plainly:
+      `config.json` must live in the same folder as `printer-agent.exe`, wherever it's
+      moved to (Desktop, Startup folder, etc.).
+- [/] 6D Verify + docs — **partial.** Backend (33 pytest) + this repo's existing 198
+      backend unit + Playwright all still green (agent is a fully separate process;
+      nothing pre-existing in `flowserv-api`/`flowserv-web` broke). **Left `[/]` not
+      `[x]`**: 6D.1's physical print test is explicitly hardware-dependent (plan Q1) —
+      no printer exists in this environment, so it stays a checklist in
+      `printer-agent/README.md` for the user to run once real hardware is available,
+      not a silent `[x]`. The `config.json` → `file` mode gives byte-level output to
+      inspect without hardware, and the win32/"POS-80" live test above proves the
+      spooler path end-to-end, but "the printer actually cuts paper" can only be
+      confirmed on a physical device.
+- [ ] 6.6 Git commit + merge `phase-6/printer` → `main` once 6D.1 (physical print,
+      user-run) closes out the phase.
 
 ---
 

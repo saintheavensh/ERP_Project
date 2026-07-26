@@ -1,7 +1,17 @@
 <script lang="ts">
   import type { TicketIntakeState } from '$lib/states/tickets/ticket.intake.svelte';
+  import PasscodeField from './PasscodeField.svelte';
 
   let { state } = $props<{ state: TicketIntakeState }>();
+
+  // Saran servis umum — menempel di bagian intake (Keluhan/Kerusakan), BUKAN di
+  // katalog device (keputusan 2026-07-25). Daftar statis, mudah diedit; bisa
+  // dijadikan konfigurasi per-tenant nanti bila diperlukan (fondasi dulu).
+  const COMMON_SERVICE_SUGGESTIONS = [
+    'Ganti LCD', 'Ganti Baterai', 'Ganti Konektor Cas', 'Mati Total',
+    'Kena Air', 'Ganti Tombol Power', 'Ganti Speaker', 'Ganti Mic',
+    'Ganti Kamera', 'Software / Flash Ulang', 'Lupa Pola/Sandi',
+  ];
 </script>
 
 <form onsubmit={(e) => { e.preventDefault(); state.submitIntake(); }} class="space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-200">
@@ -82,20 +92,68 @@
             <option value="Other">Other</option>
           </select>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Brand</label>
-          <input id="brand" type="text" bind:value={state.form.assetBrand} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+          <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchBrand()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+          {#if state.showBrandDropdown && state.brandResults.length > 0}
+            <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto" data-testid="brand-dropdown">
+              {#each state.brandResults as b}
+                <li>
+                  <button type="button" class="w-full text-left px-4 py-2 hover:bg-slate-50 border-b last:border-0" onclick={() => state.selectBrand(b)}>
+                    <div class="font-medium text-slate-900">{b.name}</div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model</label>
-          <input id="model" type="text" bind:value={state.form.assetModel} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Galaxy S23">
+          <input id="model" type="text" bind:value={state.form.assetModel} oninput={() => state.searchDeviceModel()} onfocus={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder={state.selectedBrandId ? 'Pilih / ketik model...' : 'e.g. Galaxy S23'}>
+
+          {#if state.showDeviceDropdown && state.deviceModelResults.length > 0}
+            <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {#each state.deviceModelResults as m}
+                <li>
+                  <button type="button" class="w-full text-left px-4 py-2 hover:bg-slate-50 border-b last:border-0" onclick={() => state.selectDeviceModel(m)}>
+                    <div class="font-medium text-slate-900">{m.brandName} {m.name}</div>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="sn">Serial Number / IMEI</label>
           <input id="sn" type="text" bind:value={state.form.assetSn} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="...">
         </div>
       </div>
+
+      <!-- Tahap A — device catalog match: spesifikasi (teks) saja untuk
+           identifikasi unit. Cuma tampil kalau autocomplete di atas match ke
+           katalog. Gambar & saran servis TIDAK di sini — saran servis pindah ke
+           bagian intake (Keluhan/Kerusakan), tidak menempel ke device
+           (keputusan 2026-07-25). -->
+      {#if state.selectedDeviceModel && state.selectedDeviceModel.specs && Object.keys(state.selectedDeviceModel.specs).length > 0}
+        <div class="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg" data-testid="device-catalog-preview">
+          <dl class="text-xs grid grid-cols-2 gap-x-3 gap-y-0.5">
+            {#each Object.entries(state.selectedDeviceModel.specs) as [key, value]}
+              <div class="contents">
+                <dt class="text-slate-400">{key}</dt>
+                <dd class="text-slate-700">{value}</dd>
+              </div>
+            {/each}
+          </dl>
+        </div>
+      {/if}
     {/if}
+    <!-- Tahap A — go-live gap Tier-1 #2. Optional; recorded now, given back at
+         handover (QC Akhir). Shown for both new and pre-selected devices. -->
+    <div class="mt-4">
+      <span class="block text-sm font-medium text-slate-700 mb-1">Sandi / Pola (Opsional)</span>
+      <PasscodeField value={state.form.devicePasscode} onchange={(v) => (state.form.devicePasscode = v)} id="passcode" />
+      <p class="text-xs text-slate-500 mt-1">Pilih <strong>Pola</strong> lalu gambar polanya agar tercatat pasti (bukan "L terbalik"). Dikembalikan ke pelanggan saat serah-terima.</p>
+    </div>
   </div>
 
   <!-- Service Details -->
@@ -104,12 +162,29 @@
       <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">3</span>
       Service Details
     </h2>
+    <!-- Tahap A — go-live gap Tier-1 #3. Optional but encouraged: feeds the
+         label/tanda-terima print documents ("kerusakan"). SVC-001 always
+         named complaint capture as part of intake; no field for it existed
+         until now. -->
+    <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="complaint">Keluhan / Kerusakan</label>
+      <textarea id="complaint" bind:value={state.form.reportedComplaint} rows="2" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. LCD retak, tidak bisa charge"></textarea>
+      <!-- Saran servis umum — klik untuk menambah ke Keluhan. Tidak bergantung
+           pada device yang dipilih. -->
+      <div class="flex flex-wrap gap-1.5 mt-2" data-testid="service-suggestions">
+        {#each COMMON_SERVICE_SUGGESTIONS as service}
+          <button type="button" class="px-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-full hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors" onclick={() => state.appendSuggestedService(service)}>
+            + {service}
+          </button>
+        {/each}
+      </div>
+    </div>
     <div>
       <label class="block text-sm font-medium text-slate-700 mb-1" for="flow">Service Flow *</label>
       <select id="flow" bind:value={state.form.flowTemplateId} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
         <option value="">Select Service Workflow...</option>
         {#each state.templates as t}
-          <option value={t.id}>{t.name} - {t.description}</option>
+          <option value={t.id}>{t.name}</option>
         {/each}
       </select>
       <p class="text-xs text-slate-500 mt-2">

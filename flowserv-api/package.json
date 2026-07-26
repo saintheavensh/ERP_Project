@@ -11,7 +11,8 @@
     "dev": "tsx watch src/index.ts",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed/index.ts",
-    "db:reset": "tsx src/db/reset.ts && npm run db:push && npm run db:seed",
+    "db:reset": "tsx src/db/reset.ts && npm run db:push && npm run db:seed && npm run import:devices",
+    "import:devices": "tsx src/db/seed/import-device-catalog.ts",
     "db:backfill-ledger": "tsx src/db/backfill-ledger.ts"
   },
   "keywords": [],

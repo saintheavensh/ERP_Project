@@ -63,3 +63,14 @@ export const cancelTicketInput = z.object({
 });
 
 export type CancelTicketInput = z.infer<typeof cancelTicketInput>;
+
+// Tahap A — go-live gap Tier-1 #2/#3. Both fields are captured at intake but
+// editable afterward (correcting a typo, clearing sandi/pola once handed
+// back at QC Akhir). `null` clears a field; an omitted key is a no-op, not a
+// clear — so a caller updating just one field never touches the other.
+export const updateIntakeDetailsInput = z.object({
+  devicePasscode: z.string().nullable().optional(),
+  reportedComplaint: z.string().nullable().optional(),
+});
+
+export type UpdateIntakeDetailsInput = z.infer<typeof updateIntakeDetailsInput>;

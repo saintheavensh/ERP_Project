@@ -62,6 +62,91 @@ export class TicketDetailState {
     finally { this.assignLoading = false; }
   }
 
+  // Tahap A — go-live gap Tier-1 #2/#3. Sandi/pola + keluhan/kerusakan:
+  // editable at any point, not just at intake (lets a mis-keyed value be
+  // corrected, or sandi/pola cleared once handed back to the customer at QC
+  // Akhir). Both fields share one PATCH endpoint but get independent edit
+  // affordances in the UI, so editing one never touches the other.
+  passcodeEditing = $state(false);
+  passcodeDraft = $state('');
+  passcodeLoading = $state(false);
+
+  openPasscodeEdit() {
+    this.passcodeDraft = this.ticket?.devicePasscode || '';
+    this.passcodeEditing = true;
+  }
+
+  async savePasscode() {
+    this.passcodeLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/intake-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({ devicePasscode: this.passcodeDraft || null })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.passcodeEditing = false;
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal menyimpan sandi/pola';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.passcodeLoading = false; }
+  }
+
+  complaintEditing = $state(false);
+  complaintDraft = $state('');
+  complaintLoading = $state(false);
+
+  openComplaintEdit() {
+    this.complaintDraft = this.ticket?.reportedComplaint || '';
+    this.complaintEditing = true;
+  }
+
+  async saveComplaint() {
+    this.complaintLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/intake-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({ reportedComplaint: this.complaintDraft || null })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.complaintEditing = false;
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal menyimpan keluhan';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.complaintLoading = false; }
+  }
+
+  // Tahap A — go-live gap Tier-1 #3 (print triggers). Print-button visibility
+  // conditions, each tied to a real, already-tracked signal rather than the
+  // current node's name (which would break the moment a tenant renames a
+  // node) except where the document is inherently node-specific (tanda
+  // terima only makes sense for a unit that actually went into storage).
+  get canPrintLabel() {
+    // "Diagnosis complete" is approximated as "left Intake" — true the
+    // instant the ticket has been diagnosed, in every template (all three
+    // seeded templates name their first node "Intake").
+    return !!this.currentNode && this.currentNode.name !== 'Intake';
+  }
+
+  get hasEnteredUnitDisimpan() {
+    return this.history.some((h: any) => h.nodeName === 'Unit Disimpan');
+  }
+
+  get invoice() { return this.data.data?.invoice ?? null; }
+
+  // Tahap A — device catalog. Null when the asset isn't linked to a catalog
+  // entry (the common case: freeform brand/model text with no match yet).
+  get deviceModel() { return this.data.data?.deviceModel ?? null; }
+
   // H7 — Charges
   chargeForm = $state<{ sourceType: 'part' | 'labor' | 'fee'; inventoryItemId: string; description: string; quantity: number; unitPrice: string }>({
     sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: ''

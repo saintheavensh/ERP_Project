@@ -18,6 +18,7 @@ import { tenants, branches, users } from './core';
 import { flowTemplates, flowNodes } from './flow';
 import { ticketStatusEnum } from './enums';
 import { money } from './columns';
+import { deviceModels } from './product_catalog';
 
 
 export const customers = pgTable('customers', {
@@ -26,6 +27,10 @@ export const customers = pgTable('customers', {
   name: text('name').notNull(),
   phone: text('phone'),
   email: text('email'),
+  // D1 (go-live tahap-B) — kelayakan tempo per pelanggan. Default false: pelanggan
+  // baru TIDAK boleh utang sampai owner/manager mengizinkannya secara eksplisit.
+  // Gerbang ini dicek saat checkout POS metode 'tempo' (422 TEMPO_NOT_ALLOWED).
+  allowTempo: boolean('allow_tempo').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   tenantIdx: index('customers_tenant_idx').on(table.tenantId),
@@ -38,6 +43,10 @@ export const customerAssets = pgTable('customer_assets', {
   brand: text('brand'),
   model: text('model'),
   serialNumber: text('serial_number'),
+  // Tahap A — katalog device (gambar/spesifikasi/saran servis). Nullable: device
+  // yang belum ada di katalog tetap bisa diinput bebas (brand/model text di atas),
+  // sama semangatnya dengan unresolvedCompatibility yang sudah ada untuk sparepart.
+  deviceModelId: uuid('device_model_id').references(() => deviceModels.id),
 });
 
 export const serviceTickets = pgTable('service_tickets', {
@@ -57,6 +66,14 @@ export const serviceTickets = pgTable('service_tickets', {
   // a ticket at intake has no technician yet.
   assignedTechnicianId: uuid('assigned_technician_id').references(() => users.id),
   assignedAt: timestamp('assigned_at', { withTimezone: true }),
+  // Tahap A — go-live gap Tier-1 #2. Recorded at intake, given back at handover
+  // (QC Akhir). Lives on the ticket, not customer_assets: a device's lock code
+  // can change between visits, so it isn't a permanent asset property.
+  devicePasscode: text('device_passcode'),
+  // Tahap A — go-live gap Tier-1 #3 (print triggers). SVC-001 always named
+  // "complaint" as part of intake, but no column for it ever existed until
+  // now. Feeds the label/tanda-terima print documents ("kerusakan").
+  reportedComplaint: text('reported_complaint'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({

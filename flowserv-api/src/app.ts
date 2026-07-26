@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { errorHandler, requestIdMiddleware } from './middleware/error-handler';
 import { successResponse } from './lib/response';
 import { db } from './db/connection';
@@ -23,6 +24,10 @@ import { settingsRouter } from './routes/settings';
 import { financeRouter } from './routes/finance';
 import { auditLogsRouter } from './routes/audit-logs';
 import { searchRouter } from './routes/search';
+import { printerRouter } from './routes/printer';
+import { printRouter } from './routes/print';
+import { deviceCatalogRouter } from './routes/device-catalog';
+import { uploadsRouter } from './routes/uploads';
 import { subscribeLedger } from './modules/finance/ledger';
 
 // Split out of index.ts (H15) so the e2e suite can call the app directly via
@@ -34,6 +39,11 @@ app.use('*', logger());
 app.use('*', cors());
 app.use('*', requestIdMiddleware);
 app.use('*', errorHandler);
+
+// Device photos (device catalog images -- imported bulk data + admin uploads).
+// `root` resolves relative to CWD (flowserv-api/, where `npm run dev` runs
+// from), matching where the images actually live: flowserv-api/public/uploads.
+app.use('/uploads/*', serveStatic({ root: './public' }));
 
 app.route('/v1/auth', authRouter);
 app.route('/v1/flows', flowRouter);
@@ -53,6 +63,10 @@ app.route('/v1/settings', settingsRouter);
 app.route('/v1/finance', financeRouter);
 app.route('/v1/audit-logs', auditLogsRouter);
 app.route('/v1/search', searchRouter);
+app.route('/v1/printer', printerRouter);
+app.route('/v1/print', printRouter);
+app.route('/v1/device-catalog', deviceCatalogRouter);
+app.route('/v1/uploads', uploadsRouter);
 
 // H11 — subscribe the finance ledger to the event bus once, at import time.
 subscribeLedger();

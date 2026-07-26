@@ -12,11 +12,16 @@ flowRouter.use('*', requireAuth);
 flowRouter.get('/', async (c) => {
   const { tenantId } = getAuthContext(c);
   
+  // Tahap A — deterministic order now that a tenant can have more than one
+  // service-domain template. Without this, adding rows made the intake
+  // dropdown's order effectively arbitrary (whatever a bare SELECT happened
+  // to return), which a Playwright test relied on by position.
   const templates = await db
     .select()
     .from(flowTemplates)
-    .where(eq(flowTemplates.tenantId, tenantId));
-    
+    .where(eq(flowTemplates.tenantId, tenantId))
+    .orderBy(flowTemplates.createdAt);
+
   return successResponse(c, templates);
 });
 
