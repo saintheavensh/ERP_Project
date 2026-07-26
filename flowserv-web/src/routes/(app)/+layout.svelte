@@ -55,9 +55,13 @@
       items.push({ label: 'Settings', path: '/settings' });
     } else if (user?.roleName === 'Technician') {
       items.push({ label: 'My Jobs', path: '/tickets' });
+      // Tahap-B — read-only catalog so a technician can look up a part's price
+      // & stock without inventory-admin access.
+      items.push({ label: 'Katalog Produk', path: '/catalog' });
     } else if (user?.roleName === 'Manager') {
       items.push({ label: 'Tickets', path: '/tickets' });
       items.push({ label: 'Inventory & Stock', path: '/inventory' });
+      items.push({ label: 'Katalog Produk', path: '/catalog' });
       items.push({ label: 'Point of Sales', path: '/pos' });
       items.push({
         label: 'Finance',
@@ -71,6 +75,9 @@
       });
     } else if (user?.roleName === 'Cashier') {
       items.push({ label: 'Point of Sales', path: '/pos' });
+      // Tahap-B — read-only catalog so a cashier can check a part's price &
+      // stock at the till without inventory-admin access.
+      items.push({ label: 'Katalog Produk', path: '/catalog' });
     }
     
     return items;
