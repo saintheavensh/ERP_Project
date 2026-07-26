@@ -47,3 +47,6 @@ flowserv-api/public/uploads/*
 # Device-catalog source exports (provenance only — importer reads the derived
 # JSON; converted via scripts-convert-devices.py). Never commit the raw xlsx.
 *.xlsx
+
+# DB backups (pg_dump) — never commit
+backups/

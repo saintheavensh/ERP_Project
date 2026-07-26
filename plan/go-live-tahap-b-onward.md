@@ -203,8 +203,13 @@ Sebagian dari Phase 9 (`PHASES.md` 9.7–9.9) + Phase 10.5, dipilih yang relevan
       item + batch awal (goods receipt) sesuai stok fisik. Manfaatkan **bulk-import katalog device
       dari data legacy** yang sudah dibangun (`tahap-a-device-catalog`). *(DoD:
       `GET /inventory/reconciliation` bersih setelah input; stok layar = stok fisik.)*
-- [ ] **B2.7** **Strategi backup** (Phase 10.5): skrip `pg_dump` harian (terjadwal). *(DoD: file
-      backup nyata terbentuk + tes restore ke DB kosong sekali.)*
+- [x] **B2.7 ✅ (2026-07-26).** `backup-db.bat` (+ `backup-db.ps1`): baca `DATABASE_URL` dari
+      `.env`, `pg_dump -Fc` → `backups/flowserv-<timestamp>.dump`, prune > 14 hari. Cari `pg_dump`
+      di PATH lalu folder instalasi PostgreSQL. `backups/` di-gitignore (dump tak pernah di-commit).
+      Instruksi jadwal harian (`schtasks`) + cara restore ada di header skrip. **DoD terpenuhi
+      penuh:** backup nyata dibuat (215 KB), lalu **tes restore ke DB kosong** (`flowserv_restore`)
+      → `pg_restore` exit 0, data utuh (customers=9, inventory_items=2, permissions=28), DB
+      throwaway di-drop. *(Menjadwalkan lewat Task Scheduler = langkah user di mesin pilot.)*
 
 > **Catatan keamanan (tidak menahan pilot LAN, tapi dicatat):** `JWT_SECRET` fallback hardcoded
 > di `middleware/auth.ts` dan jalur password SHA-256 lama di `routes/auth.ts` **wajib dibereskan
