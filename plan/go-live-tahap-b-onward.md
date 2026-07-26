@@ -106,15 +106,23 @@ dulu, ditambahkan on-demand nanti. Waktu terbaik = **sebelum merge ke `main`**, 
 **Masalah:** `main` tertinggal 17 commit; kerja nyata semua ada di `go-live/tahap-a`. Selama
 `main` ≠ kerja nyata, git workflow proyek ("merge ke main setelah fase terverifikasi") rusak.
 
-- [ ] **0.1** Verifikasi baseline hijau di `go-live/tahap-a` (4 suite di §1). Catat angka nyata.
-- [ ] **0.2** Merge `go-live/tahap-a` → `main` — **squash-merge direkomendasikan** (lihat B0):
+- [x] **0.1** Baseline hijau (2026-07-26): backend **212 unit**, printer-agent **42 pytest**,
+      `svelte-check` **738 file 0 error**, `tsc` bersih, feature e2e (pattern/label/print-triggers/
+      change-order/tempo/device-catalog) lulus.
+- [x] **0.2** **Squash-merge `go-live/tahap-a` → `main` selesai 2026-07-26** (commit `c4fcb2e`,
+      27 commit → 1). `git diff main go-live/tahap-a` KOSONG (tree identik, tak ada yang hilang);
+      `main` bebas foto 44MB (hanya terjangkau dari `go-live/tahap-a`). Sudah di-push ke origin.
+      Branch kerja baru **`go-live/tahap-b`** dibuat dari `main` (0.3). **Belum:** hapus
+      `go-live/tahap-a` (local+remote) + `git gc` — ditahan, perlu konfirmasi pemilik (langkah
+      irreversible; history granular ada di sana).
+- [ ] **0.2-orig** ~~Merge `go-live/tahap-a` → `main` — **squash-merge direkomendasikan** (lihat B0):~~
       supaya history `main` tak membawa ~44 MB foto yang sudah dihapus di working tree tapi masih
       ada di commit `b8f4177`. Phase 6 (kode) + Tahap A dua-duanya sudah terbukti; **6D.1 (cetak
       fisik) adalah checklist hardware yang dijalankan user, bukan gerbang kode** — jadi tidak
       menahan merge. Setelah merge, `main` kembali jadi kebenaran; lalu hapus `go-live/tahap-a`
       (local+remote) + `git gc` untuk melepas blob binari.
-- [ ] **0.3** Lanjutkan kerja Milestone berikutnya di branch baru dari `main`
-      (mis. `go-live/tahap-b`), bukan menumpuk terus di `go-live/tahap-a`.
+- [x] **0.3** Branch kerja baru **`go-live/tahap-b`** dibuat dari `main` (2026-07-26). Kerja
+      Milestone berikutnya (D2/B2/dst) di sini.
 - [ ] **0.4** Update `PHASES.md`: tandai Phase 6 6A–6C `[x]` (sudah), catat Tahap A di bagian
       go-live, dan perbarui "Current Phase" agar tidak lagi berkata "Phase 6 IN PROGRESS" tanpa
       konteks go-live.
