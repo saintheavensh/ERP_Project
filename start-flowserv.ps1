@@ -27,8 +27,13 @@ if (-not $pg) {
 
 # Repo path tidak mengandung spasi, jadi tak perlu kutip di dalam perintah cmd.
 $apiCmd   = "cd /d $root\flowserv-api && npm run dev"
-# set VAR tanpa spasi sebelum && supaya nilai URL tidak kebawa spasi.
-$webCmd   = "cd /d $root\flowserv-web && set PUBLIC_API_URL=http://${ip}:3001&& npm run dev -- --host"
+# Port web dipaksa (--strictPort) supaya URL yang dicetak di bawah SELALU benar,
+# tidak bergeser ke 5174/5175 saat 5173 dipakai aplikasi lain. set VAR tanpa
+# spasi sebelum && supaya nilai URL tidak kebawa spasi.
+# Port khusus FlowServ (bukan 5173 default vite) supaya tak bentrok dengan
+# aplikasi lain yang mungkin memakai 5173/5174 di mesin yang sama.
+$webPort  = 5188
+$webCmd   = "cd /d $root\flowserv-web && set PUBLIC_API_URL=http://${ip}:3001&& npm run dev -- --host --port $webPort --strictPort"
 
 $agentExe = Join-Path $root 'printer-agent\dist\printer-agent.exe'
 if (Test-Path $agentExe) {
@@ -44,10 +49,11 @@ Start-Process cmd -ArgumentList '/k', $agentCmd
 
 Write-Host ""
 Write-Host "=== FlowServ berjalan ===" -ForegroundColor Green
-Write-Host "Di komputer ini : http://localhost:5173"
-Write-Host "Dari HP/tablet  : http://${ip}:5173   (WiFi yang sama)"
+Write-Host "Di komputer ini : http://localhost:$webPort"
+Write-Host "Dari HP/tablet  : http://${ip}:$webPort   (WiFi yang sama)"
 Write-Host "Cek API         : http://${ip}:3001/v1/health"
 Write-Host "Printer agent   : http://localhost:9100/health"
 Write-Host ""
-Write-Host "Catatan: kalau Web memakai port selain 5173 (mis. 5174), lihat baris"
-Write-Host "'Network:' di jendela Web untuk URL HP yang benar."
+Write-Host "Login: admin@demo.com / admin123"
+Write-Host "Kalau jendela Web menampilkan error 'Port $webPort is in use', tutup"
+Write-Host "aplikasi lain yang memakai port itu lalu jalankan ulang."

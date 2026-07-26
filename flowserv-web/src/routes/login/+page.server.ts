@@ -8,7 +8,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-  default: async ({ request, cookies, fetch }) => {
+  default: async ({ request, cookies, fetch, url }) => {
     const data = await request.formData();
     const email = data.get('email');
     const password = data.get('password');
@@ -33,7 +33,15 @@ export const actions: Actions = {
       cookies.set('flowserv_token', result.data.token, {
         path: '/',
         httpOnly: true,
-        sameSite: 'strict',
+        // 'lax' (not 'strict') so the cookie is sent on the top-level GET after
+        // this login redirect — robust across the form-POST → redirect flow.
+        sameSite: 'lax',
+        // Only mark Secure over HTTPS. SvelteKit defaults Secure=true for any
+        // non-localhost request, which silently breaks login over a plain-HTTP
+        // LAN (the pilot): a Secure cookie is never sent back over http://, so
+        // the phone logs in but bounces straight back to the login page.
+        // Phase 11 (HTTPS/VPS) will set url.protocol to 'https:' and re-enable it.
+        secure: url.protocol === 'https:',
         maxAge: 60 * 60 * 24 * 7 // 7 days
       });
 
