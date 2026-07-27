@@ -97,7 +97,10 @@ test.describe('mobile viewport (375x667)', () => {
     await createIntakeTicket(page, customerName);
 
     await login(page, 'admin@demo.com');
-    await page.goto('/tickets/board');
+    // Tahap B — papan kini default ke template "Servis"; fixture di atas sengaja
+    // memakai Standard Repair (ID node-nya dikunci beberapa test), jadi papannya
+    // diarahkan eksplisit ke template itu.
+    await page.goto(`/tickets/board?flowTemplateId=${STANDARD_REPAIR_FLOW}`);
     await page.waitForLoadState('networkidle');
 
     const intakeColumn = page.locator('[role="list"]').filter({ hasText: 'Intake' }).first();
@@ -122,7 +125,10 @@ test.describe('mobile viewport (375x667)', () => {
     await createIntakeTicket(page, customerName);
 
     await login(page, 'cashier@demo.com');
-    await page.goto('/tickets/board');
+    // Tahap B — papan kini default ke template "Servis"; fixture di atas sengaja
+    // memakai Standard Repair (ID node-nya dikunci beberapa test), jadi papannya
+    // diarahkan eksplisit ke template itu.
+    await page.goto(`/tickets/board?flowTemplateId=${STANDARD_REPAIR_FLOW}`);
     await page.waitForLoadState('networkidle');
 
     const intakeColumn = page.locator('[role="list"]').filter({ hasText: 'Intake' }).first();
@@ -142,11 +148,11 @@ test.describe('mobile viewport (375x667)', () => {
 test.describe('desktop viewport (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  // Tahap A added two more service-domain flow templates (Ditunggu/Disimpan)
-  // alongside Standard Repair, so the board's `templates.length > 1` switcher
-  // (+page.svelte) now renders — this replaces the old single-template
-  // "dropdown is hidden" assertion, which described a seed state that no
-  // longer exists.
+  // Tahap A added two more service-domain templates (Ditunggu/Disimpan);
+  // Tahap B added a fourth, "Servis" (satu template bercabang), and made IT the
+  // default — the flow every new ticket actually uses now. Standard Repair is
+  // kept only for tickets/tests that predate it. Assertion diperbarui ke
+  // keadaan itu, bukan ke ID default lama yang sudah tidak benar.
   test('template dropdown appears now that multiple service flow templates exist', async ({ page }) => {
     await login(page, 'admin@demo.com');
     await page.goto('/tickets/board');
@@ -156,8 +162,9 @@ test.describe('desktop viewport (1280x800)', () => {
     await expect(select.locator('option', { hasText: 'Standard Repair' })).toHaveCount(1);
     await expect(select.locator('option', { hasText: 'Servis - Ditunggu' })).toHaveCount(1);
     await expect(select.locator('option', { hasText: 'Servis - Disimpan' })).toHaveCount(1);
-    // Defaults to Standard Repair (the sole isDefault template) even with more rows now present.
-    await expect(select).toHaveValue('80000000-0000-4000-8000-000000000001');
+    await expect(select.locator('option', { hasText: 'Servis' }).first()).toHaveCount(1);
+    // Default kini "Servis" — satu-satunya isDefault, dipakai tiap tiket baru.
+    await expect(select).toHaveValue('84000000-0000-4000-8000-000000000003');
     await shot(page, '05-desktop-board');
   });
 
@@ -179,7 +186,7 @@ test.describe('desktop viewport (1280x800)', () => {
     await createDiagnosisTicket(page, customerName);
 
     await login(page, 'admin@demo.com');
-    await page.goto('/tickets/board');
+    await page.goto(`/tickets/board?flowTemplateId=${STANDARD_REPAIR_FLOW}`);
     await page.waitForLoadState('networkidle');
 
     const diagnosisColumn = page.locator('[role="list"]').filter({ hasText: 'Diagnosis' }).first();

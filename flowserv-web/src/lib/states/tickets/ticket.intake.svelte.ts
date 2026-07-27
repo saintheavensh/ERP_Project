@@ -169,8 +169,10 @@ export class TicketIntakeState {
     this.loading = true;
     this.errorMsg = '';
     
-    if (!this.form.customerName || !this.form.assetType || !this.form.flowTemplateId) {
-      this.errorMsg = 'Name, Device Type, and Flow Template are required.';
+    // Tahap B — flowTemplateId tak lagi wajib: alur ditentukan setelah
+    // diagnosis, dan backend memakai template default toko bila tak dikirim.
+    if (!this.form.customerName || !this.form.assetType) {
+      this.errorMsg = 'Nama pelanggan dan jenis perangkat wajib diisi.';
       this.loading = false;
       return;
     }
@@ -187,7 +189,10 @@ export class TicketIntakeState {
       
       const result = await res.json();
       if (res.ok) {
-        goto(`/tickets/${result.data.id}`);
+        // Tahap B — `autoprint=intake` memberi tahu halaman tiket untuk
+        // langsung mencetak Label + Tanda Terima. Ditandai lewat URL, bukan
+        // state global, supaya hanya kedatangan dari form ini yang mencetak.
+        goto(`/tickets/${result.data.id}?autoprint=intake`);
       } else {
         this.errorMsg = result.error?.message || 'Failed to create intake';
       }

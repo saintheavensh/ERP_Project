@@ -15,7 +15,10 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    // Vite naik ke 5174+ bila 5173 sudah dipakai proses lain di mesin ini.
+    // Tanpa override, Playwright akan menguji aplikasi yang salah dan gagal
+    // dengan pesan menyesatkan ("locator #email tidak ditemukan").
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',

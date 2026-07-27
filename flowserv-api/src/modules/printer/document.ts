@@ -154,6 +154,8 @@ export async function renderPosInvoiceDocument(
       subtotal: Number(l.subtotal),
     })),
     technicianName: invoice.serviceTicket?.assignedTechnician?.name,
+    // Tahap B — hanya penjualan tunai yang punya nilai ini (kolom nullable).
+    amountTendered: invoice.amountTendered === null ? undefined : Number(invoice.amountTendered),
   };
 
   const data = buildDocumentData(documentType, resolvedTemplate.layoutConfig as LayoutConfig, bundle);

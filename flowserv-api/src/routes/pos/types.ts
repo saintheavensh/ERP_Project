@@ -35,6 +35,12 @@ export const posCheckoutSchema = z.object({
   // paymentStatus derivation still key off this finite category unchanged.
   paymentMethod: z.enum(['cash', 'transfer', 'qris', 'ewallet', 'split', 'tempo']),
   discountAmount: z.coerce.number().min(0).default(0),
+  // Tahap B — uang tunai yang diserahkan pelanggan, dipakai kasir untuk
+  // menghitung kembalian dan dicetak di struk. Opsional: hanya bermakna untuk
+  // paymentMethod 'cash'; diabaikan (tidak disimpan) untuk metode lain.
+  // Kecukupannya divalidasi di handler, bukan di sini — grandTotal baru
+  // diketahui setelah item dijumlahkan server-side.
+  amountTendered: z.coerce.number().min(0).optional(),
   items: z.array(posCheckoutLineSchema).min(1, 'Keranjang tidak boleh kosong'),
 }).refine((data) => data.paymentMethod !== 'tempo' || !!data.customerId, {
   message: 'Pelanggan wajib dipilih untuk pembayaran tempo',

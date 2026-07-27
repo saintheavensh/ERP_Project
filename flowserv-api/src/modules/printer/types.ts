@@ -131,6 +131,13 @@ export interface DocumentData {
     taxAmount: number;
     grandTotal: number;
   };
+  // Tahap B — uang tunai diterima & kembalian. Keduanya undefined kecuali
+  // pembayaran tunai yang nominalnya benar-benar diisi kasir; `changeAmount`
+  // diturunkan di buildDocumentData, tidak pernah disimpan di DB.
+  payment?: {
+    amountTendered: number;
+    changeAmount: number;
+  };
   extra: {
     cashierName?: string;
     customerName?: string;

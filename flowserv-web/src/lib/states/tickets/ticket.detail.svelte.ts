@@ -1,6 +1,15 @@
 import { untrack } from 'svelte';
 import { invalidateAll } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
+import { autoPrint, summarizeAutoPrint } from '$lib/api/auto-print';
+
+// Nama dokumen untuk pesan ke pengguna. Kuncinya = documentType modul printer.
+const DOCUMENT_LABELS: Record<string, string> = {
+  label: 'Label',
+  tanda_terima: 'Tanda terima',
+  receipt: 'Nota',
+  invoice_a4: 'Invoice A4',
+};
 
 export class TicketDetailState {
   // $state so every getter that reads `this.data` (ticket, currentNode, charges…)
@@ -44,6 +53,27 @@ export class TicketDetailState {
   get assignedTechnician() { return this.data.data?.assignedTechnician; }
   get technicians() { return this.data.technicians || []; }
   assignLoading = $state(false);
+
+  /**
+   * Tahap B — teknisi mengambil sendiri pekerjaan dari antrian. Endpoint
+   * terpisah dari `assign` karena izinnya berbeda: menugaskan DIRI SENDIRI
+   * cukup izin teknisi, menugaskan ORANG LAIN izin manajer. Server mengambil
+   * identitas dari JWT, bukan dari body.
+   */
+  async claim() {
+    this.assignLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/claim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}`, 'Idempotency-Key': crypto.randomUUID() },
+      });
+      const result = await res.json();
+      if (res.ok) await invalidateAll();
+      else this.errorMsg = result.error?.message || 'Gagal mengambil pekerjaan';
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.assignLoading = false; }
+  }
 
   async assign(technicianId: string) {
     if (!technicianId) return;
@@ -96,6 +126,62 @@ export class TicketDetailState {
     finally { this.passcodeLoading = false; }
   }
 
+  // Tahap B — hasil diagnosa teknisi + estimasi lama pengerjaan. Dua field
+  // yang dijanjikan alur pemilik ("teknisi menginput diagnosa dan juga
+  // estimasi harga dan waktu"); estimasi HARGA sudah punya rumahnya sendiri
+  // di daftar biaya, jadi tidak diduplikasi di sini.
+  diagnosisEditing = $state(false);
+  diagnosisDraft = $state('');
+  // Sama seperti field nominal: <input type="number"> menulis balik number/null.
+  durationDraft = $state<string | number | null>('');
+  diagnosisLoading = $state(false);
+
+  openDiagnosisEdit() {
+    this.diagnosisDraft = this.ticket?.diagnosis || '';
+    this.durationDraft = this.ticket?.estimatedDurationMinutes ? String(this.ticket.estimatedDurationMinutes) : '';
+    this.diagnosisEditing = true;
+  }
+
+  /** "90" -> "1 jam 30 menit"; dipakai di tampilan & (nanti) dokumen cetak. */
+  get estimatedDurationText(): string {
+    const total = this.ticket?.estimatedDurationMinutes;
+    if (!total) return '';
+    const days = Math.floor(total / (60 * 24));
+    const hours = Math.floor((total % (60 * 24)) / 60);
+    const minutes = total % 60;
+    const parts: string[] = [];
+    if (days) parts.push(`${days} hari`);
+    if (hours) parts.push(`${hours} jam`);
+    if (minutes) parts.push(`${minutes} menit`);
+    return parts.join(' ');
+  }
+
+  async saveDiagnosis() {
+    this.diagnosisLoading = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/intake-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({
+          diagnosis: this.diagnosisDraft || null,
+          estimatedDurationMinutes:
+            this.durationDraft === null || this.durationDraft === undefined || String(this.durationDraft).trim() === ''
+              ? null
+              : Number(this.durationDraft),
+        })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.diagnosisEditing = false;
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal menyimpan diagnosa';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.diagnosisLoading = false; }
+  }
+
   complaintEditing = $state(false);
   complaintDraft = $state('');
   complaintLoading = $state(false);
@@ -125,23 +211,119 @@ export class TicketDetailState {
     finally { this.complaintLoading = false; }
   }
 
-  // Tahap A — go-live gap Tier-1 #3 (print triggers). Print-button visibility
-  // conditions, each tied to a real, already-tracked signal rather than the
-  // current node's name (which would break the moment a tenant renames a
-  // node) except where the document is inherently node-specific (tanda
-  // terima only makes sense for a unit that actually went into storage).
+  // Tahap A — go-live gap Tier-1 #3 (print triggers). Tahap B: pemicunya tak
+  // lagi ditulis di sini sama sekali — lihat printableTicketDocuments di atas,
+  // yang membacanya dari konfigurasi template.
   get canPrintLabel() {
-    // "Diagnosis complete" is approximated as "left Intake" — true the
-    // instant the ticket has been diagnosed, in every template (all three
-    // seeded templates name their first node "Intake").
-    return !!this.currentNode && this.currentNode.name !== 'Intake';
+    return this.printableTicketDocuments.includes('label');
   }
 
-  get hasEnteredUnitDisimpan() {
-    return this.history.some((h: any) => h.nodeName === 'Unit Disimpan');
+  get canPrintTandaTerima() {
+    return this.printableTicketDocuments.includes('tanda_terima');
+  }
+
+  // Tahap B — pesan hasil auto-cetak. Kosong saat semuanya tercetak: kertas
+  // yang keluar dari printer sudah jadi buktinya sendiri, tak perlu banner.
+  autoPrintMessage = $state('');
+  private autoPrintDone = false;
+
+  /**
+   * Cetak otomatis dokumen yang DIKONFIGURASI di node saat ini
+   * (`flow_nodes.autoPrintDocuments`). Dipakai dua kali: begitu intake
+   * tersimpan, dan tiap kali tiket berpindah tahap. Toko yang ingin nota
+   * keluar di tahap lain cukup mengubah templatenya — tak ada daftar dokumen
+   * yang tertanam di sini.
+   *
+   * Dicetak berurutan, bukan paralel: satu printer thermal memproses satu job
+   * pada satu waktu, dan urutan konfigurasi menentukan urutan kertas keluar.
+   */
+  async autoPrintForCurrentNode() {
+    if (!this.ticket || !this.currentNode) return;
+    const docs = this.autoPrintDocsFor(this.currentNode);
+    if (docs.length === 0) {
+      this.autoPrintMessage = '';
+      return;
+    }
+
+    const results: Array<{ label: string; result: Awaited<ReturnType<typeof autoPrint>> }> = [];
+    for (const doc of docs) {
+      results.push({
+        label: DOCUMENT_LABELS[doc] ?? doc,
+        result: await autoPrint(this.token, doc as any, this.ticket.id),
+      });
+    }
+    this.autoPrintMessage = summarizeAutoPrint(results) ?? '';
+  }
+
+  /** Dipanggil sekali saat tiba dari form intake (`?autoprint=intake`). */
+  async autoPrintIntakeDocuments() {
+    if (this.autoPrintDone) return;
+    this.autoPrintDone = true;
+    await this.autoPrintForCurrentNode();
+  }
+
+  /** Tahap B — cetak nota otomatis setelah faktur servis dibuat. */
+  async printNota(invoiceId: string) {
+    const result = await autoPrint(this.token, 'receipt', invoiceId);
+    this.autoPrintMessage = summarizeAutoPrint([{ label: 'Nota', result }]) ?? '';
   }
 
   get invoice() { return this.data.data?.invoice ?? null; }
+
+  // ---------------------------------------------------------------------------
+  // Tahap B — GERBANG TAHAP DIBACA DARI TEMPLATE, bukan dari kode.
+  //
+  // Keputusan pemilik 2026-07-27: "template flow service ini inti dari semua
+  // alur servicenya ... bisa diatur sesuai keputusan toko atau kebijakan owner".
+  // Karena itu tak satu pun aturan di bawah menebak dari nama atau urutan node;
+  // semuanya membaca kolom kapabilitas di flow_nodes yang diatur per template.
+  // Mengubah kebijakan toko = mengubah template, bukan mengubah kode ini.
+  // ---------------------------------------------------------------------------
+
+  /** Sparepart & biaya boleh diisi di tahap ini? (`flow_nodes.allowsCharges`) */
+  get chargesUnlocked(): boolean {
+    return this.currentNode?.allowsCharges === true;
+  }
+
+  /** Form hasil diagnosa + estimasi waktu ditampilkan di tahap ini? */
+  get diagnosisRequired(): boolean {
+    return this.currentNode?.requiresDiagnosis === true;
+  }
+
+  /** Faktur & pembayaran boleh dibuat di tahap ini? (`flow_nodes.allowsInvoicing`) */
+  get atEndOfFlow(): boolean {
+    return this.currentNode?.allowsInvoicing === true;
+  }
+
+  /** Tahap paling awal template ini — dipakai hanya untuk teks penjelas gerbang. */
+  get firstChargeNodeName(): string | null {
+    const node = (this.template?.nodes ?? []).find((n: any) => n.allowsCharges);
+    return node?.name ?? null;
+  }
+
+  /** Dokumen yang otomatis dicetak saat tiket MASUK node tertentu. */
+  private autoPrintDocsFor(node: any): string[] {
+    const docs = node?.autoPrintDocuments;
+    return Array.isArray(docs) ? docs : [];
+  }
+
+  /**
+   * Dokumen tiket yang boleh dicetak ulang manual = dokumen yang pernah relevan
+   * bagi tiket INI, yaitu yang dikonfigurasi di node-node yang sudah dilewati.
+   * Efeknya persis kebijakan pemilik tanpa satu pun `if` khusus: tiket Ditunggu
+   * tak pernah melewati node yang mencetak tanda terima, jadi tombolnya memang
+   * tak pernah muncul untuknya.
+   */
+  get printableTicketDocuments(): string[] {
+    const nodes = this.template?.nodes ?? [];
+    const visitedNames = new Set(this.history.map((h: any) => h.nodeName));
+    const docs = new Set<string>();
+    for (const node of nodes) {
+      if (!visitedNames.has(node.name)) continue;
+      for (const doc of this.autoPrintDocsFor(node)) docs.add(doc);
+    }
+    return [...docs];
+  }
 
   // Tahap A — device catalog. Null when the asset isn't linked to a catalog
   // entry (the common case: freeform brand/model text with no match yet).
@@ -157,6 +339,11 @@ export class TicketDetailState {
   get chargeTotals() { return this.data.charges?.totals || { estimated: 0, approved: 0, consumed: 0 }; }
   get chargeMargin() { return this.data.charges?.margin || { revenue: 0, cost: 0, margin: 0 }; }
   get inventoryItems() { return this.data.inventoryItems || []; }
+  // Tahap B — null untuk peran non-admin (endpointnya admin-only); UI cukup
+  // tidak menampilkan petunjuknya, bukan menebak nilainya.
+  get invoiceDisplayMode(): 'detailed' | 'summary' | 'flexible' | null {
+    return this.data.invoiceDisplayMode ?? null;
+  }
   // A quote has already been requested once the ticket carries an approved total.
   get isQuoted() { return this.ticket?.approvedTotal != null; }
 
@@ -283,6 +470,10 @@ export class TicketDetailState {
   // H17 — service invoice from the ticket. A part is billable once consumed;
   // labor/fee once approved. Mirrors isBillableCharge() in the backend service.
   get canInvoice() {
+    // Tahap B — selain ada yang layak ditagih, tiket juga harus sudah sampai
+    // ujung alur. Menagih di tengah pengerjaan adalah persis yang diminta
+    // pemilik untuk dihentikan ("pembayaran di bagian akhir saja").
+    if (!this.atEndOfFlow) return false;
     return this.charges.some((c: any) =>
       (c.sourceType === 'part' && c.status === 'consumed') ||
       ((c.sourceType === 'labor' || c.sourceType === 'fee') && c.status === 'approved')
@@ -290,11 +481,50 @@ export class TicketDetailState {
   }
 
   invoicePaymentMethod = $state<'cash' | 'transfer' | 'qris' | 'tempo'>('tempo');
+  // Tahap B — uang tunai diterima, pola & jebakan yang sama dengan checkout POS:
+  // `bind:value` pada <input type="number"> menulis balik number/null, bukan
+  // string, jadi tipenya harus longgar dan parsingnya tak boleh mengasumsikan
+  // string. "Belum diketik" tetap berbeda dari "0".
+  invoiceAmountTendered = $state<string | number | null>('');
+
+  get invoiceIsCash() { return this.invoicePaymentMethod === 'cash'; }
+
+  /** Total yang akan ditagih = charge yang layak tagih (cermin isBillableCharge di backend). */
+  get billableTotal(): number {
+    return this.charges
+      .filter((c: any) =>
+        (c.sourceType === 'part' && c.status === 'consumed') ||
+        ((c.sourceType === 'labor' || c.sourceType === 'fee') && c.status === 'approved')
+      )
+      .reduce((sum: number, c: any) => sum + c.quantity * parseFloat(c.unitPrice), 0);
+  }
+
+  get invoiceTendered(): number | null {
+    const raw = this.invoiceAmountTendered;
+    if (raw === null || raw === undefined || String(raw).trim() === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  get invoiceChange(): number {
+    const t = this.invoiceTendered;
+    return t === null ? 0 : Math.round(t - this.billableTotal);
+  }
+
+  get invoiceTenderShort(): boolean {
+    const t = this.invoiceTendered;
+    return this.invoiceIsCash && t !== null && t < this.billableTotal;
+  }
   // H13 pattern — minted when the invoice action starts, reused across retries,
   // cleared on success so a later (blocked) retry doesn't replay a stale response.
   private invoiceIdempotencyKey = '';
 
   async generateInvoice() {
+    // Echo cepat dari INSUFFICIENT_TENDER di backend (lib/cash.ts tetap penjaga).
+    if (this.invoiceTenderShort) {
+      this.errorMsg = 'Uang yang diterima kurang dari total tagihan';
+      return;
+    }
     this.chargeLoading = true;
     this.errorMsg = '';
     this.successMsg = '';
@@ -303,12 +533,20 @@ export class TicketDetailState {
       const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/invoice`, {
         method: 'POST',
         headers: { ...this.chargeHeaders(), 'Idempotency-Key': this.invoiceIdempotencyKey },
-        body: JSON.stringify({ paymentMethod: this.invoicePaymentMethod })
+        body: JSON.stringify({
+          paymentMethod: this.invoicePaymentMethod,
+          amountTendered: this.invoiceIsCash && this.invoiceTendered !== null ? this.invoiceTendered : undefined,
+        })
       });
       const result = await res.json();
       if (res.ok) {
         this.invoiceIdempotencyKey = '';
+        this.invoiceAmountTendered = '';
         this.successMsg = `Faktur dibuat: ${result.data.invoiceNumber}`;
+        // Tahap B — nota langsung dicetak, sama seperti struk POS. Tidak
+        // di-await: faktur sudah ter-commit, printer lambat/mati tidak boleh
+        // menahan layar kembali responsif.
+        void this.printNota(result.data.id);
         await invalidateAll();
       } else {
         this.errorMsg = result.error?.message || 'Gagal membuat faktur';
@@ -359,6 +597,10 @@ export class TicketDetailState {
         this.transitionNotes = '';
         this.transitionIdempotencyKey = '';
         await invalidateAll();
+        // Tahap B — tahap baru mungkin mengonfigurasi dokumen untuk dicetak
+        // (mis. "Unit Disimpan" → tanda terima + label). Dijalankan setelah
+        // invalidateAll() supaya currentNode sudah tahap yang baru.
+        void this.autoPrintForCurrentNode();
       } else {
         this.errorMsg = result.error?.message || 'Transition failed. You might not have the required role.';
       }

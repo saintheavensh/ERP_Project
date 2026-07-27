@@ -252,6 +252,20 @@ paling aman:
       memang dibutuhkan pilot). Break-glass: balik ke `report` bila perlu (lihat CLAUDE.md).
       *"Plafon" numerik (diskon boleh sampai X%) sengaja ditunda — interim ini biner (boleh/tidak),
       cukup untuk pilot; plafon per-peran menyusul bila pemilik butuh kasir boleh diskon kecil.*
+- [x] **D4 — Alur POS & alur servis dibetulkan (selesai 2026-07-27).** Bukan item D
+      terencana; muncul dari pemilik menjalankan alur nyata dan menemukan lima hal yang
+      tidak cocok. Detail penuh + bukti: [`plan/tahap-b-alur-pos-servis.md`](tahap-b-alur-pos-servis.md).
+      Ringkas: (1) kasir kini memasukkan uang diterima + kembalian (tercetak di struk);
+      (2) struk otomatis terkirim ke printer setelah checkout, tak perlu lewat Riwayat;
+      (3) alur servis dibangun ulang mengikuti urutan toko sebenarnya — **satu template
+      bercabang**, pilihan ditunggu/disimpan terjadi SETELAH diagnosis (form intake tak
+      lagi menanyakannya); (4) label tercetak di intake dengan nomor antrian, nota tanda
+      terima hanya di cabang Disimpan; (5) sparepart & pembayaran digerbangi per tahap.
+      **Perubahan arsitektur terpenting:** semua aturan alur pindah dari kode ke kolom
+      `flow_nodes` (`allowsCharges`, `requiresDiagnosis`, `allowsInvoicing`,
+      `autoPrintDocuments`, `description`), lalu **Phase 7.1 (editor alur) dibangun** di
+      atasnya — owner bisa menyusun ulang alur sendiri tanpa deploy. Menutup juga
+      **C2 sebagian** (teknisi menugaskan diri sendiri lewat "Ambil Pekerjaan").
 - [ ] **D3 — Retur / tukar barang (🟡, paling berisiko — hati-hati).** Stok balik + reversal
       ledger (SAL-005). Salah bikin = stok & uang kacau. **Sebaiknya SETELAH pilot menunjukkan
       bentuk retur nyata**, bukan menebak sekarang. *(DoD: retur → stok naik tepat qty, ledger

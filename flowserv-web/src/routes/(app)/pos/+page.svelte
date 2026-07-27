@@ -66,6 +66,39 @@
     </div>
   </div>
 
+  <!-- Tahap B — status auto-cetak struk. Muncul sesaat saat berhasil, dan
+       BERTAHAN (dengan tombol cetak ulang) saat gagal, supaya kasir tidak
+       kehilangan struk hanya karena printer sedang mati. -->
+  {#if pos.checkout.printStatus && pos.checkout.printStatus !== 'printing'}
+    <div
+      class="px-4 md:px-6 py-2 border-b flex flex-wrap items-center gap-3 shrink-0 {pos.checkout.printStatus === 'printed' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}"
+      data-testid="print-status"
+    >
+      <span class="text-sm font-medium {pos.checkout.printStatus === 'printed' ? 'text-green-800' : 'text-amber-800'}">
+        {#if pos.checkout.printStatus === 'printed'}
+          Struk {pos.checkout.printedInvoice?.invoiceNumber} tercetak.
+        {:else}
+          {pos.checkout.printMessage}
+        {/if}
+      </span>
+      {#if pos.checkout.printStatus !== 'printed' && pos.checkout.printedInvoice}
+        <button
+          onclick={() => pos.checkout.printReceipt(pos.checkout.printedInvoice!.id)}
+          class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-medium border border-slate-300 transition-colors"
+          data-testid="reprint-receipt"
+        >
+          Cetak Ulang
+        </button>
+      {/if}
+      <button
+        onclick={() => pos.checkout.dismissPrintStatus()}
+        class="ml-auto text-sm text-slate-500 hover:text-slate-700 px-2 py-1"
+      >
+        Tutup
+      </button>
+    </div>
+  {/if}
+
   <!-- Main POS Area — stacked on phone/tablet (product grid above, cart below,
        each independently scrollable within a bounded height), side-by-side from
        lg up (original desktop behavior, cart back to a fixed-width column). -->

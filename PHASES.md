@@ -13,7 +13,21 @@
 
 ---
 
-## Current Phase: `Phase 6 — IN PROGRESS (6A + 6B done)` — Printer Integration
+## Current Phase: `Go-live Tahap B` — pilot readiness (see `plan/go-live-tahap-b-onward.md`)
+
+> **⚠️ Updated 2026-07-27.** Work is no longer tracked by the numbered phases alone —
+> the go-live track (`plan/go-live-plan.md` → `plan/go-live-tahap-b-onward.md`) drives
+> priority, and it pulls phase items in when the pilot actually needs them. Two things
+> landed today on `go-live/tahap-b`, both from the owner walking the real flow:
+>
+> - **`plan/tahap-b-alur-pos-servis.md`** — POS cash tendering + change, auto-print
+>   after checkout, and the service flow rebuilt around the shop's real sequence
+>   (single branching template chosen *after* diagnosis, not at intake).
+> - **Phase 7.1 (Flow Template Builder) is now `[x]`**, built out of order because the
+>   flow rules had to become data before the pilot could configure them. See Phase 7 below.
+>
+> **Phase 6 (Printer) remains as recorded below: 6A–6C done, 6D.1 (physical print) is a
+> hardware checklist for the owner to run.**
 
 > **⚠️ Updated 2026-07-24 (later still).** **6B (frontend) is done** — Printer Settings
 > tab (devices CRUD, read-only template list, assignment matrix) and the full Cetak flow
@@ -1055,7 +1069,32 @@ missing.
 > **Goal:** Build configuration UIs that make FlowServ unique.
 > **Branch:** `phase-7/builders`
 
-- [ ] 7.1 Flow Template Builder: Visual editor for nodes + transitions
+- [x] 7.1 Flow Template Builder: Visual editor for nodes + transitions — **done
+      2026-07-27 on `go-live/tahap-b`**, out of phase order, because the owner's
+      real service flow made it a prerequisite rather than a nicety: see
+      [`plan/tahap-b-alur-pos-servis.md`](plan/tahap-b-alur-pos-servis.md) R6/R7.
+      **What made it meaningful was R6, not the editor itself.** Before that,
+      every flow rule (when parts may be added, when payment is allowed, which
+      document prints where) lived in frontend code, so a "builder" could only
+      rearrange boxes without changing behaviour. R6 moved those rules into
+      `flow_nodes` as per-stage columns — `allowsCharges`, `requiresDiagnosis`,
+      `allowsInvoicing`, `autoPrintDocuments`, `description` — and every gate now
+      reads them. Editing a template genuinely changes how the app works.
+      BE: `PUT /v1/flows/:id/design` saves the whole design atomically (a
+      part-applied redesign could leave a live flow with two start stages),
+      `POST /v1/flows`, new admin-only `flow.manage`. Pure `validateFlowDesign()`
+      + 8 unit tests: exactly one start stage, at least one terminal, no
+      unreachable stage, no unknown/self transition. Deleting a stage still
+      referenced by a ticket or its history returns **422 `NODE_IN_USE`** naming
+      the stages (verified live) instead of a foreign-key 500. FE `/settings/flow`:
+      drag to reorder (native HTML5, same idiom as the P2 Kanban — no new
+      dependency; arrow buttons for touch), per-stage description shown to staff
+      on the ticket page, three capability switches, print-document checkboxes,
+      and "lanjut ke" checkboxes for branching. 6 Playwright tests, including one
+      that turns off a capability in the template and proves the ticket page locks
+      the matching form — the actual claim being made. Closed a latent bug on the
+      way: `TicketWorkspace.svelte` had rendered `currentNode.description` since
+      Phase 3 with no such column ever existing, so it was always blank.
 - [ ] 7.2 Printer Template Builder: WYSIWYG editor + preview
 - [ ] 7.3 RBAC Management UI: Visual permission matrix (depends on 4.5B)
 - [ ] 7.4 Git commit: `feat: phase 7 complete — builder UIs`

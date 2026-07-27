@@ -85,13 +85,58 @@
               </p>
             {/if}
           </div>
+
+          <!-- Tahap B — uang diterima & kembalian. Hanya untuk tunai: metode
+               lain tidak punya konsep "uang diserahkan". Boleh dikosongkan
+               (uang pas) — yang dikunci hanya nominal yang kurang dari total. -->
+          {#if pos.checkout.isCash}
+            <div data-testid="cash-tender">
+              <label for="amountTendered" class="block text-sm font-medium text-slate-700 mb-2">
+                Uang Diterima <span class="text-slate-400 font-normal">(kosongkan bila uang pas)</span>
+              </label>
+              <input
+                id="amountTendered"
+                type="number"
+                min="0"
+                inputmode="numeric"
+                bind:value={pos.checkout.amountTenderedInput}
+                placeholder="mis. 100000"
+                class="w-full px-4 py-3 text-lg font-semibold border rounded-lg outline-none transition-all {pos.checkout.tenderShort ? 'border-red-400 focus:ring-2 focus:ring-red-500' : 'border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}"
+              >
+
+              <!-- Tombol nominal cepat — target sentuh 40px, sama seperti
+                   stepper qty di CartSidebar (P12). -->
+              <div class="flex flex-wrap gap-2 mt-2">
+                {#each pos.checkout.quickTenderOptions as amount}
+                  <button
+                    type="button"
+                    onclick={() => pos.checkout.amountTenderedInput = String(amount)}
+                    class="min-h-10 px-3 py-2 text-sm font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                  >
+                    {pos.formatRp(amount)}
+                  </button>
+                {/each}
+              </div>
+
+              {#if pos.checkout.tenderShort}
+                <p class="mt-2 text-sm font-medium text-red-600" data-testid="tender-short">
+                  Kurang {pos.formatRp(pos.cart.grandTotal - (pos.checkout.amountTendered ?? 0))}
+                </p>
+              {:else if pos.checkout.amountTendered !== null}
+                <div class="mt-3 flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3" data-testid="change-amount">
+                  <span class="text-sm font-medium text-green-800">Kembalian</span>
+                  <span class="text-2xl font-bold text-green-700">{pos.formatRp(pos.checkout.changeAmount)}</span>
+                </div>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
       
       <div class="p-6 border-t border-slate-100 bg-slate-50/50 shrink-0">
         <button 
           onclick={() => pos.checkout.processCheckout()}
-          disabled={pos.commonState.processing || (pos.checkout.selectedType === 'tempo' && !pos.checkout.selectedCustomerId)}
+          disabled={pos.commonState.processing || (pos.checkout.selectedType === 'tempo' && !pos.checkout.selectedCustomerId) || pos.checkout.tenderShort}
           class="w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium rounded-xl shadow-sm transition-colors flex items-center justify-center"
         >
           {#if pos.commonState.processing}

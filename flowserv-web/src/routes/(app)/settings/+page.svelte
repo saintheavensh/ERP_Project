@@ -8,13 +8,16 @@
 
   let { data } = $props();
 
-  const TABS: Array<{ id: string; label: string }> = [
+  // `href` opsional: Alur Servis punya halamannya sendiri (editor penuh dengan
+  // drag-and-drop + load-nya sendiri), bukan tab in-place seperti yang lain.
+  const TABS: Array<{ id: string; label: string; href?: string }> = [
     { id: 'company', label: 'Perusahaan' },
     { id: 'branches', label: 'Cabang' },
     { id: 'users', label: 'Pengguna & Peran' },
     { id: 'payment-methods', label: 'Metode Pembayaran' },
     { id: 'printers', label: 'Printer' },
     { id: 'sales', label: 'Penjualan' },
+    { id: 'flow', label: 'Alur Servis', href: '/settings/flow' },
   ];
 </script>
 
@@ -32,7 +35,7 @@
     <nav class="flex gap-1 min-w-max">
       {#each TABS as t (t.id)}
         <a
-          href="/settings?tab={t.id}"
+          href={t.href ?? `/settings?tab=${t.id}`}
           class="px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors {data.tab === t.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}"
         >
           {t.label}

@@ -2,9 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
-import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
+import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
 import { ticketStatusEnum } from '../db/schema/enums';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission, enforcePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
@@ -178,7 +178,12 @@ const intakeSchema = z.object({
   // documents ("kerusakan"); editable later via the same PATCH endpoint.
   reportedComplaint: z.preprocess(emptyToUndefined, z.string().optional()),
 
-  flowTemplateId: z.string().uuid(),
+  // Tahap B — OPSIONAL sekarang. Alur nyata toko tidak memilih "ditunggu atau
+  // disimpan" di intake: kasir baru tahu setelah teknisi mendiagnosis. Form
+  // intake karena itu tak lagi menanyakannya, dan tiket memakai template
+  // default tenant (satu template bercabang). Tetap diterima bila dikirim
+  // eksplisit — fixture e2e & tiket yang sengaja memakai template lain.
+  flowTemplateId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
   branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
 });
 
@@ -240,28 +245,61 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
         finalBranchId = branchResult[0].id;
       }
 
-      // 4. Find first node of the selected flow template
-      const nodes = await tx.select().from(flowNodes)
-        .where(eq(flowNodes.flowTemplateId, data.flowTemplateId))
-        .orderBy(flowNodes.name); 
-      
-      const firstNode = nodes.find(n => n.name.toLowerCase().includes('intake')) || nodes[0];
-      
-      if (!firstNode) {
-        throw new Error('Flow template has no nodes');
+      // 4. Resolve the flow template — explicit one if given, else the tenant's
+      // default (Tahap B: the intake form no longer asks).
+      let finalFlowTemplateId = data.flowTemplateId;
+      if (!finalFlowTemplateId) {
+        const [defaultTemplate] = await tx
+          .select({ id: flowTemplates.id })
+          .from(flowTemplates)
+          .where(and(eq(flowTemplates.tenantId, tenantId), eq(flowTemplates.isDefault, true)))
+          .orderBy(flowTemplates.createdAt)
+          .limit(1);
+        if (!defaultTemplate) throw new Error('No default flow template configured for this tenant');
+        finalFlowTemplateId = defaultTemplate.id;
       }
-      
-      // 5. Create Ticket
+
+      // 5. Find first node of the selected flow template. Structural, not by
+      // name: the intake node is the one nothing transitions INTO.
+      const nodes = await tx.select().from(flowNodes)
+        .where(eq(flowNodes.flowTemplateId, finalFlowTemplateId))
+        .orderBy(flowNodes.sequenceOrder);
+
+      if (nodes.length === 0) throw new Error('Flow template has no nodes');
+
+      const incoming = await tx
+        .select({ toNodeId: flowTransitions.toNodeId })
+        .from(flowTransitions)
+        .where(inArray(flowTransitions.fromNodeId, nodes.map((n) => n.id)));
+      const hasIncoming = new Set(incoming.map((t) => t.toNodeId));
+      const firstNode = nodes.find((n) => !hasIncoming.has(n.id)) ?? nodes[0];
+
+      // 6. Nomor antrian harian per cabang (Tahap B). Dihitung di dalam
+      // transaksi yang sama supaya dua intake bersamaan tak berbagi nomor;
+      // di-reset otomatis tiap hari karena difilter queue_date = hari ini.
+      const today = new Date().toISOString().slice(0, 10);
+      const [{ maxQueue }] = await tx
+        .select({ maxQueue: sql<number | null>`max(${serviceTickets.queueNumber})` })
+        .from(serviceTickets)
+        .where(and(
+          eq(serviceTickets.tenantId, tenantId),
+          eq(serviceTickets.branchId, finalBranchId),
+          eq(serviceTickets.queueDate, today)
+        ));
+
+      // 7. Create Ticket
       const [ticket] = await tx.insert(serviceTickets).values({
         tenantId,
         branchId: finalBranchId,
         customerId: finalCustomerId,
         customerAssetId: finalAssetId,
-        flowTemplateId: data.flowTemplateId,
+        flowTemplateId: finalFlowTemplateId,
         currentNodeId: firstNode.id,
         status: 'open',
         devicePasscode: data.devicePasscode || null,
         reportedComplaint: data.reportedComplaint || null,
+        queueNumber: (maxQueue ?? 0) + 1,
+        queueDate: today,
       }).returning();
       
       // 5. Create History Entry
@@ -404,6 +442,27 @@ ticketsRouter.post('/:id/assign', requirePermission('ticket.assign_technician'),
     }
     console.error('Failed to assign technician:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to assign technician', undefined, 500);
+  }
+});
+
+// Tahap B — teknisi mengambil sendiri pekerjaan dari antrian ("teknisi bisa
+// mengambil pekerjaan dari yang menunggu antrian tersebut"). Sengaja TIDAK
+// memakai `ticket.assign_technician` (izin manajer untuk menugaskan orang
+// lain): ini menugaskan DIRI SENDIRI, jadi cukup izin teknisi biasa. userId
+// diambil dari JWT, bukan body — teknisi tak bisa menugaskan orang lain lewat
+// endpoint ini meski mencoba.
+ticketsRouter.post('/:id/claim', requirePermission('ticket.diagnose'), auditMiddleware({ action: 'ticket.claim', entityType: 'service_ticket', entityIdParam: 'id' }), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  try {
+    const result = await assignTechnician(tenantId, ticketId, { technicianId: userId }, userId);
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to claim ticket:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to claim ticket', undefined, 500);
   }
 });
 

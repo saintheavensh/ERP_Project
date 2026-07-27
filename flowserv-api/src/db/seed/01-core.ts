@@ -66,6 +66,10 @@ const PERMISSIONS = [
   // D2 — apply a discount at POS/service billing. Manager + Super Admin only,
   // enforced only when discountAmount > 0. Pilot rule: "hanya manager boleh diskon".
   { id: IDS.permPosApplyDiscount, code: 'pos.apply_discount', description: 'Apply a discount on a POS sale or service invoice' },
+  // Tahap B — menyusun alur servis (tahap, percabangan, kapabilitas tiap tahap).
+  // Admin-only, pola sama dengan permPrinterManage: ini mengubah cara SELURUH
+  // tiket berjalan, jadi bukan wewenang manajer cabang.
+  { id: IDS.permFlowManage, code: 'flow.manage', description: 'Design service flow templates: stages, branching, and per-stage capabilities' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both

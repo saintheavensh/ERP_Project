@@ -15,15 +15,25 @@ async function login(page: Page, email = 'admin@demo.com', password = 'admin123'
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
 }
 
+// Tahap B — dua perubahan di helper ini, keduanya konsekuensi alur nyata toko:
+//  (1) form intake tak lagi meminta alur (ditentukan setelah diagnosis);
+//  (2) biaya BELUM boleh diisi di tahap Intake — template menandai Intake
+//      dengan allowsCharges=false, karena unitnya memang belum didiagnosis.
+//      Jadi tiket digeser ke Diagnosis dulu, tahap tempat teknisi memang
+//      memasukkan estimasi harga.
 async function intakeTicket(page: Page, name: string) {
   await page.goto('/tickets/intake');
   await page.waitForLoadState('networkidle');
   await page.fill('#name', name);
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
-  await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
   await page.getByRole('button', { name: 'Create Ticket' }).click();
-  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
+
+  const diagnosisValue = await page.locator('#next option', { hasText: 'Diagnosis' }).first().getAttribute('value');
+  await page.selectOption('#next', diagnosisValue!);
+  await page.getByRole('button', { name: 'Execute' }).click();
+  await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText('Diagnosis');
 }
 
 // Adds a labor charge via the on-page form (resets to 'part' after each add,

@@ -45,6 +45,12 @@ export const posInvoices = pgTable('pos_invoices', {
   // checkout (grandTotal if paid immediately, 0 for tempo) and advanced by
   // customerPayments below; mirrors supplierInvoices.amountPaid exactly.
   amountPaid: money('amount_paid').notNull().default('0'),
+  // Tahap B — uang tunai yang benar-benar diserahkan pelanggan. Nullable: hanya
+  // terisi untuk pembayaran tunai (transfer/QRIS/tempo tidak punya "uang
+  // diserahkan"). Kembalian sengaja TIDAK disimpan — murni turunan
+  // amountTendered - grandTotal; menyimpannya berarti dua sumber kebenaran yang
+  // bisa berselisih.
+  amountTendered: money('amount_tendered'),
   paymentMethod: paymentMethodEnum('payment_method').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by').references(() => users.id),

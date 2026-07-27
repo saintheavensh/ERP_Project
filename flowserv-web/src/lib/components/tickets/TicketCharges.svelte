@@ -203,24 +203,75 @@
         </div>
       {/if}
 
-      <!-- H17 — generate service invoice (consumed parts + approved labor) -->
+      <!-- H17 — generate service invoice (consumed parts + approved labor).
+           Tahap B — hanya muncul di ujung alur (state.canInvoice kini juga
+           menuntut atEndOfFlow), dan kini punya input uang diterima +
+           kembalian seperti kasir POS. -->
       {#if state.canInvoice}
-        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
-          <p class="text-xs text-slate-500">Buat faktur dari part yang sudah dipakai &amp; jasa yang disetujui.</p>
-          <div class="flex items-center gap-2">
-            <select bind:value={state.invoicePaymentMethod}
-              class="px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm">
-              <option value="tempo">Tempo (bayar nanti)</option>
-              <option value="cash">Tunai</option>
-              <option value="transfer">Transfer</option>
-              <option value="qris">QRIS</option>
-            </select>
-            <button onclick={() => state.generateInvoice()} disabled={state.chargeLoading}
+        <div class="border-t border-slate-100 pt-4 space-y-3" data-testid="ticket-invoice-panel">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="font-semibold text-slate-800">Pembayaran &amp; Faktur</h3>
+            <div class="text-right">
+              <span class="text-xs text-slate-500 block">Total Tagihan</span>
+              <span class="text-xl font-bold text-slate-900">{idr(state.billableTotal)}</span>
+            </div>
+          </div>
+          <p class="text-xs text-slate-500">
+            Menagih part yang sudah dipakai &amp; jasa yang disetujui.
+            {#if state.invoiceDisplayMode}
+              Nota akan tercetak mode
+              <b class="text-slate-700">{state.invoiceDisplayMode === 'summary' ? 'Gabung (satu total)' : state.invoiceDisplayMode === 'flexible' ? 'Fleksibel (bisa ditukar saat cetak)' : 'Rinci (per baris)'}</b>
+              — ubah di <a href="/settings?tab=sales" class="text-blue-600 hover:underline">Setelan &rarr; Penjualan</a>.
+            {/if}
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label for="invoice-method" class="block text-xs font-medium text-slate-600 mb-1">Metode Pembayaran</label>
+              <select id="invoice-method" bind:value={state.invoicePaymentMethod}
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-sm">
+                <option value="tempo">Tempo (bayar nanti)</option>
+                <option value="cash">Tunai</option>
+                <option value="transfer">Transfer</option>
+                <option value="qris">QRIS</option>
+              </select>
+            </div>
+            {#if state.invoiceIsCash}
+              <div data-testid="ticket-cash-tender">
+                <label for="invoice-tendered" class="block text-xs font-medium text-slate-600 mb-1">
+                  Uang Diterima <span class="text-slate-400 font-normal">(kosongkan bila pas)</span>
+                </label>
+                <input id="invoice-tendered" type="number" min="0" inputmode="numeric"
+                  bind:value={state.invoiceAmountTendered} placeholder="mis. 500000"
+                  class="w-full px-3 py-2 border rounded-lg text-sm outline-none {state.invoiceTenderShort ? 'border-red-400 focus:ring-2 focus:ring-red-500' : 'border-slate-200 focus:ring-2 focus:ring-blue-500'}" />
+              </div>
+            {/if}
+          </div>
+
+          {#if state.invoiceIsCash && state.invoiceTenderShort}
+            <p class="text-sm font-medium text-red-600">
+              Kurang {idr(state.billableTotal - (state.invoiceTendered ?? 0))}
+            </p>
+          {:else if state.invoiceIsCash && state.invoiceTendered !== null}
+            <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2" data-testid="ticket-change-amount">
+              <span class="text-sm font-medium text-green-800">Kembalian</span>
+              <span class="text-xl font-bold text-green-700">{idr(state.invoiceChange)}</span>
+            </div>
+          {/if}
+
+          <div class="flex justify-end">
+            <button onclick={() => state.generateInvoice()} disabled={state.chargeLoading || state.invoiceTenderShort}
               class="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-40">
-              Buat Faktur
+              Buat Faktur &amp; Cetak Nota
             </button>
           </div>
         </div>
+      {:else if state.charges.length > 0 && !state.atEndOfFlow}
+        <!-- Tahap B — biaya sudah ada tapi tiket belum sampai ujung alur.
+             Dijelaskan, bukan didiamkan, supaya teknisi tak mengira tombolnya hilang. -->
+        <p class="text-xs text-slate-500 border-t border-slate-100 pt-3" data-testid="invoice-locked">
+          Pembayaran &amp; faktur terbuka setelah pengerjaan selesai (tahap akhir alur).
+        </p>
       {/if}
     {/if}
 

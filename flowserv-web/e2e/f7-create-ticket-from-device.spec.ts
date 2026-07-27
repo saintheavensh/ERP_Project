@@ -34,7 +34,7 @@ test('creates a ticket from a customer device via the previously-dead button', a
   const row = page.locator('tr', { hasText: 'Budi' }).first();
   await expect(row).toBeVisible();
   await row.getByRole('link', { name: /View/ }).click();
-  await page.waitForURL(/\/customers\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+  await page.waitForURL(/\/customers\/[0-9a-f-]{36}/, { timeout: 20_000 });
   await shot(page, '01-customer-detail');
 
   // 3. Click "Create Ticket" on the registered device — the button that used to do nothing.
@@ -49,12 +49,12 @@ test('creates a ticket from a customer device via the previously-dead button', a
   await expect(page.locator('#name')).toHaveValue('Budi Santoso');
   await shot(page, '02-intake-prefilled');
 
-  // 5. Pick a flow and submit — the device section has no inputs to fill (locked).
-  await page.selectOption('#flow', { index: 1 });
+  // 5. Submit — the device section has no inputs to fill (locked), and since
+  // Tahap B the form no longer asks for a flow (tiket memakai alur default toko).
   await page.getByRole('button', { name: 'Create Ticket' }).click();
 
   // 6. Lands on the new ticket, linked to the right customer + device.
-  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
   await expect(page.locator('h1', { hasText: 'Workspace' })).toBeVisible();
   await expect(page.getByText('Budi Santoso')).toBeVisible();
   await shot(page, '03-ticket-created');

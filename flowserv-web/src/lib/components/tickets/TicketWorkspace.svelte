@@ -142,14 +142,23 @@
        once its document is actually meaningful to print — never forced/auto-
        printed, matching how every other "Cetak" action in this app already
        works (a manual click, not a side effect of a transition). -->
-  {#if state.canPrintLabel || state.hasEnteredUnitDisimpan || state.invoice}
+  {#if state.canPrintLabel || state.canPrintTandaTerima || state.invoice}
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-      <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Dokumen Cetak</h3>
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Dokumen Cetak</h3>
+        <!-- Tahap B — status auto-cetak saat intake baru tersimpan. Hanya
+             muncul bila ada yang perlu diketahui (gagal / sedang berjalan). -->
+        {#if state.autoPrintMessage}
+          <span class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1" data-testid="ticket-print-status">
+            {state.autoPrintMessage}
+          </span>
+        {/if}
+      </div>
       <div class="flex flex-wrap gap-2">
         {#if state.canPrintLabel}
           <PrintButton token={state.token} documentType="label" id={state.ticket.id} label="Cetak Label" />
         {/if}
-        {#if state.hasEnteredUnitDisimpan}
+        {#if state.canPrintTandaTerima}
           <PrintButton token={state.token} documentType="tanda_terima" id={state.ticket.id} label="Cetak Tanda Terima" />
         {/if}
         {#if state.invoice}
@@ -160,9 +169,73 @@
     </div>
   {/if}
 
+  <!-- Tahap B — hasil diagnosa + estimasi waktu. Muncul di tahap yang
+       templatenya menandai requiresDiagnosis, bukan di tahap bernama
+       "Diagnosis": toko bebas memindahkannya lewat pengaturan alur. -->
+  {#if state.diagnosisRequired || state.ticket?.diagnosis}
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm" data-testid="diagnosis-panel">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Diagnosa &amp; Estimasi Waktu</h3>
+        {#if !state.diagnosisEditing && state.ticket?.status !== 'closed' && state.ticket?.status !== 'cancelled'}
+          <button onclick={() => state.openDiagnosisEdit()} class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+            {state.ticket?.diagnosis ? 'Edit' : 'Isi Diagnosa'}
+          </button>
+        {/if}
+      </div>
+
+      {#if state.diagnosisEditing}
+        <div class="space-y-3">
+          <div>
+            <label for="diagnosis" class="block text-xs font-medium text-slate-600 mb-1">Temuan teknisi</label>
+            <textarea id="diagnosis" bind:value={state.diagnosisDraft} rows="3"
+              placeholder="mis. IC power short, konektor cas rusak"
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
+          <div>
+            <label for="duration" class="block text-xs font-medium text-slate-600 mb-1">Estimasi lama pengerjaan (menit)</label>
+            <input id="duration" type="number" min="1" bind:value={state.durationDraft}
+              placeholder="mis. 120 untuk 2 jam"
+              class="w-full sm:w-64 px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+            <p class="text-xs text-slate-400 mt-1">Yang dijanjikan ke pelanggan adalah durasinya, jadi dicatat sebagai lama pengerjaan — bukan jam selesai.</p>
+          </div>
+          <div class="flex gap-2">
+            <button onclick={() => state.saveDiagnosis()} disabled={state.diagnosisLoading}
+              class="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-4 py-2 rounded-lg">
+              {state.diagnosisLoading ? 'Menyimpan...' : 'Simpan Diagnosa'}
+            </button>
+            <button onclick={() => state.diagnosisEditing = false} class="text-xs font-medium text-slate-500 hover:text-slate-700 px-3 py-2">Batal</button>
+          </div>
+        </div>
+      {:else}
+        <p class="text-sm text-slate-900">{state.ticket?.diagnosis || 'Belum diisi.'}</p>
+        {#if state.estimatedDurationText}
+          <p class="text-sm text-slate-500 mt-1">Estimasi pengerjaan: <b class="text-slate-700">{state.estimatedDurationText}</b></p>
+        {/if}
+      {/if}
+    </div>
+  {/if}
+
   <!-- F1 — Technician assignment (wires H8's previously-orphaned POST /:id/assign) -->
   <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-    <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Assigned Technician</h3>
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+      <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Assigned Technician</h3>
+      <!-- Tahap B — "teknisi bisa mengambil pekerjaan dari yang menunggu
+           antrian". Hanya muncul saat tiket belum bertuan; menugaskan diri
+           sendiri, bukan orang lain (izinnya pun beda di backend). -->
+      {#if !state.assignedTechnician && state.ticket?.status === 'open'}
+        <button
+          onclick={() => state.claim()}
+          disabled={state.assignLoading}
+          class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium rounded-lg transition-colors"
+          data-testid="claim-ticket"
+        >
+          {state.assignLoading ? 'Mengambil...' : 'Ambil Pekerjaan'}
+        </button>
+      {/if}
+    </div>
+    {#if state.ticket?.queueNumber}
+      <p class="text-xs text-slate-400 mb-2">Nomor antrian {state.ticket.queueNumber}</p>
+    {/if}
     {#if state.ticket?.status === 'closed' || state.ticket?.status === 'cancelled'}
       <p class="font-bold text-lg text-slate-900">{state.assignedTechnician?.name || 'Belum ditugaskan'}</p>
     {:else}
@@ -185,8 +258,37 @@
     {/if}
   </div>
 
-  <!-- H7 — Charges (parts / labor / fees), running total, request approval -->
-  <TicketCharges {state} />
+  <!-- H7 — Charges (parts / labor / fees), running total, request approval.
+       Tahap B — dikunci sampai tiket melewati node persetujuan: sebelum
+       didiagnosis & disetujui pelanggan, memilih sparepart hanya menebak
+       (keputusan pemilik 2026-07-27). Ditampilkan sebagai kartu terkunci,
+       bukan disembunyikan, supaya teknisi tahu bagian ini ada dan kapan
+       terbuka — bukan mengira fiturnya hilang. -->
+  {#if state.chargesUnlocked}
+    <TicketCharges {state} />
+  {:else}
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6" data-testid="charges-locked">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-slate-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+        <div>
+          <h2 class="font-semibold text-slate-800">Sparepart &amp; Biaya</h2>
+          <p class="text-sm text-slate-500 mt-1">
+            {#if state.firstChargeNodeName}
+              Terbuka mulai tahap <b class="text-slate-700">{state.firstChargeNodeName}</b>.
+            {:else}
+              Belum ada tahap yang mengizinkan input biaya di alur ini.
+            {/if}
+            Unit didiagnosis dulu, baru sparepart dan jasanya dicatat.
+            <span class="block mt-1 text-xs text-slate-400">
+              Aturan ini mengikuti template alur servis — bisa diubah di pengaturan alur.
+            </span>
+          </p>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <!-- Action Forms (Phase 3 Hardcoded dynamic forms) -->
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

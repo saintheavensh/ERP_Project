@@ -185,16 +185,17 @@
         {/each}
       </div>
     </div>
-    <div>
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="flow">Service Flow *</label>
-      <select id="flow" bind:value={state.form.flowTemplateId} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-        <option value="">Select Service Workflow...</option>
-        {#each state.templates as t}
-          <option value={t.id}>{t.name}</option>
-        {/each}
-      </select>
-      <p class="text-xs text-slate-500 mt-2">
-        The selected workflow dictates the stages this ticket will go through (e.g. Diagnosis &rarr; Approval &rarr; Repair).
+    <!-- Tahap B — pemilih alur DIHAPUS dari intake (keputusan pemilik
+         2026-07-27). Di toko, "ditunggu atau ditinggal" baru bisa diputuskan
+         setelah teknisi mendiagnosis dan menyebut harga + lama pengerjaan —
+         kasir tidak tahu jawabannya di titik ini, jadi memintanya di sini
+         hanya memaksa menebak. Tiket memakai alur default toko, yang
+         bercabang sendiri setelah tahap Diagnosis. -->
+    <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+      <p class="text-sm text-slate-600">
+        Tiket akan mengikuti <b class="text-slate-800">alur servis default toko</b>.
+        Pilihan <b>Ditunggu</b> atau <b>Disimpan</b> ditentukan nanti — setelah teknisi
+        mendiagnosis dan menyampaikan estimasi harga &amp; waktu ke pelanggan.
       </p>
     </div>
   </div>

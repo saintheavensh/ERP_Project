@@ -2,8 +2,14 @@ import { Hono } from 'hono';
 import { db } from '../db/connection';
 import { flowTemplates, flowNodes, flowTransitions } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
+import { zValidator } from '@hono/zod-validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
+import { requirePermission } from '../middleware/rbac';
+import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
+import { BusinessError } from '../lib/errors';
+import { flowDesignSchema, createFlowTemplateSchema } from '../modules/flow/types';
+import { saveFlowDesign, createFlowTemplate } from '../modules/flow/service';
 
 const flowRouter = new Hono();
 
@@ -64,6 +70,40 @@ flowRouter.get('/:id', async (c) => {
     nodes,
     transitions
   });
+});
+
+// ============================================================================
+// Tahap B / Phase 7.1 — Flow Template Builder.
+//
+// Membaca alur boleh siapa saja yang login (halaman tiket & papan Kanban
+// butuh), tapi MENYUNTINGnya admin-only: sejak kapabilitas per-tahap ada,
+// mengubah template berarti mengubah cara seluruh toko bekerja.
+// ============================================================================
+
+flowRouter.post('/', requirePermission('flow.manage'), zValidator('json', createFlowTemplateSchema), auditMiddleware({ action: 'flow_template.create', entityType: 'flow_template', bodyFields: ['name', 'domain'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  try {
+    const template = await createFlowTemplate(tenantId, c.req.valid('json'));
+    return successResponse(c, template, undefined, 201);
+  } catch (err) {
+    if (err instanceof BusinessError) return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    console.error('Failed to create flow template:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to create flow template', undefined, 500);
+  }
+});
+
+// Seluruh rancangan disimpan sekaligus (PUT, bukan PATCH per-node) — lihat
+// alasan atomiknya di modules/flow/types.ts.
+flowRouter.put('/:id/design', requirePermission('flow.manage'), zValidator('json', flowDesignSchema), auditMiddleware({ action: 'flow_template.save_design', entityType: 'flow_template', entityIdParam: 'id', bodyFields: ['name'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  try {
+    const result = await saveFlowDesign(tenantId, c.req.param('id'), c.req.valid('json'));
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    console.error('Failed to save flow design:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to save flow design', undefined, 500);
+  }
 });
 
 export { flowRouter };

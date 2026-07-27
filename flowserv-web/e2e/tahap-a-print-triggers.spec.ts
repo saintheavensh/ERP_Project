@@ -3,12 +3,17 @@ import { randomUUID } from 'node:crypto';
 
 // Tahap A — pemicu cetak per-tahap (go-live gap Tier-1 #3,
 // plan/tahap-a-print-triggers.md). Label/tanda-terima are ticket-sourced
-// documents (printed at diagnosis, before any invoice exists) -- a genuinely
-// new render path (modules/printer/ticket-document.ts), not the existing
-// pos_invoice one. This proves all three triggers actually work through the
-// real UI: Label (both flows, once diagnosis has started), Tanda Terima
-// (Disimpan only, once the unit has entered storage), and Nota (once the
-// ticket's invoice exists).
+// documents (printed before any invoice exists) -- a genuinely new render
+// path (modules/printer/ticket-document.ts), not the existing pos_invoice one.
+//
+// Tahap B (2026-07-27, plan/tahap-b-alur-pos-servis.md) — dua pemicunya
+// DILONGGARKAN atas permintaan pemilik, dan spec ini ikut diperbarui:
+//   - Label: dulu menunggu tiket keluar dari Intake -> kini tersedia langsung.
+//   - Tanda Terima: dulu hanya alur Disimpan setelah node "Unit Disimpan" ->
+//     kini kedua alur, langsung setelah intake.
+// Alasannya: keduanya dokumen SERAH TERIMA, dan serah terima terjadi di
+// intake. Sebelumnya, tepat setelah intake tersimpan tak ada satu pun tombol
+// cetak yang muncul -- persis keluhan pemilik.
 
 const API_BASE = 'http://localhost:3001/v1';
 
@@ -21,18 +26,10 @@ async function login(page: Page, email = 'admin@demo.com', password = 'admin123'
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
 }
 
-async function transitionTo(page: Page, targetStage: string) {
-  const value = await page.locator('#next option', { hasText: targetStage }).first().getAttribute('value');
-  expect(value, `a transition option to "${targetStage}" should exist`).toBeTruthy();
-  await page.selectOption('#next', value!);
-  await page.getByRole('button', { name: 'Execute' }).click();
-  await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText(targetStage);
-}
-
 test.describe('desktop (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('Label: appears once diagnosis starts, shows customer + keluhan', async ({ page }) => {
+  test('Label: available immediately after intake, shows customer + keluhan', async ({ page }) => {
     await login(page);
     await page.goto('/tickets/intake');
     await page.waitForLoadState('networkidle');
@@ -44,15 +41,20 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#model', 'A05');
     await page.fill('#complaint', 'LCD retak parah');
     await page.fill('#passcode', '1234'); // sandi -> harus muncul di label QC
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
-    // Not printable yet at Intake.
-    await expect(page.getByRole('button', { name: 'Cetak Label' })).toHaveCount(0);
-
-    await transitionTo(page, 'Diagnosis');
+    // Tahap B — langsung bisa dicetak di Intake, tanpa transisi apa pun.
     await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();
+
+    // Auto-cetak benar-benar berjalan: tanpa printer ter-assign untuk 'label'
+    // di cabang ini, statusnya melaporkan itu alih-alih diam saja. Ini bukti
+    // autoPrintIntakeDocuments() terpicu, bukan sekadar tombolnya muncul.
+    await expect(page.getByTestId('ticket-print-status')).toContainText(/belum tercetak/i);
+
+    // Param autoprint dibersihkan dari URL, supaya refresh tak mencetak ulang.
+    expect(page.url()).not.toContain('autoprint');
+
     await page.getByRole('button', { name: 'Cetak Label' }).click();
 
     const preview = page.getByTestId('thermal-preview');
@@ -64,40 +66,82 @@ test.describe('desktop (1280x800)', () => {
     await expect(preview).toHaveAttribute('data-paper-size', '58mm');
   });
 
-  test('Tanda Terima: only appears in the Disimpan flow, once the unit enters storage', async ({ page }) => {
+  test('Tanda Terima: hanya cabang Disimpan, dan hanya setelah unit ditinggal', async ({ page }) => {
+    // Tahap B — aturan finalnya (deskripsi alur pemilik 2026-07-27):
+    // intake mencetak LABEL saja; nota tanda terima hanya keluar bila kasir
+    // memilih cabang "Unit Disimpan" setelah diagnosis. Yang ditunggu tidak
+    // dapat nota sampai selesai.
+    //
+    // Yang diuji di sini bukan daftar nama node, melainkan bahwa perilakunya
+    // MENGIKUTI konfigurasi template (`flow_nodes.autoPrintDocuments`).
+    async function intake(name: string, complaint: string) {
+      await page.goto('/tickets/intake');
+      await page.waitForLoadState('networkidle');
+      await page.fill('#name', name);
+      await page.selectOption('#type', 'Laptop');
+      await page.fill('#brand', 'Asus');
+      await page.fill('#complaint', complaint);
+      await page.getByRole('button', { name: 'Create Ticket' }).click();
+      await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
+    }
+
+    async function moveTo(stage: string) {
+      const value = await page.locator('#next option', { hasText: stage }).first().getAttribute('value');
+      expect(value, `transisi ke "${stage}" harus ada`).toBeTruthy();
+      await page.selectOption('#next', value!);
+      await page.getByRole('button', { name: 'Execute' }).click();
+      await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText(stage);
+    }
+
     await login(page);
-    await page.goto('/tickets/intake');
-    await page.waitForLoadState('networkidle');
 
-    const uniqueName = `Print Tanda Terima ${Date.now()}`;
-    await page.fill('#name', uniqueName);
-    await page.selectOption('#type', 'Laptop');
-    await page.fill('#brand', 'Asus');
-    await page.fill('#complaint', 'Mati total');
-    await page.selectOption('#flow', { label: 'Servis - Disimpan' });
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    const uniqueName = `Print TT ${Date.now()}`;
+    await intake(uniqueName, 'Mati total');
 
-    await transitionTo(page, 'Diagnosis');
-    // Label is printable now (diagnosis started) but Tanda Terima is not yet
-    // (unit hasn't entered storage).
+    // Di Intake: label ya, tanda terima BELUM — unitnya belum diputuskan ditinggal.
     await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Cetak Tanda Terima' })).toHaveCount(0);
 
-    await transitionTo(page, 'Unit Disimpan');
+    await moveTo('Diagnosis');
+    await expect(page.getByRole('button', { name: 'Cetak Tanda Terima' })).toHaveCount(0);
+
+    // Kasir memilih cabang Disimpan -> tanda terima muncul.
+    await moveTo('Unit Disimpan');
     await expect(page.getByRole('button', { name: 'Cetak Tanda Terima' })).toBeVisible();
     await page.getByRole('button', { name: 'Cetak Tanda Terima' }).click();
 
     const preview = page.getByTestId('thermal-preview');
     await expect(preview).toBeVisible();
     await expect(preview.getByText('TANDA TERIMA UNIT SERVIS')).toBeVisible();
-    await expect(preview.getByText(/Plg: Print Tanda Terima/)).toBeVisible();
+    await expect(preview.getByText(new RegExp(`Plg: ${uniqueName}`))).toBeVisible();
     await expect(preview.getByText(/Keluhan: Mati total/)).toBeVisible();
     await expect(preview).toHaveAttribute('data-paper-size', '80mm');
+  });
 
-    // Ditunggu tickets never show Tanda Terima -- there is no storage step.
-    // (Covered structurally: the Ditunggu template has no "Unit Disimpan"
-    // node at all, so hasEnteredUnitDisimpan can never become true for one.)
+  test('Ditunggu: tidak pernah memunculkan Tanda Terima', async ({ page }) => {
+    await login(page);
+    await page.goto('/tickets/intake');
+    await page.waitForLoadState('networkidle');
+    await page.fill('#name', `Print Ditunggu ${Date.now()}`);
+    await page.selectOption('#type', 'Smartphone');
+    await page.fill('#complaint', 'Keyboard rusak');
+    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
+
+    const moveTo = async (stage: string) => {
+      const value = await page.locator('#next option', { hasText: stage }).first().getAttribute('value');
+      await page.selectOption('#next', value!);
+      await page.getByRole('button', { name: 'Execute' }).click();
+      await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText(stage);
+    };
+
+    await moveTo('Diagnosis');
+    await moveTo('Ditunggu');
+
+    // Cabang Ditunggu tak pernah melewati node yang mencetak tanda terima,
+    // jadi tombolnya memang tak pernah ada — tanpa satu pun aturan khusus di kode.
+    await expect(page.getByRole('button', { name: 'Cetak Tanda Terima' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();
   });
 
   test('Nota: appears once the ticket actually has an invoice', async ({ page }) => {
@@ -167,10 +211,8 @@ test.describe('mobile (375x667)', () => {
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#complaint', 'Baterai boros');
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
-    await transitionTo(page, 'Diagnosis');
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();
     const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);

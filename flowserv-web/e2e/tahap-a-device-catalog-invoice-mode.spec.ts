@@ -119,9 +119,9 @@ test.describe('desktop (1280x800)', () => {
     await page.getByTestId('service-suggestions').getByRole('button', { name: 'Ganti LCD' }).click();
     await expect(page.locator('#complaint')).toHaveValue('Ganti LCD');
 
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
+    // Tahap B — form intake tak lagi meminta alur; tiket memakai alur default toko.
     await page.getByRole('button', { name: 'Create Ticket' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // The linked catalog entry should now surface on the ticket detail page too.
     const workspaceCard = page.getByTestId('device-catalog-card');

@@ -11,6 +11,7 @@ import {
   index,
   uniqueIndex,
   primaryKey,
+  date,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -79,6 +80,20 @@ export const serviceTickets = pgTable('service_tickets', {
   // "complaint" as part of intake, but no column for it ever existed until
   // now. Feeds the label/tanda-terima print documents ("kerusakan").
   reportedComplaint: text('reported_complaint'),
+  // Tahap B (2026-07-27) — alur nyata pemilik: "teknisi menginput diagnosa dan
+  // juga estimasi harga dan waktu". `reportedComplaint` di atas adalah keluhan
+  // PELANGGAN; ini temuan TEKNISI — dua hal berbeda yang sering tidak sama
+  // ("mati total" vs "IC power short"). Estimasi harga sudah punya rumahnya
+  // sendiri (ticket_charges), jadi hanya dua kolom ini yang benar-benar baru.
+  diagnosis: text('diagnosis'),
+  // Menit, bukan timestamp target: yang disepakati dengan pelanggan adalah
+  // durasi ("2 jam", "3 hari"), dan durasi tak ikut bergeser bila pengerjaan
+  // baru mulai besok. Tampilan mengubahnya jadi "2 jam" / "1 hari".
+  estimatedDurationMinutes: integer('estimated_duration_minutes'),
+  // Nomor antrian harian per cabang, dicetak di label supaya pelanggan bisa
+  // dipanggil. Direset tiap hari lewat queue_date di bawah.
+  queueNumber: integer('queue_number'),
+  queueDate: date('queue_date'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { withTimezone: true }),
 }, (table) => ({

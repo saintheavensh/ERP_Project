@@ -20,6 +20,8 @@ export interface InvoiceBundle {
   grandTotal: number;
   lines: Array<{ description: string; quantity: number; unitPrice: number; subtotal: number }>;
   technicianName?: string;
+  // Tahap B — hanya terisi untuk penjualan tunai yang nominalnya diketik kasir.
+  amountTendered?: number;
 }
 
 /**
@@ -68,6 +70,12 @@ export function buildDocumentData(
       discountAmount: bundle.discountAmount,
       taxAmount: bundle.taxAmount,
       grandTotal: bundle.grandTotal,
+    },
+    // Tahap B — kembalian diturunkan di sini, satu-satunya tempat, supaya
+    // struk thermal dan invoice A4 tidak menghitungnya sendiri-sendiri.
+    payment: bundle.amountTendered === undefined ? undefined : {
+      amountTendered: bundle.amountTendered,
+      changeAmount: Math.round(bundle.amountTendered - bundle.grandTotal),
     },
     extra: {
       cashierName: layoutConfig.extra.showCashierName ? bundle.cashierName : undefined,
@@ -162,6 +170,13 @@ export function renderThermalBlocks(paperSize: '58mm' | '80mm', doc: DocumentDat
     blocks.push({ type: 'row', value: padRow('Pajak', formatMoney(doc.totals.taxAmount), width) });
   }
   blocks.push({ type: 'total', value: padRow('TOTAL', formatMoney(doc.totals.grandTotal), width) });
+
+  // Tahap B — dicetak SETELAH total, urutan yang sama dengan struk kasir mana
+  // pun: pelanggan membaca total dulu, lalu memeriksa kembaliannya.
+  if (doc.payment) {
+    blocks.push({ type: 'row', value: padRow('TUNAI', formatMoney(doc.payment.amountTendered), width) });
+    blocks.push({ type: 'row', value: padRow('KEMBALI', formatMoney(doc.payment.changeAmount), width) });
+  }
 
   if (doc.footer.note) {
     blocks.push({ type: 'line' });

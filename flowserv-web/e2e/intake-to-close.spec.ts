@@ -54,26 +54,31 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
   await page.fill('#model', 'Galaxy A10');
-  // Flow template select: pick "Standard Repair" by label, not position — Tahap A
-  // added two more service-domain templates (Ditunggu/Disimpan), so the dropdown
-  // is no longer a single real option at a fixed index.
-  await page.selectOption('#flow', { label: 'Standard Repair' });
+  // Tahap B — tak ada lagi pemilih alur di intake: kasir baru memutuskan
+  // ditunggu/disimpan setelah diagnosis, jadi tiket memakai alur default toko
+  // ("Servis", satu template bercabang).
   await shot(page, '02-intake-filled');
   await page.getByRole('button', { name: 'Create Ticket' }).click();
 
   // 3. Lands on the ticket detail (intake goto's /tickets/:id).
-  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
   await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText('Intake');
   await shot(page, '03-ticket-intake');
 
   // 4. Walk the lifecycle to a terminal node using only the transition control.
+  // Tahap B — tahapnya kini mengikuti template "Servis": setelah Diagnosis
+  // kasir memilih cabang (di sini "Ditunggu", pelanggan menunggu di tempat),
+  // lalu QC Awal → Pengerjaan → QC Akhir → Selesai.
   await transitionTo(page, 'Diagnosis');
   await shot(page, '04-diagnosis');
 
-  await transitionTo(page, 'Repair');
+  await transitionTo(page, 'Ditunggu');
+  await transitionTo(page, 'QC Awal');
+  await transitionTo(page, 'Pengerjaan');
   await shot(page, '05-repair');
 
-  await transitionTo(page, 'Completion');
+  await transitionTo(page, 'QC Akhir');
+  await transitionTo(page, 'Selesai');
   await shot(page, '06-completion');
 
   // 5. Completion is terminal — the ticket is now closed. The workspace shows the

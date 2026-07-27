@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { page } from '$app/state';
+  import { replaceState } from '$app/navigation';
   import { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
   import TicketWorkspace from '$lib/components/tickets/TicketWorkspace.svelte';
   import TicketTimeline from '$lib/components/tickets/TicketTimeline.svelte';
@@ -16,6 +19,18 @@
   // state until a full page reload.
   $effect(() => {
     state.data = data;
+  });
+
+  // Tahap B — intake baru tersimpan: cetak Label + Tanda Terima otomatis.
+  // Dipicu lewat query param dari form intake (bukan "tiket ini masih baru"),
+  // supaya membuka kembali tiket lama tidak ikut mencetak ulang. Param langsung
+  // dibersihkan dari URL — kalau tertinggal, refresh halaman akan mencetak lagi.
+  onMount(() => {
+    if (page.url.searchParams.get('autoprint') !== 'intake') return;
+    const cleanUrl = new URL(page.url);
+    cleanUrl.searchParams.delete('autoprint');
+    replaceState(cleanUrl.pathname + cleanUrl.search, page.state);
+    void state.autoPrintIntakeDocuments();
   });
 </script>
 

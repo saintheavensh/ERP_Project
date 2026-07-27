@@ -29,6 +29,24 @@ export interface TicketDocumentBundle {
   reportedComplaint?: string;
   intakeDate: string; // ISO
   passcode?: string; // sandi/pola HP — HANYA untuk label stoker (QC), bukan nota
+  // Tahap B — nomor antrian harian, dicetak besar di label supaya pelanggan
+  // bisa dipanggil ("pelanggan dipersilakan menunggu panggilan").
+  queueNumber?: number;
+  // Tahap B — lama pengerjaan yang dijanjikan teknisi, mis. "2 jam".
+  estimatedDurationText?: string;
+}
+
+/** Tahap B — "150" -> "2 jam 30 menit". Kembali undefined bila belum diestimasi. */
+export function formatDuration(totalMinutes: number | null | undefined): string | undefined {
+  if (!totalMinutes || totalMinutes <= 0) return undefined;
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  const parts: string[] = [];
+  if (days) parts.push(`${days} hari`);
+  if (hours) parts.push(`${hours} jam`);
+  if (minutes) parts.push(`${minutes} menit`);
+  return parts.join(' ');
 }
 
 function formatDateShort(iso: string): string {
@@ -41,6 +59,11 @@ export function buildLabelBlocks(layoutConfig: LayoutConfig, bundle: TicketDocum
   const blocks: ThermalBlock[] = [];
   if (layoutConfig.header.showStoreName) {
     blocks.push({ type: 'text', value: bundle.storeName, align: 'center', bold: true });
+    blocks.push({ type: 'line' });
+  }
+  // Nomor antrian paling atas & bold — ini yang dibaca dari jauh saat memanggil.
+  if (bundle.queueNumber !== undefined) {
+    blocks.push({ type: 'text', value: `NO. ANTRIAN ${bundle.queueNumber}`, align: 'center', bold: true });
     blocks.push({ type: 'line' });
   }
   blocks.push({ type: 'text', value: truncate(bundle.customerName, width), align: 'left', bold: true });
@@ -76,6 +99,12 @@ export function buildTandaTerimaBlocks(layoutConfig: LayoutConfig, bundle: Ticke
   blocks.push({ type: 'line' });
   blocks.push({ type: 'text', value: truncate(bundle.assetDescription, width), align: 'left' });
   blocks.push({ type: 'text', value: truncate(`Keluhan: ${bundle.reportedComplaint || '-'}`, width), align: 'left' });
+  // Tahap B — estimasi lama pengerjaan yang dijanjikan teknisi. Tanda terima
+  // dicetak SETELAH diagnosis (saat unit diputuskan ditinggal), jadi nilainya
+  // sudah ada di titik ini — beda dengan label yang tercetak di intake.
+  if (bundle.estimatedDurationText) {
+    blocks.push({ type: 'text', value: truncate(`Estimasi: ${bundle.estimatedDurationText}`, width), align: 'left' });
+  }
   blocks.push({ type: 'line' });
   blocks.push({ type: 'text', value: 'Barang diambil dengan menunjukkan', align: 'center' });
   blocks.push({ type: 'text', value: 'bukti tanda terima ini.', align: 'center' });
@@ -135,6 +164,8 @@ export async function renderTicketDocument(
     reportedComplaint: row.ticket.reportedComplaint ?? undefined,
     intakeDate: row.ticket.createdAt.toISOString(),
     passcode: row.ticket.devicePasscode ?? undefined,
+    queueNumber: row.ticket.queueNumber ?? undefined,
+    estimatedDurationText: formatDuration(row.ticket.estimatedDurationMinutes),
   };
 
   const width = THERMAL_CHAR_WIDTH[paperSize];

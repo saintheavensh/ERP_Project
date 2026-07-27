@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { flowTemplates, flowNodes, flowTransitions } from '../schema';
 import { IDS } from './ids';
 import type { SeedTx } from './types';
@@ -93,4 +94,140 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     { id: IDS.transDisimpanRepairToQcAkhir, fromNodeId: IDS.nodeDisimpanRepair, toNodeId: IDS.nodeDisimpanQcAkhir },
     { id: IDS.transDisimpanQcAkhirToSelesai, fromNodeId: IDS.nodeDisimpanQcAkhir, toNodeId: IDS.nodeDisimpanSelesai },
   ]).onConflictDoNothing();
+
+  // ---------------------------------------------------------------------------
+  // Tahap B (2026-07-27) — template servis TUNGGAL yang bercabang.
+  //
+  // Alur nyata toko: kasir mencatat keluhan -> teknisi mendiagnosis dan menyebut
+  // harga + lama pengerjaan -> BARU diputuskan unitnya ditunggu atau ditinggal.
+  // Dua template terpisah (Ditunggu/Disimpan) memaksa keputusan itu diambil di
+  // form intake, sebelum siapa pun tahu jawabannya. Template ini memindahkannya
+  // ke tempat yang benar: percabangan setelah Diagnosis.
+  //
+  // Ini menjadi isDefault BARU; Standard Repair diturunkan (lihat catatan di
+  // bawah) supaya resolusi "template default tenant" tetap tunggal & deterministik.
+  // ---------------------------------------------------------------------------
+  await tx.insert(flowTemplates).values([
+    { id: IDS.flowTemplateServis, tenantId: IDS.tenantMain, name: 'Servis', domain: 'service', isDefault: true },
+  ]).onConflictDoNothing();
+
+  // Standard Repair tetap ada (tiket lama + test lama mengunci ID node-nya),
+  // tapi tidak lagi default — hanya boleh ada SATU isDefault per tenant, kalau
+  // tidak `templates.find(t => t.isDefault)` jadi tak deterministik (persis
+  // risiko yang dicatat plan/tahap-a-flow-templates.md §2).
+  await tx.update(flowTemplates)
+    .set({ isDefault: false })
+    .where(eq(flowTemplates.id, IDS.flowTemplate));
+
+  // Kapabilitas per tahap (kolom Tahap B di flow_nodes) — INI yang membuat alur
+  // servis benar-benar mengikuti template. Konfigurasi di bawah adalah kebijakan
+  // DEFAULT toko pemilik, bukan aturan yang tertanam di kode: owner bebas
+  // mengubahnya lewat Flow Template Builder tanpa deploy ulang.
+  await tx.insert(flowNodes).values([
+    {
+      id: IDS.nodeServisIntake, flowTemplateId: IDS.flowTemplateServis,
+      name: 'Intake', nodeType: 'action', sequenceOrder: 1,
+      description: 'Kasir mencatat nama, nomor telepon, dan keluhan pelanggan. Label unit + nomor antrian dicetak di sini, lalu pelanggan menunggu dipanggil.',
+      // Kasir hanya mencatat nama/telepon/keluhan. Sparepart SENGAJA belum
+      // boleh — unitnya memang belum didiagnosis (keluhan asli pemilik).
+      // Label tercetak di sini untuk menandai unit + nomor antrian.
+      allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: false,
+      autoPrintDocuments: ['label'],
+    },
+    {
+      id: IDS.nodeServisDiagnosis, flowTemplateId: IDS.flowTemplateServis,
+      name: 'Diagnosis', nodeType: 'action', sequenceOrder: 2,
+      requiredPermissionId: IDS.permTicketDiagnose,
+      description: 'Teknisi memeriksa unit, lalu mengisi hasil diagnosa, estimasi biaya (sparepart & jasa), dan estimasi lama pengerjaan. Sampaikan ke pelanggan sebelum lanjut.',
+      // "Teknisi menginput diagnosa dan juga estimasi harga dan waktu."
+      allowsCharges: true, requiresDiagnosis: true, allowsInvoicing: false,
+      autoPrintDocuments: [],
+    },
+    // Dua cabang sejajar (sequenceOrder sama) — keputusan kasir setelah teknisi
+    // menyampaikan harga & estimasi waktu.
+    {
+      id: IDS.nodeServisDitunggu, flowTemplateId: IDS.flowTemplateServis,
+      name: 'Ditunggu', nodeType: 'action', sequenceOrder: 3,
+      description: 'Pelanggan setuju dan menunggu di tempat. Tidak ada nota yang dicetak sekarang — nota keluar saat pengerjaan selesai dan dibayar.',
+      // Pelanggan menunggu di tempat: TIDAK ada nota di sini, notanya keluar
+      // saat selesai.
+      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      autoPrintDocuments: [],
+    },
+    {
+      id: IDS.nodeServisDisimpan, flowTemplateId: IDS.flowTemplateServis,
+      name: 'Unit Disimpan', nodeType: 'action', sequenceOrder: 3,
+      description: 'Pelanggan setuju dan meninggalkan unit di toko. Nota tanda terima + label dicetak otomatis sebagai bukti titip; unit disimpan sampai giliran dikerjakan.',
+      // Unit ditinggal: nota tanda terima + label, keduanya tercetak otomatis.
+      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      autoPrintDocuments: ['tanda_terima', 'label'],
+    },
+    {
+      id: IDS.nodeServisQcAwal, flowTemplateId: IDS.flowTemplateServis,
+      name: 'QC Awal', nodeType: 'action', sequenceOrder: 4,
+      description: 'Cek kondisi unit sebelum dibongkar (nyala/tidak, kelengkapan, kerusakan lain). Bukti awal bila nanti ada klaim dari pelanggan.',
+      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      autoPrintDocuments: [],
+    },
+    {
+      id: IDS.nodeServisRepair, flowTemplateId: IDS.flowTemplateServis,
+      name: 'Pengerjaan', nodeType: 'action', sequenceOrder: 5,
+      description: 'Teknisi mengerjakan unit dan memakai sparepart (stok terpotong saat dipakai). Menemukan kerusakan tambahan? Tambahkan biayanya lalu minta persetujuan ulang.',
+      // Temuan tambahan saat bongkar tetap bisa dicatat (change order, B1).
+      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      autoPrintDocuments: [],
+    },
+    {
+      id: IDS.nodeServisQcAkhir, flowTemplateId: IDS.flowTemplateServis,
+      name: 'QC Akhir', nodeType: 'action', sequenceOrder: 6,
+      description: 'Cek hasil perbaikan sebelum diserahkan (unit nyala, keluhan awal hilang), kembalikan sandi/pola ke pelanggan, lalu buat faktur & terima pembayaran.',
+      // "Pembayaran di bagian akhir saja, ketika sudah selesai pengerjaan."
+      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
+      autoPrintDocuments: [],
+    },
+    {
+      id: IDS.nodeServisSelesai, flowTemplateId: IDS.flowTemplateServis,
+      name: 'Selesai', nodeType: 'action', sequenceOrder: 7,
+      description: 'Unit sudah diserahkan ke pelanggan dan tiket ditutup. Tahap akhir — tidak ada langkah setelah ini.',
+      allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: true,
+      autoPrintDocuments: [],
+    },
+  ]).onConflictDoNothing();
+
+  await tx.insert(flowTransitions).values([
+    { id: IDS.transServisIntakeToDiagnosis, fromNodeId: IDS.nodeServisIntake, toNodeId: IDS.nodeServisDiagnosis },
+    { id: IDS.transServisDiagnosisToDitunggu, fromNodeId: IDS.nodeServisDiagnosis, toNodeId: IDS.nodeServisDitunggu },
+    { id: IDS.transServisDiagnosisToDisimpan, fromNodeId: IDS.nodeServisDiagnosis, toNodeId: IDS.nodeServisDisimpan },
+    { id: IDS.transServisDiagnosisToSelesai, fromNodeId: IDS.nodeServisDiagnosis, toNodeId: IDS.nodeServisSelesai },
+    // Kedua cabang menyatu kembali — pengerjaannya sama, yang beda hanya di mana
+    // unitnya menunggu dan dokumen apa yang dicetak.
+    { id: IDS.transServisDitungguToQcAwal, fromNodeId: IDS.nodeServisDitunggu, toNodeId: IDS.nodeServisQcAwal },
+    { id: IDS.transServisDisimpanToQcAwal, fromNodeId: IDS.nodeServisDisimpan, toNodeId: IDS.nodeServisQcAwal },
+    { id: IDS.transServisQcAwalToRepair, fromNodeId: IDS.nodeServisQcAwal, toNodeId: IDS.nodeServisRepair },
+    { id: IDS.transServisRepairToQcAkhir, fromNodeId: IDS.nodeServisRepair, toNodeId: IDS.nodeServisQcAkhir },
+    { id: IDS.transServisQcAkhirToSelesai, fromNodeId: IDS.nodeServisQcAkhir, toNodeId: IDS.nodeServisSelesai },
+  ]).onConflictDoNothing();
+
+  // Tiga template LAMA (Standard Repair / Servis - Ditunggu / Servis - Disimpan)
+  // dibuat sebelum kolom kapabilitas ada, jadi semuanya akan default `false` —
+  // artinya tiket lama tak bisa diisi biaya sama sekali. Diberi konfigurasi
+  // yang setara dengan perilaku mereka SEBELUM Tahap B, supaya tiket yang
+  // sedang berjalan tidak berubah aturannya di tengah jalan:
+  //   - biaya boleh di semua tahap kecuali Intake,
+  //   - faktur boleh di dua tahap terakhir,
+  //   - tidak ada cetak otomatis (dulu memang selalu manual).
+  for (const templateId of [IDS.flowTemplate, IDS.flowTemplateDitunggu, IDS.flowTemplateDisimpan]) {
+    const nodes = await tx.select().from(flowNodes).where(eq(flowNodes.flowTemplateId, templateId));
+    if (nodes.length === 0) continue;
+    const maxOrder = Math.max(...nodes.map((n) => n.sequenceOrder));
+    for (const node of nodes) {
+      await tx.update(flowNodes)
+        .set({
+          allowsCharges: node.sequenceOrder > 1,
+          allowsInvoicing: node.sequenceOrder >= maxOrder - 1,
+          requiresDiagnosis: node.name.toLowerCase().includes('diagnosis'),
+        })
+        .where(eq(flowNodes.id, node.id));
+    }
+  }
 }

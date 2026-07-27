@@ -11,6 +11,7 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { BusinessError } from '../../lib/errors';
 import { roundMoney, toMoneyString } from '../../lib/money';
 import { evaluateTempoEligibility } from '../../lib/tempo';
+import { evaluateCashTender } from '../../lib/cash';
 import { findIdempotentResponse, recordIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../../lib/idempotency';
 import { posCheckoutSchema } from './types';
 import { consumeStock } from '../../modules/inventory/service';
@@ -147,6 +148,17 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
   const grandTotal = roundMoney(subtotal - data.discountAmount);
   const paymentStatus = data.paymentMethod === 'tempo' ? 'unpaid' : 'paid';
 
+  // Tahap B — uang tunai diterima. 422 (aturan bisnis), bukan 400: bentuk
+  // requestnya sah, nominalnya saja yang tidak cukup melunasi.
+  const tender = evaluateCashTender({
+    paymentMethod: data.paymentMethod,
+    amountTendered: data.amountTendered,
+    grandTotal,
+  });
+  if (!tender.ok) {
+    return errorResponse(c, tender.code!, tender.message!, undefined, 422);
+  }
+
   // Populated inside the transaction below, read after it commits — the
   // ledger event (H11) must fire post-commit, never from inside the
   // transaction, so a ledger failure can't roll back a completed sale.
@@ -180,6 +192,8 @@ router.post('/invoices', requirePermission('pos.process_payment'), zValidator('j
         // amount is collected at checkout; tempo starts at zero and is
         // advanced later via POST /invoices/:id/payments.
         amountPaid: paymentStatus === 'paid' ? toMoneyString(grandTotal) : '0',
+        // Tahap B — hanya terisi untuk tunai; kembalian diturunkan saat dibaca.
+        amountTendered: tender.amountTendered === null ? null : toMoneyString(tender.amountTendered),
         paymentMethod: data.paymentMethod,
         createdBy: userId,
       }).returning();

@@ -62,6 +62,7 @@ export const IDS = {
   // Phase 6 (6A.1) — printer device/template/assignment CRUD. Admin-only,
   // same pattern as permAuditView/permBranchManage.
   permPrinterManage: 'd1000000-0000-4000-8000-000000000026',
+  permFlowManage: 'd1000000-0000-4000-8000-000000000029',
   // Tahap A (go-live gap Tier-1 #4) — payment-method CRUD. Admin-only, NOT
   // granted to Manager (same pattern as permBranchManage). GET stays open to
   // any authenticated user because the POS checkout reads the list.
@@ -255,4 +256,36 @@ export const IDS = {
   transDisimpanQcAwalToRepair: '86000000-0000-4000-8000-000000000013',
   transDisimpanRepairToQcAkhir: '86000000-0000-4000-8000-000000000014',
   transDisimpanQcAkhirToSelesai: '86000000-0000-4000-8000-000000000015',
+
+  // Tahap B (2026-07-27) — template servis TUNGGAL yang bercabang setelah
+  // Diagnosis, menggantikan keharusan memilih Ditunggu/Disimpan di form intake.
+  // Ini bentuk yang sebenarnya dijalankan toko: kasir baru bisa memutuskan
+  // "ditunggu atau ditinggal" SETELAH teknisi mendiagnosis dan menyebut harga
+  // serta lama pengerjaan. Jadi default baru (isDefault), tiga template lama
+  // dibiarkan apa adanya untuk tiket yang sudah berjalan + test yang mengunci
+  // ID node-nya.
+  flowTemplateServis: '84000000-0000-4000-8000-000000000003',
+
+  nodeServisIntake: '85000000-0000-4000-8000-000000000016',
+  nodeServisDiagnosis: '85000000-0000-4000-8000-000000000017',
+  nodeServisDitunggu: '85000000-0000-4000-8000-000000000018',
+  nodeServisDisimpan: '85000000-0000-4000-8000-000000000019',
+  nodeServisQcAwal: '85000000-0000-4000-8000-000000000020',
+  nodeServisRepair: '85000000-0000-4000-8000-000000000021',
+  nodeServisQcAkhir: '85000000-0000-4000-8000-000000000022',
+  nodeServisSelesai: '85000000-0000-4000-8000-000000000023',
+
+  transServisIntakeToDiagnosis: '86000000-0000-4000-8000-000000000016',
+  // Percabangan pasca-diagnosis: ini "tiga kemungkinan" milik pemilik —
+  // Ditunggu / Disimpan / (batal lewat tombol Batalkan Tiket yang sudah ada,
+  // bukan node tersendiri, supaya tidak menduplikasi SVC-013/F3).
+  transServisDiagnosisToDitunggu: '86000000-0000-4000-8000-000000000017',
+  transServisDiagnosisToDisimpan: '86000000-0000-4000-8000-000000000018',
+  // Pintas "ternyata tidak ada kerusakan" — tutup tanpa bongkar.
+  transServisDiagnosisToSelesai: '86000000-0000-4000-8000-000000000019',
+  transServisDitungguToQcAwal: '86000000-0000-4000-8000-000000000020',
+  transServisDisimpanToQcAwal: '86000000-0000-4000-8000-000000000021',
+  transServisQcAwalToRepair: '86000000-0000-4000-8000-000000000022',
+  transServisRepairToQcAkhir: '86000000-0000-4000-8000-000000000023',
+  transServisQcAkhirToSelesai: '86000000-0000-4000-8000-000000000024',
 } as const;

@@ -9,6 +9,7 @@ import { emitEvent, AppEvent } from '../../services/event-bus';
 import { buildSuccessEnvelope } from '../../lib/response';
 import { recordIdempotentResponse, type IdempotencyRef } from '../../lib/idempotency';
 import { allocateInvoiceNumber } from '../../lib/invoice-number';
+import { evaluateCashTender } from '../../lib/cash';
 
 // H10 — every reserve/release movement for a ticket charge shares this
 // referenceType, distinguished by movementType; referenceId is always the charge id.
@@ -444,6 +445,18 @@ export async function generateTicketInvoice(
     const grandTotal = roundMoney(subtotal - input.discountAmount);
     const paymentStatus = input.paymentMethod === 'tempo' ? 'unpaid' : 'paid';
 
+    // Tahap B — aturan uang tunai yang sama persis dengan checkout POS, lewat
+    // helper murni yang sama (lib/cash.ts) supaya kedua jalur penagihan tidak
+    // berselisih soal "kembalian" dan "uang kurang".
+    const tender = evaluateCashTender({
+      paymentMethod: input.paymentMethod,
+      amountTendered: input.amountTendered,
+      grandTotal,
+    });
+    if (!tender.ok) {
+      throw new BusinessError(tender.code!, tender.message!, 422);
+    }
+
     const invoiceNumber = await allocateInvoiceNumber(tx, tenantId);
 
     const [invoice] = await tx
@@ -461,6 +474,7 @@ export async function generateTicketInvoice(
         grandTotal: toMoneyString(grandTotal),
         paymentStatus,
         amountPaid: paymentStatus === 'paid' ? toMoneyString(grandTotal) : '0',
+        amountTendered: tender.amountTendered === null ? null : toMoneyString(tender.amountTendered),
         paymentMethod: input.paymentMethod,
         createdBy: userId,
       })
@@ -941,6 +955,26 @@ export async function updateIntakeDetails(
   const patch: Record<string, unknown> = {};
   if ('devicePasscode' in input) patch.devicePasscode = input.devicePasscode;
   if ('reportedComplaint' in input) patch.reportedComplaint = input.reportedComplaint;
+  // Tahap B — hasil diagnosa teknisi + estimasi lama pengerjaan.
+  if ('diagnosis' in input) patch.diagnosis = input.diagnosis;
+  if ('estimatedDurationMinutes' in input) patch.estimatedDurationMinutes = input.estimatedDurationMinutes;
+
+  // Drizzle melempar pada `.set({})`. Body tanpa satu pun field yang dikenali
+  // adalah no-op, bukan error 500 — kembalikan keadaan tiket apa adanya.
+  if (Object.keys(patch).length === 0) {
+    const [current] = await db
+      .select({
+        id: serviceTickets.id,
+        devicePasscode: serviceTickets.devicePasscode,
+        reportedComplaint: serviceTickets.reportedComplaint,
+        diagnosis: serviceTickets.diagnosis,
+        estimatedDurationMinutes: serviceTickets.estimatedDurationMinutes,
+      })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+    if (!current) throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
+    return current;
+  }
 
   const [updated] = await db
     .update(serviceTickets)
@@ -950,6 +984,8 @@ export async function updateIntakeDetails(
       id: serviceTickets.id,
       devicePasscode: serviceTickets.devicePasscode,
       reportedComplaint: serviceTickets.reportedComplaint,
+      diagnosis: serviceTickets.diagnosis,
+      estimatedDurationMinutes: serviceTickets.estimatedDurationMinutes,
     });
   if (!updated) {
     throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);

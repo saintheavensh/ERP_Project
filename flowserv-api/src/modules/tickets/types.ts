@@ -52,6 +52,9 @@ export type AssignTechnicianInput = z.infer<typeof assignTechnicianInput>;
 export const generateTicketInvoiceInput = z.object({
   paymentMethod: z.enum(['cash', 'transfer', 'qris', 'tempo']),
   discountAmount: z.coerce.number().min(0).default(0),
+  // Tahap B — uang tunai diterima, sama seperti checkout POS. Kecukupannya
+  // divalidasi di service (grandTotal baru diketahui setelah charge dijumlahkan).
+  amountTendered: z.coerce.number().min(0).optional(),
 });
 
 export type GenerateTicketInvoiceInput = z.infer<typeof generateTicketInvoiceInput>;
@@ -71,6 +74,12 @@ export type CancelTicketInput = z.infer<typeof cancelTicketInput>;
 export const updateIntakeDetailsInput = z.object({
   devicePasscode: z.string().nullable().optional(),
   reportedComplaint: z.string().nullable().optional(),
+  // Tahap B — hasil diagnosis teknisi + lama pengerjaan yang dijanjikan ke
+  // pelanggan. Ikut endpoint yang sama, bukan endpoint baru: pola "field kecil
+  // di service_ticket yang bisa diperbaiki kapan saja" persis sama dengan dua
+  // field di atas (lihat catatan endpoint di routes/tickets.ts).
+  diagnosis: z.string().nullable().optional(),
+  estimatedDurationMinutes: z.coerce.number().int().positive().nullable().optional(),
 });
 
 export type UpdateIntakeDetailsInput = z.infer<typeof updateIntakeDetailsInput>;

@@ -27,31 +27,37 @@ async function transitionTo(page: Page, targetStage: string) {
 test.describe('desktop (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('Disimpan flow: intake shows the template, and walks through Unit Disimpan', async ({ page }) => {
+  // Tahap B — dua tes berikut dulu menguji DUA template terpisah yang dipilih di
+  // form intake. Alur nyata toko tidak begitu: kasir baru memutuskan
+  // ditunggu/disimpan SETELAH diagnosis, jadi keduanya kini satu template
+  // bercabang dan pemilih di intake sudah dihapus. Yang diuji tetap sama
+  // nilainya: cabang Disimpan benar-benar bisa dilalui, dan jalur pintas
+  // "tidak ada kerusakan" menutup tiket tanpa bongkar.
+
+  test('cabang Disimpan: dipilih setelah Diagnosis, lalu berjalan sampai tutup', async ({ page }) => {
     await login(page);
     await page.goto('/tickets/intake');
     await page.waitForLoadState('networkidle');
 
-    // All three templates are selectable (Standard Repair + the two new ones).
-    await expect(page.locator('#flow option', { hasText: 'Servis - Disimpan' })).toHaveCount(1);
-    await expect(page.locator('#flow option', { hasText: 'Servis - Ditunggu' })).toHaveCount(1);
-    await expect(page.locator('#flow option', { hasText: 'Standard Repair' })).toHaveCount(1);
+    // Pemilih alur sudah tidak ada — inilah perubahan intinya.
+    await expect(page.locator('#flow')).toHaveCount(0);
 
-    const uniqueName = `Tahap A Disimpan ${Date.now()}`;
+    const uniqueName = `Tahap B Disimpan ${Date.now()}`;
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Xiaomi');
     await page.fill('#model', 'Redmi Note 12');
-    await page.selectOption('#flow', { label: 'Servis - Disimpan' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
 
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText('Intake');
 
-    // Intake -> Diagnosis -> Unit Disimpan -- the node unique to this template.
+    // Percabangan: dari Diagnosis, KEDUA pilihan tersedia — ini keputusan kasir.
     await transitionTo(page, 'Diagnosis');
+    await expect(page.locator('#next option', { hasText: 'Ditunggu' })).toHaveCount(1);
+    await expect(page.locator('#next option', { hasText: 'Unit Disimpan' })).toHaveCount(1);
+
     await transitionTo(page, 'Unit Disimpan');
-    await transitionTo(page, 'Menunggu Persetujuan');
     await transitionTo(page, 'QC Awal');
     await transitionTo(page, 'Pengerjaan');
     await transitionTo(page, 'QC Akhir');
@@ -61,23 +67,20 @@ test.describe('desktop (1280x800)', () => {
     await expect(page.getByText(/already closed/i)).toBeVisible();
   });
 
-  test('Ditunggu flow: the Approval -> Selesai shortcut closes without repair/QC', async ({ page }) => {
+  test('jalur pintas Diagnosis -> Selesai menutup tanpa bongkar/QC', async ({ page }) => {
     await login(page);
     await page.goto('/tickets/intake');
     await page.waitForLoadState('networkidle');
 
-    const uniqueName = `Tahap A Ditunggu Shortcut ${Date.now()}`;
-    await page.fill('#name', uniqueName);
+    await page.fill('#name', `Tahap B Pintas ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Samsung');
     await page.fill('#model', 'A05');
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
 
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await transitionTo(page, 'Diagnosis');
-    await transitionTo(page, 'Menunggu Persetujuan');
-    // Shortcut: "ternyata tidak ada kerusakan" -- close directly, skipping QC/Repair.
+    // "Ternyata tidak ada kerusakan" — tutup langsung.
     await transitionTo(page, 'Selesai');
     await expect(page.getByText(/already closed/i)).toBeVisible();
   });
@@ -93,10 +96,9 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#brand', 'Oppo');
     await page.fill('#model', 'A57');
     await page.fill('#passcode', '1234');
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
 
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByText('1234', { exact: true })).toBeVisible();
 
     // Edit it — correcting a mis-keyed value. Scoped to the "Sandi / Pola" row
@@ -119,10 +121,9 @@ test.describe('desktop (1280x800)', () => {
     const uniqueName = `Tahap A No Passcode ${Date.now()}`;
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Tablet');
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
 
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByText('Sandi / Pola')).toBeVisible();
     // The dash placeholder for an empty devicePasscode. The label sits in an
     // inner flex row; the value <p> is a sibling of that row under the same
@@ -146,9 +147,8 @@ test.describe('desktop (1280x800)', () => {
     }
     await expect(pad.getByText('Urutan: 1-2-3-6-9')).toBeVisible();
 
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // Detail shows the precise pattern (visual grid + textual sequence), not a
     // vague "L terbalik".
@@ -184,9 +184,8 @@ test.describe('desktop (1280x800)', () => {
     const pad = page.getByTestId('pattern-pad');
     await expect(pad.getByText('Urutan: 1-5-9')).toBeVisible();
 
-    await page.selectOption('#flow', { label: 'Servis - Ditunggu' });
     await page.getByRole('button', { name: 'Create Ticket' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}$/, { timeout: 20_000 });
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByText('Pola 1-5-9', { exact: true })).toBeVisible();
   });
 });
