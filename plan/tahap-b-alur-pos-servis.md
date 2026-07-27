@@ -201,11 +201,37 @@ Putaran kedua (revisi setelah pemilik menjelaskan alur nyata):
       - **Dua bug ditemukan karena dijalankan, bukan dibaca** — lihat 4c #4 dan #5.
       - Tombol mati "Create Template" di `/flows` disambungkan ke `POST /v1/flows` yang
         sudah ada sejak R7.
-- [x] **Verifikasi** `tsc` bersih, `svelte-check` 744 file 0 error, `vitest` **234 lulus**
-      (+8 dari `validateCoreIntegrity`), Playwright **128/129** — satu-satunya kegagalan
-      (`tahap-a-device-catalog-invoice-mode`, unggah berkas katalog device) lulus saat
-      dijalankan sendiri dan tak menyentuh apa pun yang diubah di sini; flaky bergantung
-      urutan, dicatat apa adanya.
+- [x] **R9** *(hari yang sama, dua keluhan pemilik setelah memakai R8)*
+      **Alur baru lahir dengan tahap intinya, dan alur bisa dihapus.**
+      - *"Ketika membuat template baru alur utamanya tidak terbuat."* Benar: `POST /v1/flows`
+        hanya membuat baris template. Tanpa tahap → tanpa panah → tak ada tempat menyisipkan
+        apa pun; editornya buntu. `modules/flow/backbone.ts` kini memuat `CORE_BACKBONE`
+        (Intake → Diagnosis → {Ditunggu | Unit Disimpan} → Pengerjaan → Selesai, plus cabang
+        Diagnosis → Selesai untuk "ternyata tidak rusak"), dan `createFlowTemplate` menulisnya
+        dalam satu transaksi dengan `isCore: true`.
+        Seed mengambil **nama & keterangan** tahap inti dari konstanta yang sama supaya
+        kalimatnya tak berselisih; **kapabilitasnya sengaja tidak diturunkan** — template
+        bawaan sudah memasang QC Akhir sehingga pembayaran ada di sana, sedangkan alur baru
+        belum punya QC sehingga pembayaran harus ada di Pengerjaan (kalau hanya di tahap
+        akhir, kasir menagih setelah tiketnya tertutup). Dua unit test menjaga konstantanya
+        sendiri: harus lolos `validateFlowDesign`, dan harus mengizinkan pembayaran di tahap
+        yang belum menutup tiket.
+      - *"Buatkan fitur delete alur."* `DELETE /v1/flows/:id` (admin-only, teraudit), dengan
+        dua penolakan spesifik alih-alih 500 dari pelanggaran foreign key:
+        **422 `TEMPLATE_IS_DEFAULT`** (dipakai setiap tiket baru — jadikan alur lain default
+        dulu) dan **422 `TEMPLATE_IN_USE`** (masih ditunjuk tiket atau riwayat tiket).
+        Di layar: tombol "Hapus Alur" + dialog konfirmasi di halaman editor; alasan penolakan
+        tampil apa adanya di banner merah, halaman tidak berpindah.
+        **Terverifikasi live:** alur baru → 6 tahap / 7 panah; hapus saat dipakai tiket →
+        422 `TEMPLATE_IN_USE`; hapus alur default → 422 `TEMPLATE_IS_DEFAULT`; Manager →
+        403 `PERMISSION_DENIED`.
+      - Halaman editor juga diberi keadaan-kosong yang jujur untuk alur lama tanpa tahap,
+        alih-alih kanvas kosong yang tampak rusak.
+- [x] **Verifikasi** `tsc` bersih, `svelte-check` 744 file 0 error, `vitest` **236 lulus**
+      (+10 dari `validateCoreIntegrity` & `CORE_BACKBONE`), Playwright **131/131**.
+      (Pada putaran R8 sempat 128/129; kegagalannya di spec unggah katalog device, lulus
+      saat dijalankan sendiri dan lulus lagi di putaran penuh R9 — flaky bergantung urutan,
+      bukan akibat perubahan ini.)
 
 ## 4c. Bug nyata yang ditemukan tes, bukan pembacaan kode
 

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { flowTemplates, flowNodes, flowTransitions } from '../schema';
+import { backboneStage } from '../../modules/flow/backbone';
 import { IDS } from './ids';
 import type { SeedTx } from './types';
 
@@ -122,12 +123,19 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
   // Kapabilitas per tahap (kolom Tahap B di flow_nodes) — INI yang membuat alur
   // servis benar-benar mengikuti template. Konfigurasi di bawah adalah kebijakan
   // DEFAULT toko pemilik, bukan aturan yang tertanam di kode: owner bebas
-  // mengubahnya lewat Flow Template Builder tanpa deploy ulang.
+  // mengubahnya lewat editor alur (/flows) tanpa deploy ulang.
+  //
+  // Nama & keterangan tahap INTI diambil dari `modules/flow/backbone.ts` —
+  // sumber yang sama dipakai saat owner membuat alur baru, supaya kalimatnya
+  // tak pernah berselisih antara alur bawaan dan alur buatan sendiri.
+  // Kapabilitasnya tetap ditulis di sini, TIDAK diturunkan: template ini sudah
+  // memasang QC Akhir, jadi pembayaran ada di sana; alur baru (tanpa QC)
+  // menaruhnya di Pengerjaan. Perbedaan itu disengaja.
   await tx.insert(flowNodes).values([
     {
       id: IDS.nodeServisIntake, flowTemplateId: IDS.flowTemplateServis,
-      name: 'Intake', nodeType: 'action', sequenceOrder: 1,
-      description: 'Kasir mencatat nama, nomor telepon, dan keluhan pelanggan. Label unit + nomor antrian dicetak di sini, lalu pelanggan menunggu dipanggil.',
+      name: backboneStage('intake').name, nodeType: 'action', sequenceOrder: 1,
+      description: backboneStage('intake').description,
       // Kasir hanya mencatat nama/telepon/keluhan. Sparepart SENGAJA belum
       // boleh — unitnya memang belum didiagnosis (keluhan asli pemilik).
       // Label tercetak di sini untuk menandai unit + nomor antrian.
@@ -136,9 +144,9 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     },
     {
       id: IDS.nodeServisDiagnosis, flowTemplateId: IDS.flowTemplateServis,
-      name: 'Diagnosis', nodeType: 'action', sequenceOrder: 2,
+      name: backboneStage('diagnosis').name, nodeType: 'action', sequenceOrder: 2,
       requiredPermissionId: IDS.permTicketDiagnose,
-      description: 'Teknisi memeriksa unit, lalu mengisi hasil diagnosa, estimasi biaya (sparepart & jasa), dan estimasi lama pengerjaan. Sampaikan ke pelanggan sebelum lanjut.',
+      description: backboneStage('diagnosis').description,
       // "Teknisi menginput diagnosa dan juga estimasi harga dan waktu."
       allowsCharges: true, requiresDiagnosis: true, allowsInvoicing: false,
       autoPrintDocuments: [],
@@ -147,8 +155,8 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     // menyampaikan harga & estimasi waktu.
     {
       id: IDS.nodeServisDitunggu, flowTemplateId: IDS.flowTemplateServis,
-      name: 'Ditunggu', nodeType: 'action', sequenceOrder: 3,
-      description: 'Pelanggan setuju dan menunggu di tempat. Tidak ada nota yang dicetak sekarang — nota keluar saat pengerjaan selesai dan dibayar.',
+      name: backboneStage('ditunggu').name, nodeType: 'action', sequenceOrder: 3,
+      description: backboneStage('ditunggu').description,
       // Pelanggan menunggu di tempat: TIDAK ada nota di sini, notanya keluar
       // saat selesai.
       allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
@@ -156,8 +164,8 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     },
     {
       id: IDS.nodeServisDisimpan, flowTemplateId: IDS.flowTemplateServis,
-      name: 'Unit Disimpan', nodeType: 'action', sequenceOrder: 3,
-      description: 'Pelanggan setuju dan meninggalkan unit di toko. Nota tanda terima + label dicetak otomatis sebagai bukti titip; unit disimpan sampai giliran dikerjakan.',
+      name: backboneStage('disimpan').name, nodeType: 'action', sequenceOrder: 3,
+      description: backboneStage('disimpan').description,
       // Unit ditinggal: nota tanda terima + label, keduanya tercetak otomatis.
       allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
       autoPrintDocuments: ['tanda_terima', 'label'],
@@ -176,8 +184,8 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     },
     {
       id: IDS.nodeServisRepair, flowTemplateId: IDS.flowTemplateServis,
-      name: 'Pengerjaan', nodeType: 'action', sequenceOrder: 5,
-      description: 'Teknisi mengerjakan unit dan memakai sparepart (stok terpotong saat dipakai). Menemukan kerusakan tambahan? Tambahkan biayanya lalu minta persetujuan ulang.',
+      name: backboneStage('pengerjaan').name, nodeType: 'action', sequenceOrder: 5,
+      description: backboneStage('pengerjaan').description,
       // Temuan tambahan saat bongkar tetap bisa dicatat (change order, B1).
       allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
       autoPrintDocuments: [],
@@ -193,8 +201,8 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     },
     {
       id: IDS.nodeServisSelesai, flowTemplateId: IDS.flowTemplateServis,
-      name: 'Selesai', nodeType: 'action', sequenceOrder: 7,
-      description: 'Unit sudah diserahkan ke pelanggan dan tiket ditutup. Tahap akhir — tidak ada langkah setelah ini.',
+      name: backboneStage('selesai').name, nodeType: 'action', sequenceOrder: 7,
+      description: backboneStage('selesai').description,
       allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: true,
       autoPrintDocuments: [],
     },

@@ -211,6 +211,53 @@ test.describe('desktop (1280x800)', () => {
     await expect(page.getByTestId('flow-saved')).toBeVisible();
   });
 
+  test('alur baru lahir dengan tahap intinya, lalu bisa dihapus lagi', async ({ page }) => {
+    await login(page);
+    await page.goto('/flows');
+    await page.waitForLoadState('networkidle');
+
+    const name = `Alur Uji ${Date.now()}`;
+    await page.getByRole('button', { name: 'Buat Alur' }).click();
+    await page.locator('#flow-name').fill(name);
+    await page.getByRole('button', { name: 'Buat', exact: true }).click();
+    await page.waitForURL(/\/flows\/[0-9a-f-]{36}/, { timeout: 20_000 });
+
+    // Inti keluhan pemilik: alur baru TIDAK boleh lahir kosong. Kanvas tanpa
+    // tahap berarti tanpa panah, dan tanpa panah tak ada tempat menyisipkan
+    // apa pun — editornya buntu.
+    await expect(page.getByTestId('flow-node')).toHaveCount(6);
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'Intake' })).toHaveCount(1);
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'Selesai' })).toHaveCount(1);
+    // Percabangan Ditunggu / Unit Disimpan ikut terbentuk, bukan rantai lurus.
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'Ditunggu' })).toHaveCount(1);
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'Unit Disimpan' })).toHaveCount(1);
+    // Semuanya tahap inti — QC memang belum dipasang, itulah yang ditambahkan owner.
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'QC' })).toHaveCount(0);
+    // Dan alur bawaannya sehat: tak ada satu pun peringatan untuk diperbaiki.
+    await expect(page.getByTestId('flow-warnings')).toHaveCount(0);
+
+    // Hapus lagi — alur ini belum dipakai tiket mana pun, jadi boleh.
+    await page.getByTestId('delete-flow').click();
+    await page.getByTestId('confirm-delete-flow').click();
+    await page.waitForURL(/\/flows$/, { timeout: 20_000 });
+    await expect(page.getByTestId('flow-card').filter({ hasText: name })).toHaveCount(0);
+  });
+
+  test('alur default tidak bisa dihapus, dan alasannya dijelaskan', async ({ page }) => {
+    await login(page);
+    await page.goto(`/flows/${SERVIS_FLOW}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('delete-flow').click();
+    await page.getByTestId('confirm-delete-flow').click();
+
+    // Tetap di halaman yang sama, dengan alasan penolakan yang bisa ditindaklanjuti.
+    await expect(page.getByTestId('flow-error')).toBeVisible();
+    await expect(page.getByTestId('flow-error')).toContainText('dipakai setiap tiket baru');
+    await expect(page).toHaveURL(new RegExp(`/flows/${SERVIS_FLOW}$`));
+    await expect(page.getByTestId('flow-node')).toHaveCount(8);
+  });
+
   test('daftar alur adalah pintu masuknya, dan Setelan hanya menunjuk ke sana', async ({ page }) => {
     await login(page);
     await page.goto('/flows');

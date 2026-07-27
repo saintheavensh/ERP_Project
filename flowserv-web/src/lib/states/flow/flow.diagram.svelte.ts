@@ -367,6 +367,30 @@ export class FlowDiagramState {
     this.successMsg = '';
   }
 
+  /**
+   * Hapus seluruh alur ini. Server menolak bila alurnya default atau masih
+   * dipakai tiket — pesan penolakannya ditampilkan apa adanya, karena di
+   * situlah alasannya dijelaskan.
+   */
+  async remove(): Promise<boolean> {
+    this.saving = true;
+    this.errorMsg = '';
+    try {
+      const res = await fetch(`${API_BASE}/flows/${this.templateId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${this.token}` },
+      });
+      if (res.status === 204) return true;
+      const result = await res.json();
+      throw new Error(result.error?.message || 'Gagal menghapus alur');
+    } catch (err: any) {
+      this.errorMsg = err.message;
+      return false;
+    } finally {
+      this.saving = false;
+    }
+  }
+
   async save() {
     this.saving = true;
     this.errorMsg = '';

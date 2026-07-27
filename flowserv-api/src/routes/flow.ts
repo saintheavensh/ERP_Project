@@ -9,7 +9,7 @@ import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { flowDesignSchema, createFlowTemplateSchema } from '../modules/flow/types';
-import { saveFlowDesign, createFlowTemplate } from '../modules/flow/service';
+import { saveFlowDesign, createFlowTemplate, deleteFlowTemplate } from '../modules/flow/service';
 
 const flowRouter = new Hono();
 
@@ -103,6 +103,18 @@ flowRouter.put('/:id/design', requirePermission('flow.manage'), zValidator('json
     if (err instanceof BusinessError) return errorResponse(c, err.code, err.message, err.details, err.statusCode);
     console.error('Failed to save flow design:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to save flow design', undefined, 500);
+  }
+});
+
+flowRouter.delete('/:id', requirePermission('flow.manage'), auditMiddleware({ action: 'flow_template.delete', entityType: 'flow_template', entityIdParam: 'id' }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  try {
+    await deleteFlowTemplate(tenantId, c.req.param('id'));
+    return c.body(null, 204);
+  } catch (err) {
+    if (err instanceof BusinessError) return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    console.error('Failed to delete flow template:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete flow template', undefined, 500);
   }
 });
 

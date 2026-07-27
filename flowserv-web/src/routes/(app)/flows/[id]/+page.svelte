@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import FlowDiagram from '$lib/components/flow/FlowDiagram.svelte';
   import { FlowDiagramState, DOCUMENT_OPTIONS, STAGE_PRESETS } from '$lib/states/flow/flow.diagram.svelte';
 
@@ -6,6 +7,13 @@
 
   // svelte-ignore state_referenced_locally
   const diagram = new FlowDiagramState(data.token, data.template, data.nodes, data.transitions);
+
+  let confirmDelete = $state(false);
+
+  async function remove() {
+    if (await diagram.remove()) await goto('/flows');
+    else confirmDelete = false; // alasan penolakan sudah tampil di banner merah
+  }
 </script>
 
 <svelte:head><title>{data.template?.name ?? 'Alur'} | FlowServ</title></svelte:head>
@@ -22,22 +30,44 @@
         tiap tahap seperti dokumen yang otomatis dicetak.
       </p>
     </div>
-    <button onclick={() => diagram.save()} disabled={diagram.saving}
-      class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
-      data-testid="save-flow">
-      {diagram.saving ? 'Menyimpan...' : 'Simpan Alur'}
-    </button>
+    <div class="flex items-center gap-2">
+      {#if data.template}
+        <button onclick={() => (confirmDelete = true)} disabled={diagram.saving}
+          class="px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50 rounded-lg text-sm font-medium"
+          data-testid="delete-flow">
+          Hapus Alur
+        </button>
+      {/if}
+      <button onclick={() => diagram.save()} disabled={diagram.saving}
+        class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+        data-testid="save-flow">
+        {diagram.saving ? 'Menyimpan...' : 'Simpan Alur'}
+      </button>
+    </div>
   </div>
+
+  <!-- Banner di luar percabangan di bawah: penolakan penghapusan (mis. alur
+       masih dipakai tiket) harus terbaca juga pada alur yang belum punya tahap. -->
+  {#if diagram.errorMsg}
+    <div class="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200" data-testid="flow-error">{diagram.errorMsg}</div>
+  {/if}
+  {#if diagram.successMsg}
+    <div class="p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200" data-testid="flow-saved">{diagram.successMsg}</div>
+  {/if}
 
   {#if !data.template}
     <p class="text-slate-500">Alur tidak ditemukan.</p>
+  {:else if diagram.nodes.length === 0}
+    <!-- Alur tanpa tahap = tanpa panah = tak ada tempat menyisipkan apa pun.
+         Alur baru kini selalu lahir dengan tulang punggungnya, jadi keadaan ini
+         hanya mungkin pada alur lama; katakan apa adanya alih-alih menampilkan
+         kanvas kosong yang tampak rusak. -->
+    <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+      Alur ini belum punya tahap sama sekali, jadi belum bisa dipakai tiket mana pun.
+      Buat alur baru dari halaman <a href="/flows" class="underline font-medium">Alur Servis</a> —
+      alur baru sudah berisi tahap intinya — lalu hapus alur kosong ini.
+    </div>
   {:else}
-    {#if diagram.errorMsg}
-      <div class="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200" data-testid="flow-error">{diagram.errorMsg}</div>
-    {/if}
-    {#if diagram.successMsg}
-      <div class="p-3 bg-green-50 text-green-700 text-sm rounded-lg border border-green-200" data-testid="flow-saved">{diagram.successMsg}</div>
-    {/if}
     {#if diagram.warnings.length > 0}
       <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg" data-testid="flow-warnings">
         <p class="text-sm font-medium text-amber-800 mb-1">Perlu diperbaiki sebelum alur ini bisa dipakai:</p>
@@ -198,3 +228,24 @@
     {/if}
   {/if}
 </div>
+
+{#if confirmDelete}
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 space-y-4">
+      <h2 class="font-bold text-lg text-slate-900">Hapus alur "{diagram.templateName}"?</h2>
+      <p class="text-sm text-slate-600">
+        Seluruh tahap dan perpindahannya ikut terhapus. Alur yang sedang dipakai tiket —
+        atau yang tercatat di riwayat tiket — tidak akan bisa dihapus, dan penolakannya
+        akan dijelaskan.
+      </p>
+      <div class="flex justify-end gap-2">
+        <button onclick={() => (confirmDelete = false)} class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Batal</button>
+        <button onclick={remove} disabled={diagram.saving}
+          class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+          data-testid="confirm-delete-flow">
+          {diagram.saving ? 'Menghapus...' : 'Hapus'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

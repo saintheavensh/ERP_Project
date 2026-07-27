@@ -2,6 +2,7 @@ import { db } from '../../db/connection';
 import { flowTemplates, flowNodes, flowTransitions, serviceTickets, ticketStageHistory } from '../../db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
+import { CORE_BACKBONE } from './backbone';
 import type { FlowDesignInput, FlowDesignNodeInput, CreateFlowTemplateInput } from './types';
 
 /**
@@ -197,15 +198,104 @@ export function validateCoreIntegrity(
 }
 
 export async function createFlowTemplate(tenantId: string, input: CreateFlowTemplateInput) {
-  const [template] = await db.insert(flowTemplates).values({
-    tenantId,
-    name: input.name,
-    domain: input.domain,
-    // Template baru TIDAK otomatis jadi default — mengganti default berarti
-    // mengubah alur setiap tiket baru, keputusan yang harus disengaja.
-    isDefault: false,
-  }).returning();
-  return template;
+  return db.transaction(async (tx) => {
+    const [template] = await tx.insert(flowTemplates).values({
+      tenantId,
+      name: input.name,
+      domain: input.domain,
+      // Template baru TIDAK otomatis jadi default — mengganti default berarti
+      // mengubah alur setiap tiket baru, keputusan yang harus disengaja.
+      isDefault: false,
+    }).returning();
+
+    // Alur servis baru lahir dengan TULANG PUNGGUNGNYA, bukan kanvas kosong:
+    // tanpa tahap tak ada panah, tanpa panah tak ada tempat menyisipkan apa
+    // pun, dan editornya buntu. Domain lain (mis. inventory) belum punya
+    // tulang punggung baku, jadi dibiarkan kosong alih-alih diberi bentuk
+    // servis yang salah.
+    if (input.domain === 'service') {
+      const created = await tx.insert(flowNodes).values(
+        CORE_BACKBONE.map((stage, index) => ({
+          flowTemplateId: template.id,
+          name: stage.name,
+          description: stage.description,
+          sequenceOrder: index + 1,
+          nodeType: stage.nodeType,
+          allowsCharges: stage.allowsCharges,
+          requiresDiagnosis: stage.requiresDiagnosis,
+          allowsInvoicing: stage.allowsInvoicing,
+          autoPrintDocuments: stage.autoPrintDocuments,
+          isCore: true,
+        }))
+      ).returning({ id: flowNodes.id });
+
+      const idByKey = new Map(CORE_BACKBONE.map((stage, index) => [stage.key, created[index].id]));
+      const transitions = CORE_BACKBONE.flatMap((stage) =>
+        stage.next.map((to) => ({
+          fromNodeId: idByKey.get(stage.key)!,
+          toNodeId: idByKey.get(to)!,
+        }))
+      );
+      if (transitions.length > 0) await tx.insert(flowTransitions).values(transitions);
+    }
+
+    return template;
+  });
+}
+
+/**
+ * Hapus seluruh alur beserta tahap & perpindahannya.
+ *
+ * Dua penolakan yang sengaja dibuat spesifik, bukan dibiarkan jadi 500 dari
+ * pelanggaran foreign key:
+ *  - alur DEFAULT tak boleh dihapus; tiket baru memakainya, dan menghapusnya
+ *    berarti intake berhenti bekerja tanpa penjelasan;
+ *  - alur yang masih dipakai tiket (sedang berjalan MAUPUN sudah tercatat di
+ *    riwayat) tak boleh dihapus, karena riwayat tiket lama akan ikut putus.
+ */
+export async function deleteFlowTemplate(tenantId: string, templateId: string) {
+  return db.transaction(async (tx) => {
+    const [template] = await tx
+      .select()
+      .from(flowTemplates)
+      .where(and(eq(flowTemplates.id, templateId), eq(flowTemplates.tenantId, tenantId)));
+    if (!template) throw new BusinessError('NOT_FOUND', 'Flow template not found', 404);
+
+    if (template.isDefault) {
+      throw new BusinessError(
+        'TEMPLATE_IS_DEFAULT',
+        'Alur ini sedang dipakai setiap tiket baru. Jadikan alur lain sebagai default dulu sebelum menghapusnya.',
+        422
+      );
+    }
+
+    const nodes = await tx.select({ id: flowNodes.id }).from(flowNodes)
+      .where(eq(flowNodes.flowTemplateId, templateId));
+    const nodeIds = nodes.map((n) => n.id);
+
+    const [usedByTickets, usedByHistory] = await Promise.all([
+      tx.select({ id: serviceTickets.id }).from(serviceTickets)
+        .where(eq(serviceTickets.flowTemplateId, templateId)).limit(1),
+      nodeIds.length > 0
+        ? tx.select({ id: ticketStageHistory.id }).from(ticketStageHistory)
+            .where(inArray(ticketStageHistory.nodeId, nodeIds)).limit(1)
+        : Promise.resolve([]),
+    ]);
+    if (usedByTickets.length > 0 || usedByHistory.length > 0) {
+      throw new BusinessError(
+        'TEMPLATE_IN_USE',
+        'Alur ini tidak bisa dihapus karena masih dipakai tiket (atau tercatat di riwayat tiket). Ganti namanya bila ingin menonaktifkannya.',
+        422
+      );
+    }
+
+    if (nodeIds.length > 0) {
+      await tx.delete(flowTransitions).where(inArray(flowTransitions.fromNodeId, nodeIds));
+      await tx.delete(flowNodes).where(inArray(flowNodes.id, nodeIds));
+    }
+    await tx.delete(flowTemplates).where(eq(flowTemplates.id, templateId));
+    return { id: templateId };
+  });
 }
 
 /**

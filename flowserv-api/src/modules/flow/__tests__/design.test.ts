@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validateFlowDesign, validateCoreIntegrity } from '../service';
+import { CORE_BACKBONE } from '../backbone';
 import type { FlowDesignInput } from '../types';
 
 // Tahap B / Phase 7.1 — aturan bentuk graf alur. Ini bukan validasi kosmetik:
@@ -88,6 +89,29 @@ describe('validateFlowDesign', () => {
       nodes: [node('a'), node('a')],
       transitions: [],
     })).toContain('DUPLICATE_NODE_KEY');
+  });
+});
+
+describe('CORE_BACKBONE', () => {
+  // Alur baru DIBUAT dari konstanta ini, jadi konstanta yang cacat berarti
+  // setiap alur baru lahir cacat — dan owner baru tahu saat menekan Simpan.
+  it('adalah rancangan alur yang sah menurut aturan yang sama', () => {
+    expect(validateFlowDesign({
+      nodes: CORE_BACKBONE.map((s) => ({
+        key: s.key, name: s.name, nodeType: s.nodeType,
+        allowsCharges: s.allowsCharges, requiresDiagnosis: s.requiresDiagnosis,
+        allowsInvoicing: s.allowsInvoicing, autoPrintDocuments: s.autoPrintDocuments as any,
+      })),
+      transitions: CORE_BACKBONE.flatMap((s) => s.next.map((to) => ({ from: s.key, to }))),
+    })).toEqual([]);
+  });
+
+  it('mengizinkan pembayaran di tahap yang tiketnya belum tertutup', () => {
+    // Tiket tertutup begitu masuk tahap akhir. Kalau faktur hanya boleh di sana,
+    // kasir menagih setelah tiketnya selesai — persis peringatan yang ditampilkan
+    // editor, dan tidak boleh muncul pada alur bawaan.
+    const nonTerminalInvoicing = CORE_BACKBONE.filter((s) => s.allowsInvoicing && s.next.length > 0);
+    expect(nonTerminalInvoicing.map((s) => s.key)).toContain('pengerjaan');
   });
 });
 

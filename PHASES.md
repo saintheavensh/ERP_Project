@@ -1140,6 +1140,30 @@ missing.
       > the tap path, detach-reconnects-the-graph, save-and-reload, and mobile
       > horizontal scroll without page overflow. `/flows` list also got its dead
       > "Create Template" button wired to the `POST /v1/flows` that already existed.
+      >
+      > **Follow-up the same day, both from the owner using it:** creating a
+      > template produced an *empty* flow — no stages, therefore no arrows,
+      > therefore nowhere to insert anything: a dead end. New
+      > `modules/flow/backbone.ts` defines `CORE_BACKBONE` (Intake → Diagnosis →
+      > {Ditunggu | Unit Disimpan} → Pengerjaan → Selesai, plus the
+      > Diagnosis → Selesai "no repair needed" branch), and `createFlowTemplate`
+      > now writes it transactionally with `isCore: true`, so a new service flow
+      > opens ready to configure. The seed takes its core stage names and
+      > descriptions from the same constant so the two can't drift in wording;
+      > capabilities stay written out in the seed, deliberately, because the
+      > seeded flow has QC Akhir installed (invoicing lives there) while a fresh
+      > flow has no QC yet (invoicing lives on Pengerjaan — putting it only on
+      > the terminal stage would mean billing after the ticket already closed).
+      > Two unit tests guard the constant itself: it must satisfy
+      > `validateFlowDesign`, and it must allow invoicing at a non-terminal stage.
+      > Also added **`DELETE /v1/flows/:id`** (admin-only, audited) with two
+      > specific refusals instead of a foreign-key 500 — `TEMPLATE_IS_DEFAULT`
+      > (every new ticket uses it) and `TEMPLATE_IN_USE` (a ticket or its history
+      > still points at its stages) — surfaced as a confirm dialog on the editor
+      > page. Verified live: new template returns 6 stages / 7 transitions;
+      > delete-while-used → 422 `TEMPLATE_IN_USE`; delete-default → 422
+      > `TEMPLATE_IS_DEFAULT`; Manager → 403 `PERMISSION_DENIED`. 11 Playwright
+      > tests now (up from 9); full suite **131 passing**, backend **236**.
 - [ ] 7.2 Printer Template Builder: WYSIWYG editor + preview
 - [ ] 7.3 RBAC Management UI: Visual permission matrix (depends on 4.5B)
 - [ ] 7.4 Git commit: `feat: phase 7 complete — builder UIs`
