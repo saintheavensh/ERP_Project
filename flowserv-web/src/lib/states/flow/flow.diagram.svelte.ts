@@ -194,13 +194,50 @@ export class FlowDiagramState {
     return rank;
   }
 
+  /**
+   * Jalur (baris) tiap tahap.
+   *
+   * Sebuah tahap MEWARISI baris pendahulunya bila barisnya masih kosong. Tanpa
+   * ini, tahap yang disisipkan hanya di cabang bawah (mis. QC sesudah "Unit
+   * Disimpan") tetap digambar di baris paling atas — tepat di sebelah kanan
+   * "Ditunggu" — sehingga panah "Ditunggu → Pengerjaan" lewat di belakangnya
+   * dan diagramnya TERBACA seolah cabang atas ikut melewati QC, padahal
+   * datanya tidak begitu. Itu bug yang dilaporkan pemilik, dan letaknya memang
+   * murni di penggambaran.
+   */
+  private get lanes(): Map<string, number> {
+    const ranks = this.ranks;
+    const laneOf = new Map<string, number>();
+    const taken = new Map<number, Set<number>>();
+
+    const byRank = [...this.nodes].sort(
+      (a, b) => (ranks.get(a.key) ?? 0) - (ranks.get(b.key) ?? 0)
+    );
+    for (const node of byRank) {
+      const rank = ranks.get(node.key) ?? 0;
+      // Pendahulu paling atas: cabang yang menyatu kembali (Pengerjaan) turut
+      // kembali ke baris utama, bukan ikut turun ke baris cabang.
+      const predLanes = this.nodes
+        .filter((n) => n.next.includes(node.key))
+        .map((n) => laneOf.get(n.key))
+        .filter((l): l is number => l !== undefined);
+      let lane = predLanes.length > 0 ? Math.min(...predLanes) : 0;
+
+      const used = taken.get(rank) ?? new Set<number>();
+      while (used.has(lane)) lane++;
+      used.add(lane);
+      taken.set(rank, used);
+      laneOf.set(node.key, lane);
+    }
+    return laneOf;
+  }
+
   get layout(): LaidOutNode[] {
     const ranks = this.ranks;
-    const laneCounter = new Map<number, number>();
+    const lanes = this.lanes;
     return this.nodes.map((n) => {
       const rank = ranks.get(n.key) ?? 0;
-      const lane = laneCounter.get(rank) ?? 0;
-      laneCounter.set(rank, lane + 1);
+      const lane = lanes.get(n.key) ?? 0;
       return { ...n, rank, x: rank * (NODE_W + GAP_X), y: lane * (NODE_H + GAP_Y) };
     });
   }

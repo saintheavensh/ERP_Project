@@ -102,6 +102,35 @@ test.describe('desktop (1280x800)', () => {
     await expect(page.locator('[aria-label="Sisipkan tahap antara Unit Disimpan dan Pengerjaan"]')).toHaveCount(1);
   });
 
+  test('menyisipkan QC hanya di cabang bawah tidak menyeret cabang atas', async ({ page }) => {
+    await login(page);
+    await page.goto(`/flows/${SERVIS_FLOW}`);
+    await page.waitForLoadState('networkidle');
+
+    // Mulai dari keadaan tanpa QC (bawaan memasangnya untuk KEDUA cabang).
+    await stage(page, 'QC Awal').getByRole('button', { name: /^Lepas tahap/ }).click();
+
+    // Pasang QC hanya pada cabang "Unit Disimpan".
+    await page.getByTestId('palette-item').filter({ hasText: 'QC Awal' }).click();
+    await page.locator('[aria-label="Sisipkan tahap antara Unit Disimpan dan Pengerjaan"]').click();
+
+    // Cabang atas HARUS tetap langsung ke Pengerjaan — inilah yang dilaporkan
+    // pemilik terbaca "bergabung".
+    await expect(page.locator('[aria-label="Sisipkan tahap antara Ditunggu dan Pengerjaan"]')).toHaveCount(1);
+    await expect(page.locator('[aria-label="Sisipkan tahap antara Ditunggu dan QC Awal"]')).toHaveCount(0);
+    await expect(page.locator('[aria-label="Sisipkan tahap antara Unit Disimpan dan QC Awal"]')).toHaveCount(1);
+
+    // ...dan harus TERLIHAT begitu juga: QC digambar sebaris dengan cabang yang
+    // memakainya, bukan di baris "Ditunggu" (di situlah panah cabang atas lewat,
+    // yang membuat diagramnya menipu meski datanya benar).
+    const qcY = (await stage(page, 'QC Awal').boundingBox())!.y;
+    const ditungguY = (await stage(page, 'Ditunggu').boundingBox())!.y;
+    const disimpanY = (await stage(page, 'Unit Disimpan').boundingBox())!.y;
+    expect(qcY).not.toBeCloseTo(ditungguY, 0);
+    expect(qcY).toBeCloseTo(disimpanY, 0);
+    // Tidak disimpan — template ini dipakai spec lain.
+  });
+
   test('menyisipkan tahap tambahan pada sebuah panah, lalu menyimpannya', async ({ page }) => {
     await login(page);
     // Alur non-default, supaya tiket baru & spec lain tidak terpengaruh.
