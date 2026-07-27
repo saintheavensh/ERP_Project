@@ -172,8 +172,40 @@ Putaran kedua (revisi setelah pemilik menjelaskan alur nyata):
       FE `/settings/flow`: urutkan tahap dengan seret (HTML5 native, pola papan Kanban P2)
       atau tombol panah untuk layar sentuh, keterangan per tahap, tiga sakelar kapabilitas,
       centang dokumen cetak, dan centang "lanjut ke" untuk percabangan.
-- [x] **Verifikasi** `tsc` bersih, `svelte-check` 747 file 0 error, `vitest` **226 lulus**
-      (+8 dari validasi alur), Playwright: 24 lulus di 6 spec lama + 4 lulus spec Tahap B.
+- [x] **R8** *(hari yang sama, setelah pemilik memakai R7)* **Editor dipindah ke `/flows`
+      dan diubah menjadi DIAGRAM, dengan urutan inti dikunci.**
+      Keluhan pemilik ada tiga dan semuanya soal bentuk, bukan soal apa yang disimpan:
+      (a) tempatnya salah — *"bukan di bagian setting tetapi di halaman /flow ... bila di
+      setting akan lebih ribet dan juga tidak efisien"*; (b) bentuknya salah — *"editnya itu
+      seperti diagram dari mana kemana, jangan perbaris"*; (c) kebebasannya kebanyakan —
+      *"untuk alur intinya urutannya tidak bisa diubah, konfigurasinya hanya menambahkan qc
+      kemudian melewati tahap print awal"*.
+      - **Tempat**: `/settings/flow` dihapus; halaman diagram baca-saja yang sudah ada di
+        `/flows/:id` sejak Phase 2C kini menjadi editornya. Tab "Alur Servis ↗" di Setelan
+        tinggal penunjuk arah, bukan tempat kedua mengatur hal yang sama.
+      - **Bentuk**: tata letak dihitung (pangkat = jalur TERPANJANG dari tahap awal, jalur =
+        urutan dalam pangkat), jadi percabangan Ditunggu/Unit Disimpan tergambar berdampingan
+        dan setiap perpindahan digambar sebagai panah SVG. Penyusunan ulang baris dihapus
+        seluruhnya. Yang tersisa: seret tahap dari palet ke tanda **+** pada sebuah panah
+        untuk menyisipkan, ✕ untuk melepas (alur menyambung sendiri melewatinya), klik
+        tahap untuk mengatur isinya.
+      - **Kunci**: kolom baru **`flow_nodes.isCore`**, dikendalikan server dan tidak pernah
+        diambil dari payload — tahap yang dibuat lewat editor selalu tahap tambahan,
+        sehingga owner tak bisa mengunci buatannya sendiri lalu terjebak. `validateCoreIntegrity()`
+        murni + 8 unit test menjaga tiga hal: tahap inti tak boleh hilang, urutannya tak boleh
+        ditukar, dan tiap sambungan inti→inti harus tetap tertempuh (boleh lewat tahap
+        tambahan, tidak boleh dialihkan ke tahap inti lain).
+        **Terverifikasi live (curl):** tukar urutan → 422 `CORE_STAGE_REORDERED`; hapus tahap
+        inti → 422 `CORE_STAGE_REMOVED`; alihkan sambungan → 422 `CORE_PATH_BROKEN`; lepas QC
+        dan sisipkan tahap baru → 200, tersimpan `isCore:false`.
+      - **Dua bug ditemukan karena dijalankan, bukan dibaca** — lihat 4c #4 dan #5.
+      - Tombol mati "Create Template" di `/flows` disambungkan ke `POST /v1/flows` yang
+        sudah ada sejak R7.
+- [x] **Verifikasi** `tsc` bersih, `svelte-check` 744 file 0 error, `vitest` **234 lulus**
+      (+8 dari `validateCoreIntegrity`), Playwright **128/129** — satu-satunya kegagalan
+      (`tahap-a-device-catalog-invoice-mode`, unggah berkas katalog device) lulus saat
+      dijalankan sendiri dan tak menyentuh apa pun yang diubah di sini; flaky bergantung
+      urutan, dicatat apa adanya.
 
 ## 4c. Bug nyata yang ditemukan tes, bukan pembacaan kode
 
@@ -185,6 +217,19 @@ Putaran kedua (revisi setelah pemilik menjelaskan alur nyata):
    transaksi. Kini default ke tunai bila tenant punya metode tunai aktif.
 3. **`currentNode.description` sudah dirender sejak Phase 3 tanpa kolomnya pernah ada** —
    selalu kosong. Ditutup oleh kolom `description` di R6.
+4. **`SELECT ... FROM flow_nodes` tanpa `ORDER BY` dipakai sebagai pembanding urutan inti.**
+   Urutan baris yang dikembalikan Postgres tidak dijamin, jadi penyisipan QC yang sah
+   ditolak `CORE_STAGE_REORDERED` dengan pesan yang urutannya sendiri acak. Diperbaiki di
+   dua lapis: query-nya diberi `ORDER BY sequence_order`, dan `validateCoreIntegrity()`
+   kini mengurutkan sendiri berdasarkan `sequenceOrder` supaya pemanggil berikutnya tak
+   bisa mengulang kesalahan yang sama. Ada regression test yang sengaja memberinya daftar
+   teracak.
+5. **Petunjuk "siap dipasang" yang hanya muncul saat menyeret MENGGESER diagram ke bawah.**
+   Sasaran jatuh ikut bergeser keluar dari bawah kursor, sehingga `drop` tak pernah terjadi
+   dan seretan asli tidak pernah berhasil — di Playwright maupun (yang lebih penting) di
+   tangan pengguna. Barisnya kini selalu dirender, kosong saat menganggur. Ditemukan dengan
+   merekam peristiwa `dragstart`/`dragover`/`drop` yang benar-benar sampai ke halaman, lalu
+   membandingkannya dengan papan Kanban P2 yang seretannya memang bekerja.
 
 ## 4b. Catatan operasional (wajib disampaikan ke pemilik)
 

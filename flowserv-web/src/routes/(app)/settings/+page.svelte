@@ -8,8 +8,10 @@
 
   let { data } = $props();
 
-  // `href` opsional: Alur Servis punya halamannya sendiri (editor penuh dengan
-  // drag-and-drop + load-nya sendiri), bukan tab in-place seperti yang lain.
+  // `href` opsional: Alur Servis TIDAK diatur di sini. Keputusan pemilik
+  // (2026-07-27) — mengatur alur lewat tab Setelan "lebih ribet dan tidak
+  // efisien"; tempatnya di /flows sebagai diagram. Entri ini tinggal penunjuk
+  // arah, bukan tempat kedua untuk mengatur hal yang sama.
   const TABS: Array<{ id: string; label: string; href?: string }> = [
     { id: 'company', label: 'Perusahaan' },
     { id: 'branches', label: 'Cabang' },
@@ -17,7 +19,7 @@
     { id: 'payment-methods', label: 'Metode Pembayaran' },
     { id: 'printers', label: 'Printer' },
     { id: 'sales', label: 'Penjualan' },
-    { id: 'flow', label: 'Alur Servis', href: '/settings/flow' },
+    { id: 'flow', label: 'Alur Servis ↗', href: '/flows' },
   ];
 </script>
 

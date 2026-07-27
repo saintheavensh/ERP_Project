@@ -168,6 +168,11 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       description: 'Cek kondisi unit sebelum dibongkar (nyala/tidak, kelengkapan, kerusakan lain). Bukti awal bila nanti ada klaim dari pelanggan.',
       allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
       autoPrintDocuments: [],
+      // Tahap TAMBAHAN: boleh dilepas/dipasang owner lewat editor diagram.
+      // Tulang punggung alur (Intake -> Diagnosis -> cabang -> Pengerjaan ->
+      // Selesai) tetap terkunci; QC memang yang dimaksud pemilik dengan
+      // "konfigurasinya hanya menambahkan QC".
+      isCore: false,
     },
     {
       id: IDS.nodeServisRepair, flowTemplateId: IDS.flowTemplateServis,
@@ -184,6 +189,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       // "Pembayaran di bagian akhir saja, ketika sudah selesai pengerjaan."
       allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
       autoPrintDocuments: [],
+      isCore: false,
     },
     {
       id: IDS.nodeServisSelesai, flowTemplateId: IDS.flowTemplateServis,

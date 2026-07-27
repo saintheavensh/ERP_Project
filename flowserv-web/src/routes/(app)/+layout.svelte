@@ -18,7 +18,7 @@
     
     if (user?.roleName === 'Super Admin') {
       items.push({ label: 'Customers', path: '/customers' });
-      items.push({ label: 'Flow Templates', path: '/flows' });
+      items.push({ label: 'Alur Servis', path: '/flows' });
       items.push({ label: 'Tickets', path: '/tickets' });
       items.push({ 
         label: 'Inventory & Stock', 

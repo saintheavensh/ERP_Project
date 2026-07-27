@@ -7,21 +7,18 @@ export const load: PageServerLoad = async ({ locals }) => {
     throw redirect(302, '/login');
   }
 
-  // Fetch flows from backend
   try {
     const res = await fetch('http://localhost:3001/v1/flows', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     if (res.ok) {
       const data = await res.json();
-      return { flows: data.data || [] };
+      return { token, flows: data.data || [] };
     }
   } catch (e) {
     console.error('Failed to fetch flows', e);
   }
 
-  return { flows: [] };
+  return { token, flows: [] };
 };

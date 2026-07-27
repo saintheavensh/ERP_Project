@@ -89,6 +89,113 @@ export function validateFlowDesign(input: FlowDesignInput): FlowDesignIssue[] {
   return issues;
 }
 
+/** Bentuk minimal tahap tersimpan yang dibutuhkan pemeriksaan tulang punggung. */
+export interface ExistingNodeSnapshot {
+  id: string;
+  name: string;
+  isCore: boolean;
+  /**
+   * Urutan tahap yang tersimpan. WAJIB ada: urutan inti yang "benar" ditentukan
+   * kolom ini, bukan urutan baris yang kebetulan dikembalikan SELECT. Diurutkan
+   * di dalam fungsi ini supaya pemanggil tak bisa lupa — sempat menjadi bug
+   * nyata: tanpa ORDER BY, penyisipan tahap yang sah ditolak
+   * CORE_STAGE_REORDERED karena urutan pembandingnya acak.
+   */
+  sequenceOrder: number;
+}
+
+/**
+ * Jaga TULANG PUNGGUNG alur (keputusan pemilik 2026-07-27).
+ *
+ * "Untuk alur intinya urutannya tidak bisa diubah, konfigurasinya hanya
+ * menambahkan QC kemudian melewati tahap print awal." Editor diagram memang
+ * tidak menyediakan tombol untuk melanggar itu — tapi UI bukan penjaga. Tanpa
+ * pemeriksaan di sini, klaim "urutan inti terkunci" hanya berlaku selama tak
+ * ada yang memanggil API-nya langsung.
+ *
+ * Tiga aturan, semuanya soal tahap inti saja (tahap tambahan bebas):
+ *  1. tahap inti tak boleh hilang;
+ *  2. urutan relatif antar tahap inti harus tetap;
+ *  3. tiap sambungan inti->inti yang lama harus masih bisa ditempuh — boleh
+ *     lewat tahap tambahan (itulah gunanya menyisipkan QC), tapi tidak boleh
+ *     dialihkan ke tahap inti lain.
+ */
+export function validateCoreIntegrity(
+  existingNodes: ExistingNodeSnapshot[],
+  existingTransitions: Array<{ fromNodeId: string; toNodeId: string }>,
+  input: FlowDesignInput
+): FlowDesignIssue[] {
+  const issues: FlowDesignIssue[] = [];
+  const coreOrder = existingNodes
+    .filter((n) => n.isCore)
+    .slice()
+    .sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+  if (coreOrder.length === 0) return issues; // alur lama tanpa tahap inti: tak ada yang dijaga
+
+  const nameById = new Map(existingNodes.map((n) => [n.id, n.name]));
+  const inputIds = new Set(input.nodes.map((n) => n.id).filter(Boolean) as string[]);
+
+  const missing = coreOrder.filter((n) => !inputIds.has(n.id));
+  if (missing.length > 0) {
+    issues.push({
+      code: 'CORE_STAGE_REMOVED',
+      message: `Tahap inti ${missing.map((n) => n.name).join(', ')} tidak boleh dihapus — itu urutan kerja pokok toko. Yang bisa dilepas hanya tahap tambahan seperti QC.`,
+    });
+    return issues; // aturan 2 & 3 tak bermakna bila tulang punggungnya sudah tak utuh
+  }
+
+  const coreIds = new Set(coreOrder.map((n) => n.id));
+  const inputCoreSequence = input.nodes.filter((n) => n.id && coreIds.has(n.id)).map((n) => n.id!);
+  const expected = coreOrder.map((n) => n.id);
+  if (inputCoreSequence.join('|') !== expected.join('|')) {
+    issues.push({
+      code: 'CORE_STAGE_REORDERED',
+      message: `Urutan tahap inti tidak bisa diubah (${expected.map((id) => nameById.get(id)).join(' → ')}). Tambahkan tahap baru di antaranya bila perlu langkah lain.`,
+    });
+  }
+
+  // Aturan 3: telusuri graf baru, hanya boleh singgah di tahap non-inti.
+  const idByKey = new Map(input.nodes.map((n) => [n.key, n.id ?? null]));
+  const adjacency = new Map<string, string[]>();
+  for (const t of input.transitions) {
+    adjacency.set(t.from, [...(adjacency.get(t.from) ?? []), t.to]);
+  }
+  const keyById = new Map(input.nodes.filter((n) => n.id).map((n) => [n.id!, n.key]));
+
+  const reachesCore = (fromKey: string, targetId: string): boolean => {
+    const seen = new Set<string>();
+    const queue = [...(adjacency.get(fromKey) ?? [])];
+    while (queue.length > 0) {
+      const key = queue.shift()!;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const id = idByKey.get(key) ?? null;
+      if (id === targetId) return true;
+      // Berhenti di tahap inti lain — melewatinya berarti sambungan lama sudah
+      // dialihkan, bukan sekadar disisipi tahap tambahan.
+      if (id && coreIds.has(id)) continue;
+      queue.push(...(adjacency.get(key) ?? []));
+    }
+    return false;
+  };
+
+  const broken = existingTransitions.filter(
+    (t) =>
+      coreIds.has(t.fromNodeId) &&
+      coreIds.has(t.toNodeId) &&
+      !reachesCore(keyById.get(t.fromNodeId) ?? '', t.toNodeId)
+  );
+  if (broken.length > 0) {
+    const pairs = broken.map((t) => `${nameById.get(t.fromNodeId)} → ${nameById.get(t.toNodeId)}`);
+    issues.push({
+      code: 'CORE_PATH_BROKEN',
+      message: `Sambungan inti ${pairs.join(', ')} terputus. Tahap tambahan boleh disisipkan di antaranya, tapi jalurnya harus tetap sampai.`,
+    });
+  }
+
+  return issues;
+}
+
 export async function createFlowTemplate(tenantId: string, input: CreateFlowTemplateInput) {
   const [template] = await db.insert(flowTemplates).values({
     tenantId,
@@ -124,7 +231,10 @@ export async function saveFlowDesign(tenantId: string, templateId: string, input
       .where(and(eq(flowTemplates.id, templateId), eq(flowTemplates.tenantId, tenantId)));
     if (!template) throw new BusinessError('NOT_FOUND', 'Flow template not found', 404);
 
-    const existing = await tx.select().from(flowNodes).where(eq(flowNodes.flowTemplateId, templateId));
+    // ORDER BY penting: urutan inti dibandingkan terhadap daftar ini.
+    const existing = await tx.select().from(flowNodes)
+      .where(eq(flowNodes.flowTemplateId, templateId))
+      .orderBy(flowNodes.sequenceOrder);
     const existingIds = new Set(existing.map((n) => n.id));
 
     // Node yang dikirim membawa `id` tapi bukan milik template ini = payload
@@ -133,6 +243,18 @@ export async function saveFlowDesign(tenantId: string, templateId: string, input
       if (node.id && !existingIds.has(node.id)) {
         throw new BusinessError('NODE_NOT_IN_TEMPLATE', `Tahap "${node.name}" bukan milik alur ini`, 422);
       }
+    }
+
+    // Tulang punggung alur dijaga SEBELUM apa pun ditulis — lihat
+    // validateCoreIntegrity(). Transisi lama dibaca di sini karena aturan
+    // ketiganya membandingkan sambungan inti lama dengan graf baru.
+    const existingNodeIdList = existing.map((n) => n.id);
+    const priorTransitions = existingNodeIdList.length > 0
+      ? await tx.select().from(flowTransitions).where(inArray(flowTransitions.fromNodeId, existingNodeIdList))
+      : [];
+    const coreIssues = validateCoreIntegrity(existing, priorTransitions, input);
+    if (coreIssues.length > 0) {
+      throw new BusinessError(coreIssues[0].code, coreIssues[0].message, 422, coreIssues);
     }
 
     const keptIds = new Set(input.nodes.map((n) => n.id).filter(Boolean) as string[]);
@@ -165,9 +287,8 @@ export async function saveFlowDesign(tenantId: string, templateId: string, input
 
     // Transisi dihapus lebih dulu: keduanya menunjuk node, jadi node tak bisa
     // dihapus/ditulis ulang selama transisi lama masih menunjuknya.
-    const existingNodeIds = existing.map((n) => n.id);
-    if (existingNodeIds.length > 0) {
-      await tx.delete(flowTransitions).where(inArray(flowTransitions.fromNodeId, existingNodeIds));
+    if (existingNodeIdList.length > 0) {
+      await tx.delete(flowTransitions).where(inArray(flowTransitions.fromNodeId, existingNodeIdList));
     }
 
     // Upsert node; sequenceOrder = urutan array (hasil drag-and-drop).
@@ -188,8 +309,10 @@ export async function saveFlowDesign(tenantId: string, templateId: string, input
         await tx.update(flowNodes).set(values).where(eq(flowNodes.id, node.id));
         keyToId.set(node.key, node.id);
       } else {
+        // `isCore` sengaja tidak diambil dari payload: tahap yang dibuat lewat
+        // editor selalu tahap tambahan, sehingga selalu bisa dilepas lagi.
         const [created] = await tx.insert(flowNodes)
-          .values({ ...values, flowTemplateId: templateId })
+          .values({ ...values, flowTemplateId: templateId, isCore: false })
           .returning({ id: flowNodes.id });
         keyToId.set(node.key, created.id);
       }

@@ -1,12 +1,17 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Tahap B / Phase 7.1 — editor alur servis.
+// Editor alur servis — bentuk DIAGRAM, di /flows (dipindah dari Setelan pada
+// 2026-07-27 atas keputusan pemilik).
 //
-// Yang dibuktikan di sini bukan sekadar "halamannya tampil", tapi bahwa
-// menyunting template BENAR-BENAR mengubah cara aplikasi bekerja: keterangan
-// tahap muncul di halaman tiket, dan mematikan sebuah kapabilitas langsung
-// menutup fitur yang bersangkutan. Itulah inti keputusan pemilik bahwa
-// "template flow service ini inti dari semua alur servicenya".
+// Yang dibuktikan di sini bukan sekadar "diagramnya tampil", tapi dua klaim
+// yang benar-benar dijanjikan ke pemilik:
+//   1. urutan alur INTI terkunci — tahap inti tak punya tombol lepas sama
+//      sekali, dan servernya menolak walau permintaannya dipaksa;
+//   2. yang bisa diatur memang cuma tahap tambahan (QC dsb.) + isi tiap tahap,
+//      dan mengubahnya BENAR-BENAR mengubah cara aplikasi bekerja.
+
+const SERVIS_FLOW = '84000000-0000-4000-8000-000000000003';
+const DITUNGGU_FLOW = '84000000-0000-4000-8000-000000000001';
 
 async function login(page: Page, email = 'admin@demo.com', password = 'admin123') {
   await page.goto('/login');
@@ -17,91 +22,146 @@ async function login(page: Page, email = 'admin@demo.com', password = 'admin123'
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
 }
 
-/**
- * Buka panel "Atur" untuk tahap dengan nama tertentu.
- *
- * Namanya ada di dalam <input>, dan nilai input yang dikelola Svelte hidup di
- * PROPERTI `value`, bukan atribut HTML-nya — jadi selektor CSS
- * `input[value="Diagnosis"]` tidak akan pernah cocok setelah hidrasi. Karena
- * itu nilainya dibaca satu per satu lewat inputValue().
- */
+/** Kartu tahap di diagram, dicari dari namanya. */
+function stage(page: Page, name: string) {
+  return page.getByTestId('flow-node').filter({ hasText: name }).first();
+}
+
+/** Buka panel pengaturan sebuah tahap dengan mengklik kartunya. */
 async function openStage(page: Page, name: string) {
-  const stages = page.getByTestId('flow-stage');
-  const count = await stages.count();
-  for (let i = 0; i < count; i++) {
-    const stage = stages.nth(i);
-    if ((await stage.locator('input').first().inputValue()) === name) {
-      await stage.getByRole('button', { name: 'Atur' }).click();
-      return stage;
-    }
-  }
-  throw new Error(`Tahap "${name}" tidak ditemukan di editor alur`);
+  await stage(page, name).click();
+  const panel = page.getByTestId('stage-panel');
+  await expect(panel).toBeVisible();
+  return panel;
 }
 
 test.describe('desktop (1280x800)', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test('menampilkan tahap alur default beserta lencana kapabilitasnya', async ({ page }) => {
+  test('diagram menampilkan seluruh tahap, mana yang inti dan mana yang tambahan', async ({ page }) => {
     await login(page);
-    await page.goto('/settings/flow');
+    await page.goto(`/flows/${SERVIS_FLOW}`);
     await page.waitForLoadState('networkidle');
 
-    const stages = page.getByTestId('flow-stage');
-    await expect(stages).toHaveCount(8);
+    const nodes = page.getByTestId('flow-node');
+    await expect(nodes).toHaveCount(8);
 
-    // Lencana = ringkasan kapabilitas, supaya owner tak perlu membuka tiap tahap
-    // untuk tahu tahap mana yang mencetak apa.
-    await expect(stages.first()).toContainText('TAHAP AWAL');
-    await expect(stages.first()).toContainText('CETAK: label');
-    await expect(stages.last()).toContainText('TAHAP AKHIR');
+    // Tulang punggung terkunci, QC adalah tahap tambahan — inilah pembagian yang
+    // dimaksud "alur intinya urutannya tidak bisa diubah, konfigurasinya hanya
+    // menambahkan QC".
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'Intake' })).toHaveAttribute('data-core', 'true');
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'QC Awal' })).toHaveAttribute('data-core', 'false');
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'QC Akhir' })).toHaveAttribute('data-core', 'false');
 
-    // Alur default yang sehat tidak memunculkan peringatan apa pun.
+    // Panah dari mana ke mana: percabangan setelah Diagnosis membuat jumlah
+    // sambungan lebih banyak daripada jumlah tahap.
+    await expect(page.getByTestId('flow-edge-drop')).toHaveCount(9);
+
+    // Lencana kapabilitas terbaca langsung dari kartunya, tanpa membuka apa pun.
+    await expect(stage(page, 'Intake')).toContainText('CETAK: label');
+    await expect(stage(page, 'Unit Disimpan')).toContainText('CETAK: tanda_terima');
+    await expect(stage(page, 'Ditunggu')).not.toContainText('CETAK');
+
     await expect(page.getByTestId('flow-warnings')).toHaveCount(0);
   });
 
-  test('memperingatkan alur yang rusak sebelum disimpan', async ({ page }) => {
+  test('tahap inti tidak punya tombol lepas, tahap tambahan punya', async ({ page }) => {
     await login(page);
-    await page.goto('/settings/flow');
+    await page.goto(`/flows/${SERVIS_FLOW}`);
     await page.waitForLoadState('networkidle');
 
-    // Tahap baru tanpa sambungan = tahap awal kedua -> harus diperingatkan,
-    // karena tiket jadi tak tahu harus mulai di mana.
-    await page.getByRole('button', { name: '+ Tambah Tahap' }).click();
-    const warnings = page.getByTestId('flow-warnings');
-    await expect(warnings).toBeVisible();
-    await expect(warnings).toContainText('tahap awal');
+    await expect(stage(page, 'Pengerjaan').getByRole('button', { name: /^Lepas tahap/ })).toHaveCount(0);
+    await expect(stage(page, 'QC Awal').getByRole('button', { name: /^Lepas tahap/ })).toHaveCount(1);
+
+    // Panel tahap inti pun hanya menawarkan pengaturan isi, bukan pelepasan.
+    const panel = await openStage(page, 'Pengerjaan');
+    await expect(panel).toContainText('Tahap inti');
+    await expect(panel.getByRole('button', { name: 'Lepas tahap ini dari alur' })).toHaveCount(0);
   });
 
-  test('mengubah urutan tahap lewat tombol panah', async ({ page }) => {
+  test('melepas tahap tambahan menyambungkan alur langsung melewatinya', async ({ page }) => {
     await login(page);
-    await page.goto('/settings/flow');
+    await page.goto(`/flows/${SERVIS_FLOW}`);
     await page.waitForLoadState('networkidle');
 
-    const stages = page.getByTestId('flow-stage');
-    const secondName = await stages.nth(1).locator('input').first().inputValue();
+    // Sengaja TIDAK disimpan: yang diuji di sini perilaku diagramnya, dan
+    // template ini dipakai tiket baru oleh spec lain.
+    await stage(page, 'QC Awal').getByRole('button', { name: /^Lepas tahap/ }).click();
 
-    await stages.nth(1).getByRole('button', { name: 'Naikkan tahap' }).click();
+    await expect(page.getByTestId('flow-node')).toHaveCount(7);
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'QC Awal' })).toHaveCount(0);
+    // Kedua cabang harus tersambung ulang ke Pengerjaan — kalau tidak, akan
+    // muncul peringatan "tahap tak tersambung".
+    await expect(page.getByTestId('flow-warnings')).toHaveCount(0);
 
-    // Tahap kedua kini di posisi pertama — urutan inilah yang disimpan sebagai
-    // sequenceOrder, jalur yang sama dipakai drag-and-drop.
-    await expect(stages.first().locator('input').first()).toHaveValue(secondName);
+    // 9 sambungan semula, minus 3 yang menyentuh QC Awal, plus 2 sambungan
+    // pengganti — kedua cabang (Ditunggu & Unit Disimpan) harus tersambung
+    // sendiri ke Pengerjaan, bukan menggantung.
+    await expect(page.getByTestId('flow-edge-drop')).toHaveCount(8);
+    await expect(page.locator('[aria-label="Sisipkan tahap antara Ditunggu dan Pengerjaan"]')).toHaveCount(1);
+    await expect(page.locator('[aria-label="Sisipkan tahap antara Unit Disimpan dan Pengerjaan"]')).toHaveCount(1);
   });
 
-  test('keterangan tahap yang disimpan muncul di halaman tiket', async ({ page }) => {
+  test('menyisipkan tahap tambahan pada sebuah panah, lalu menyimpannya', async ({ page }) => {
     await login(page);
-    await page.goto('/settings/flow');
+    // Alur non-default, supaya tiket baru & spec lain tidak terpengaruh.
+    await page.goto(`/flows/${DITUNGGU_FLOW}`);
     await page.waitForLoadState('networkidle');
 
-    const marker = `Keterangan uji ${Date.now()}`;
-    const stage = await openStage(page, 'Intake');
-    await stage.locator('textarea').first().fill(marker);
+    const before = await page.getByTestId('flow-node').count();
+
+    // Jalur sentuh: ketuk tahap di palet, lalu ketuk tanda "+" pada panahnya.
+    await page.getByTestId('palette-item').filter({ hasText: 'Menunggu Sparepart' }).click();
+    await page.getByTestId('flow-edge-drop').first().click();
+
+    await expect(page.getByTestId('flow-node')).toHaveCount(before + 1);
+    await expect(page.getByTestId('flow-node').filter({ hasText: 'Menunggu Sparepart' })).toHaveCount(1);
+    await expect(page.getByTestId('flow-warnings')).toHaveCount(0);
 
     await page.getByTestId('save-flow').click();
     await expect(page.getByTestId('flow-saved')).toBeVisible();
 
-    // Sekarang buat tiket baru: halaman tiket harus menampilkan keterangan itu
-    // di bawah "Current Stage". (Binding ini sudah ada sejak Phase 3 tapi
-    // kolomnya tak pernah ada, jadi selama ini selalu kosong.)
+    // Benar-benar tersimpan: muat ulang halaman dan tahapnya masih ada.
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    const inserted = page.getByTestId('flow-node').filter({ hasText: 'Menunggu Sparepart' });
+    await expect(inserted).toHaveCount(1);
+    // Tahap buatan editor selalu tahap TAMBAHAN — jadi bisa dilepas lagi.
+    await expect(inserted).toHaveAttribute('data-core', 'false');
+
+    // Kembalikan alur ke bentuk semula supaya urutan jalannya tes tidak penting.
+    await inserted.getByRole('button', { name: /^Lepas tahap/ }).click();
+    await page.getByTestId('save-flow').click();
+    await expect(page.getByTestId('flow-saved')).toBeVisible();
+  });
+
+  test('seret tahap dari palet ke panah juga menyisipkannya', async ({ page }) => {
+    await login(page);
+    await page.goto(`/flows/${DITUNGGU_FLOW}`);
+    await page.waitForLoadState('networkidle');
+
+    const before = await page.getByTestId('flow-node').count();
+    await page.getByTestId('palette-item').filter({ hasText: 'QC Awal' })
+      .dragTo(page.getByTestId('flow-edge-drop').first());
+
+    await expect(page.getByTestId('flow-node')).toHaveCount(before + 1);
+    // Tidak disimpan — cukup membuktikan seretannya sampai ke tindakan yang sama.
+  });
+
+  test('keterangan tahap yang disimpan muncul di halaman tiket', async ({ page }) => {
+    await login(page);
+    await page.goto(`/flows/${SERVIS_FLOW}`);
+    await page.waitForLoadState('networkidle');
+
+    const marker = `Keterangan uji ${Date.now()}`;
+    const panel = await openStage(page, 'Intake');
+    await panel.locator('textarea').first().fill(marker);
+
+    await page.getByTestId('save-flow').click();
+    await expect(page.getByTestId('flow-saved')).toBeVisible();
+
+    // Buat tiket baru: halaman tiket harus menampilkan keterangan itu di bawah
+    // "Current Stage" — bukti bahwa yang disunting di sini dibaca staf di sana.
     await page.goto('/tickets/intake');
     await page.waitForLoadState('networkidle');
     await page.fill('#name', `Uji Keterangan ${Date.now()}`);
@@ -114,13 +174,13 @@ test.describe('desktop (1280x800)', () => {
 
   test('mematikan "input biaya" di sebuah tahap langsung mengunci form biaya di tiket', async ({ page }) => {
     await login(page);
-    await page.goto('/settings/flow');
+    await page.goto(`/flows/${SERVIS_FLOW}`);
     await page.waitForLoadState('networkidle');
 
-    // Diagnosis default-nya MENGIZINKAN biaya. Matikan, lalu buktikan tiket
-    // ikut berubah — bukti bahwa perilaku benar-benar mengikuti template.
-    const stage = await openStage(page, 'Diagnosis');
-    const chargesToggle = stage.getByRole('checkbox').first();
+    // Diagnosis default-nya MENGIZINKAN biaya. Matikan, lalu buktikan tiket ikut
+    // berubah — bukti bahwa perilaku benar-benar mengikuti template.
+    const panel = await openStage(page, 'Diagnosis');
+    const chargesToggle = panel.getByRole('checkbox').first();
     await expect(chargesToggle).toBeChecked();
     await chargesToggle.uncheck();
     await page.getByTestId('save-flow').click();
@@ -143,24 +203,51 @@ test.describe('desktop (1280x800)', () => {
 
     // Kembalikan ke semula supaya spec lain (yang mengandalkan biaya terbuka di
     // Diagnosis) tidak terpengaruh urutan jalannya tes.
-    await page.goto('/settings/flow');
+    await page.goto(`/flows/${SERVIS_FLOW}`);
     await page.waitForLoadState('networkidle');
     const restore = await openStage(page, 'Diagnosis');
     await restore.getByRole('checkbox').first().check();
     await page.getByTestId('save-flow').click();
     await expect(page.getByTestId('flow-saved')).toBeVisible();
   });
+
+  test('daftar alur adalah pintu masuknya, dan Setelan hanya menunjuk ke sana', async ({ page }) => {
+    await login(page);
+    await page.goto('/flows');
+    await page.waitForLoadState('networkidle');
+
+    // Alur yang benar-benar dipakai tiket baru harus terlihat sebagai apa adanya.
+    await expect(page.getByTestId('flow-card').filter({ hasText: 'Dipakai tiket baru' })).toHaveCount(1);
+    await page.getByTestId('flow-card').filter({ hasText: 'Dipakai tiket baru' }).click();
+    await page.waitForURL(/\/flows\/[0-9a-f-]{36}/);
+    await expect(page.getByTestId('flow-canvas')).toBeVisible();
+
+    // Tab "Alur Servis" di Setelan bukan tempat kedua untuk mengatur hal yang
+    // sama — ia hanya membawa ke sini.
+    await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
+    // Nama tab sengaja dibedakan dari menu sidebar ("Alur Servis ↗") supaya
+    // jelas ia membawa keluar dari Setelan, bukan membuka tab di tempat.
+    await page.getByRole('link', { name: 'Alur Servis ↗' }).click();
+    await page.waitForURL(/\/flows$/);
+  });
 });
 
 test.describe('mobile (375x667)', () => {
   test.use({ viewport: { width: 375, height: 667 } });
 
-  test('editor alur tidak overflow di layar ponsel', async ({ page }) => {
+  test('diagram bisa digulir menyamping tanpa membuat halaman overflow', async ({ page }) => {
     await login(page);
-    await page.goto('/settings/flow');
+    await page.goto(`/flows/${SERVIS_FLOW}`);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByTestId('flow-stage').first()).toBeVisible();
+    await expect(page.getByTestId('flow-node').first()).toBeVisible();
+
+    // Diagramnya memang lebih lebar dari layar (7 kolom) — yang menggulir harus
+    // wadahnya, bukan seluruh halaman.
     const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(bodyWidth).toBeLessThanOrEqual(376);
+    const canvasScrolls = await page.getByTestId('flow-canvas')
+      .evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(canvasScrolls).toBe(true);
   });
 });

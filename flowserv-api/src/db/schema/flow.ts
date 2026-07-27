@@ -76,6 +76,23 @@ export const flowNodes = pgTable('flow_nodes', {
    * receipt / invoice_a4), jadi tak ada kamus kedua yang bisa berselisih.
    */
   autoPrintDocuments: jsonb('auto_print_documents').notNull().default([]),
+
+  /**
+   * Tahap INTI alur — tidak boleh dihapus, dan urutannya relatif terhadap tahap
+   * inti lain tidak boleh diubah dari editor.
+   *
+   * Keputusan pemilik (2026-07-27): "untuk alur intinya urutannya tidak bisa
+   * diubah, konfigurasinya hanya menambahkan QC kemudian melewati tahap print
+   * awal". Tulang punggung Intake -> Diagnosis -> (Ditunggu | Disimpan) ->
+   * Pengerjaan -> Selesai adalah cara toko bekerja; yang boleh diatur adalah
+   * tahap TAMBAHAN (QC, tunggu sparepart) dan dokumen apa yang tercetak di
+   * tiap tahap.
+   *
+   * Nilai ini dikendalikan server, BUKAN dikirim klien: tahap yang dibuat lewat
+   * editor selalu non-inti, sehingga owner tak bisa (sengaja atau tidak)
+   * mengunci tahap buatannya sendiri lalu terjebak.
+   */
+  isCore: boolean('is_core').notNull().default(true),
 }, (table) => ({
   templateIdx: index('flow_nodes_template_idx').on(table.flowTemplateId),
 }));

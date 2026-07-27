@@ -1095,6 +1095,51 @@ missing.
       the matching form — the actual claim being made. Closed a latent bug on the
       way: `TicketWorkspace.svelte` had rendered `currentNode.description` since
       Phase 3 with no such column ever existing, so it was always blank.
+      > **Reworked later the same day (2026-07-27) after the owner used it.** Two
+      > things were wrong, both about *where* and *how*, not about what it saved:
+      > it lived under Setelan ("bila di setting akan lebih ribet dan juga tidak
+      > efisien"), and it edited the flow as a **list of rows** when the thing
+      > being edited is a graph ("editnya itu seperti diagram dari mana kemana,
+      > jangan perbaris"). It also offered far more freedom than the shop wants:
+      > "untuk alur intinya urutannya tidak bisa diubah — konfigurasinya hanya
+      > menambahkan QC kemudian melewati tahap print awal."
+      >
+      > The editor now lives at **`/flows/:id`** (the read-only diagram page that
+      > already existed there since Phase 2C is now the editor; `/settings/flow`
+      > is deleted and the Setelan tab is a link, not a second place to configure
+      > the same thing). It draws the real graph — stages positioned by longest
+      > path from the start stage, so the Ditunggu/Unit Disimpan branch renders
+      > side by side, with SVG arrows for every transition. Reordering rows is
+      > gone entirely; what's left is: drag a stage from the palette onto the
+      > **+** on an arrow to insert it, ✕ to detach it (the flow reconnects
+      > around it), and click a stage to edit its description / capabilities /
+      > auto-print documents.
+      >
+      > **New `flow_nodes.isCore`** is what makes the lock real rather than a
+      > disabled button: server-controlled (never accepted from the payload, so
+      > stages created in the editor are always optional and always removable),
+      > seeded true for the backbone and false for QC Awal / QC Akhir. New pure
+      > `validateCoreIntegrity()` + 8 unit tests enforces three rules — a core
+      > stage can't be removed, core stages can't be reordered, and every
+      > core→core transition must still be reachable (through added stages, but
+      > not rerouted to a different core stage). Verified live via curl against
+      > the real API: reorder → 422 `CORE_STAGE_REORDERED`, delete → 422
+      > `CORE_STAGE_REMOVED`, reroute → 422 `CORE_PATH_BROKEN`, while detaching
+      > QC and inserting a new stage both return 200 and come back `isCore:false`.
+      >
+      > Two real bugs were found by running it, not by reading it: (1) the
+      > `SELECT` behind the core-order comparison had **no `ORDER BY`**, so the
+      > "expected" order was whatever Postgres returned and a perfectly legal
+      > insert was rejected — fixed, and `validateCoreIntegrity` now sorts by
+      > `sequenceOrder` itself so no caller can reintroduce it (regression test
+      > feeds it a deliberately shuffled list); (2) the "siap dipasang" hint
+      > appeared only *during* a drag, which **shifted the diagram down by one
+      > line and moved the drop target out from under the cursor** — native
+      > drag-and-drop never completed. It is now always rendered (empty when
+      > idle). 9 Playwright tests (up from 6), including both the drag path and
+      > the tap path, detach-reconnects-the-graph, save-and-reload, and mobile
+      > horizontal scroll without page overflow. `/flows` list also got its dead
+      > "Create Template" button wired to the `POST /v1/flows` that already existed.
 - [ ] 7.2 Printer Template Builder: WYSIWYG editor + preview
 - [ ] 7.3 RBAC Management UI: Visual permission matrix (depends on 4.5B)
 - [ ] 7.4 Git commit: `feat: phase 7 complete — builder UIs`
