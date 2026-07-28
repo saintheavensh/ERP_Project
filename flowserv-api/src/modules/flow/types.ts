@@ -26,6 +26,12 @@ export const flowDesignNodeSchema = z.object({
   requiresDiagnosis: z.boolean().default(false),
   allowsInvoicing: z.boolean().default(false),
   autoPrintDocuments: z.array(z.enum(DOCUMENT_TYPES)).default([]),
+  // Daftar periksa tahap (QC). `id` dibuat klien dan HARUS tetap saat kalimatnya
+  // diubah — jawaban tiket lama menunjuk id ini.
+  checklistItems: z.array(z.object({
+    id: z.string().uuid(),
+    label: z.string().min(1, 'Item periksa tidak boleh kosong').max(200),
+  })).default([]),
 });
 
 export const flowDesignSchema = z.object({

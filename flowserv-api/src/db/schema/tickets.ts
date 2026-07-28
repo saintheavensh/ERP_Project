@@ -112,6 +112,33 @@ export const ticketStageHistory = pgTable('ticket_stage_history', {
   ticketIdx: index('ticket_stage_history_ticket_idx').on(table.ticketId),
 }));
 
+/**
+ * Jawaban teknisi atas daftar periksa sebuah tahap (mis. QC), per tiket.
+ *
+ * `label` sengaja DISALIN dari definisi tahap saat jawaban disimpan, bukan
+ * dibaca ulang belakangan: ini bukti yang ditunjukkan ke pelanggan, jadi
+ * mengganti kalimat item di template tidak boleh mengubah bunyi bukti tiket
+ * yang sudah lewat.
+ */
+export const ticketChecklistResults = pgTable('ticket_checklist_results', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
+  ticketId: uuid('ticket_id').notNull().references(() => serviceTickets.id),
+  nodeId: uuid('node_id').notNull().references(() => flowNodes.id),
+  /** id item di dalam `flow_nodes.checklist_items` (jsonb, jadi bukan FK). */
+  itemId: uuid('item_id').notNull(),
+  label: text('label').notNull(),
+  checked: boolean('checked').notNull().default(false),
+  note: text('note'),
+  checkedBy: uuid('checked_by').references(() => users.id),
+  checkedAt: timestamp('checked_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  ticketIdx: index('ticket_checklist_results_ticket_idx').on(table.ticketId),
+  // Satu jawaban per item per tahap per tiket — menyimpan ulang memperbarui
+  // baris yang sama, bukan menumpuk riwayat centang.
+  uniqueAnswer: unique('ticket_checklist_results_unique').on(table.ticketId, table.nodeId, table.itemId),
+}));
+
 export const approvalRequests = pgTable('approval_requests', {
   id: uuid('id').primaryKey().defaultRandom(),
   ticketId: uuid('ticket_id').notNull().references(() => serviceTickets.id),

@@ -181,6 +181,15 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       // Selesai) tetap terkunci; QC memang yang dimaksud pemilik dengan
       // "konfigurasinya hanya menambahkan QC".
       isCore: false,
+      // Contoh daftar periksa, BUKAN aturan: owner bebas menambah/mengurangi
+      // barisnya lewat editor alur. Yang penting id-nya tetap, karena jawaban
+      // tiket menunjuk id ini.
+      checklistItems: [
+        { id: IDS.qcAwalItemNyala, label: 'Unit menyala dan bisa masuk menu' },
+        { id: IDS.qcAwalItemLayar, label: 'Kondisi layar (retak/dead pixel) dicatat' },
+        { id: IDS.qcAwalItemFisik, label: 'Kondisi fisik & kelengkapan dicatat' },
+        { id: IDS.qcAwalItemSandi, label: 'Sandi/pola dari pelanggan sudah dicatat' },
+      ],
     },
     {
       id: IDS.nodeServisRepair, flowTemplateId: IDS.flowTemplateServis,
@@ -198,6 +207,12 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
       autoPrintDocuments: [],
       isCore: false,
+      checklistItems: [
+        { id: IDS.qcAkhirItemKeluhan, label: 'Keluhan awal pelanggan sudah hilang' },
+        { id: IDS.qcAkhirItemFungsi, label: 'Fungsi lain tetap normal (kamera, suara, tombol)' },
+        { id: IDS.qcAkhirItemFisik, label: 'Tidak ada kerusakan baru pada fisik unit' },
+        { id: IDS.qcAkhirItemSandi, label: 'Sandi/pola sudah dikembalikan ke pelanggan' },
+      ],
     },
     {
       id: IDS.nodeServisSelesai, flowTemplateId: IDS.flowTemplateServis,

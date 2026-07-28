@@ -227,8 +227,39 @@ Putaran kedua (revisi setelah pemilik menjelaskan alur nyata):
         403 `PERMISSION_DENIED`.
       - Halaman editor juga diberi keadaan-kosong yang jujur untuk alur lama tanpa tahap,
         alih-alih kanvas kosong yang tampak rusak.
-- [x] **Verifikasi** `tsc` bersih, `svelte-check` 744 file 0 error, `vitest` **236 lulus**
-      (+10 dari `validateCoreIntegrity` & `CORE_BACKBONE`), Playwright **131/131**.
+- [x] **R10** *(permintaan pemilik: "untuk bagian qc sebaiknya bisa di edit jadi lebih
+      flexible, misalnya ingin menambahkan baris qc baru atau mengurangi baris qc-nya")*
+      **Daftar periksa per tahap.** Ditanyakan dulu maksud "baris"-nya — jawabannya: item
+      yang dicek staf **di dalam** tahap QC, bukan jumlah tahap QC-nya.
+      - **Definisi** ada di `flow_nodes.checklist_items` (jsonb `[{id,label}]`), bukan tabel
+        sendiri, karena ia bagian dari RANCANGAN alur: ikut tersimpan atomik lewat
+        `PUT /v1/flows/:id/design`, sama seperti `autoPrintDocuments`. Owner menyusunnya di
+        panel tahap pada editor diagram — tambah, hapus, urutkan naik/turun, ubah kalimat.
+        Kartu tahap di diagram memberi lencana `PERIKSA: n`.
+      - **Jawaban** punya tabelnya sendiri, `ticket_checklist_results`, dengan unik
+        `(ticket, tahap, item)` sehingga menyimpan ulang memperbarui baris yang sama alih-alih
+        menumpuk riwayat centang. Menyimpan `checkedBy`/`checkedAt` — "siapa & kapan" itulah
+        yang membuatnya jadi bukti, bukan sekadar centang.
+      - **Bukti tidak boleh terputus**, dan itu yang menentukan dua keputusan desain:
+        (a) `label` DISALIN ke baris jawaban saat disimpan, jadi memperbaiki kalimat item di
+        template tidak mengubah bunyi bukti tiket lama; (b) jawaban atas item yang sudah
+        DIHAPUS dari template tetap ditampilkan (ditandai "tidak lagi diperiksa"), tidak
+        dibuang diam-diam. Dua-duanya diuji di `mergeChecklist` (10 unit test).
+      - Izin baru **`ticket.qc`** (Teknisi + Manager; Kasir tidak). Item asing → 409
+        `CHECKLIST_ITEM_UNKNOWN` dengan pesan "muat ulang lalu isi lagi", bukan dibuang diam-diam.
+      - Di tiket: kartu daftar periksa muncul di tahap mana pun yang punya item (bukan hanya
+        tahap bernama "QC"), lengkap dengan catatan per baris; hasil tahap yang sudah dilewati
+        tampil baca-saja di bawahnya.
+      - **Terverifikasi live:** teknisi menyimpan 2/4 → tercatat atas nama "Teknisi Andi";
+        simpan ulang 4/4 tetap 4 baris (tidak menumpuk); kasir → 403 `PERMISSION_DENIED`;
+        item asing → 409; setelah tiket pindah ke Pengerjaan, `checklist` aktif `null` tapi
+        riwayat buktinya tetap "QC Awal 4/4".
+      - **Belum dikerjakan, disebut apa adanya:** hasil QC belum ikut tercetak di struk/A4 —
+        buktinya baru bisa ditunjukkan di layar tiket. Itu perubahan pada mesin render cetak
+        (`modules/printer/render.ts` + `document.ts`) dan pantas jadi tugas tersendiri.
+- [x] **Verifikasi** `tsc` bersih, `svelte-check` 744 file 0 error, `vitest` **242 lulus**
+      (+16 dari `validateCoreIntegrity`, `CORE_BACKBONE`, dan `mergeChecklist`),
+      Playwright **136/136**.
       (Pada putaran R8 sempat 128/129; kegagalannya di spec unggah katalog device, lulus
       saat dijalankan sendiri dan lulus lagi di putaran penuh R9 — flaky bergantung urutan,
       bukan akibat perubahan ini.)

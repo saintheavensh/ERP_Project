@@ -70,6 +70,7 @@ const PERMISSIONS = [
   // Admin-only, pola sama dengan permPrinterManage: ini mengubah cara SELURUH
   // tiket berjalan, jadi bukan wewenang manajer cabang.
   { id: IDS.permFlowManage, code: 'flow.manage', description: 'Design service flow templates: stages, branching, and per-stage capabilities' },
+  { id: IDS.permTicketQc, code: 'ticket.qc', description: 'Fill in a stage checklist (QC) on a ticket' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
@@ -90,10 +91,12 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'supplier.manage', 'purchasing.manage_orders', 'purchasing.manage_invoices',
     'ticket.cancel',
     'pos.apply_discount', // D2 — manager may discount; cashier may not
+    'ticket.qc', // QC akhir sering dikontrol atasan, bukan teknisi yang mengerjakan
   ],
   [IDS.roleTechnician]: [
     'ticket.create', 'ticket.diagnose', 'inventory.reserve_part',
     'ticket.manage_charges', // adds/consumes parts on a ticket during repair
+    'ticket.qc',
   ],
   [IDS.roleCashier]: [
     'pos.process_payment',

@@ -1164,6 +1164,29 @@ missing.
       > delete-while-used → 422 `TEMPLATE_IN_USE`; delete-default → 422
       > `TEMPLATE_IS_DEFAULT`; Manager → 403 `PERMISSION_DENIED`. 11 Playwright
       > tests now (up from 9); full suite **131 passing**, backend **236**.
+      >
+      > **Per-stage checklists (QC), added 2026-07-28** after the owner asked for
+      > QC "rows" to be editable. Clarified first which rows they meant — the
+      > items checked *inside* a QC stage, not the number of QC stages. The
+      > definition lives in `flow_nodes.checklist_items` (jsonb `[{id,label}]`),
+      > edited in the diagram's stage panel and saved atomically with the rest of
+      > the design, exactly like `autoPrintDocuments`; answers live in a new
+      > `ticket_checklist_results` table keyed unique on (ticket, stage, item) so
+      > re-saving updates rather than stacking. Two decisions follow from QC being
+      > *evidence for the customer*: the item's `label` is copied onto the answer
+      > when saved (rewording an item later cannot change what an old ticket's
+      > evidence says), and answers whose item was deleted from the template are
+      > still shown, flagged "tidak lagi diperiksa", rather than silently
+      > dropped — both covered by the 10 `mergeChecklist` unit tests. New
+      > `ticket.qc` permission (Technician + Manager, not Cashier); an unknown
+      > item is a 409 `CHECKLIST_ITEM_UNKNOWN` telling the user to reload, not a
+      > silent discard. Verified live: technician saves 2/4 recorded under their
+      > name, re-save 4/4 stays 4 rows, cashier 403, unknown item 409, and after
+      > the ticket moves to Pengerjaan the active checklist is null while the
+      > evidence still reads "QC Awal 4/4". 4 new Playwright tests; full suite
+      > **136 passing**, backend **242**. **Not done, stated plainly:** QC results
+      > are not yet printed on the receipt/A4 — that touches the shared print
+      > render engine and belongs in its own task.
 - [ ] 7.2 Printer Template Builder: WYSIWYG editor + preview
 - [ ] 7.3 RBAC Management UI: Visual permission matrix (depends on 4.5B)
 - [ ] 7.4 Git commit: `feat: phase 7 complete — builder UIs`

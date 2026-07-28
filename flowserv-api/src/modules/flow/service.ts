@@ -394,6 +394,7 @@ export async function saveFlowDesign(tenantId: string, templateId: string, input
         requiresDiagnosis: node.requiresDiagnosis,
         allowsInvoicing: node.allowsInvoicing,
         autoPrintDocuments: node.autoPrintDocuments,
+        checklistItems: node.checklistItems,
       };
       if (node.id) {
         await tx.update(flowNodes).set(values).where(eq(flowNodes.id, node.id));

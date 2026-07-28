@@ -13,8 +13,9 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { findIdempotentResponse, isIdempotencyKeyConflict, replayIdempotentResponse } from '../lib/idempotency';
 import { FlowEngine } from '../flow-engine/engine';
 import { BusinessError } from '../lib/errors';
-import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput, updateIntakeDetailsInput } from '../modules/tickets/types';
+import { createChargeInput, updateChargeInput, assignTechnicianInput, generateTicketInvoiceInput, cancelTicketInput, updateIntakeDetailsInput, saveChecklistInput } from '../modules/tickets/types';
 import { addCharge, updateCharge, deleteCharge, listCharges, generateQuotation, assignTechnician, consumeCharge, returnCharge, cancelCharge, generateTicketInvoice, cancelTicket, updateIntakeDetails, findActiveInvoiceForTicket } from '../modules/tickets/service';
+import { getTicketChecklist, getTicketChecklistHistory, saveTicketChecklist } from '../modules/tickets/checklist-service';
 
 const ticketsRouter = new Hono();
 ticketsRouter.use('*', requireAuth);
@@ -138,10 +139,21 @@ ticketsRouter.get('/:id', async (c) => {
   // remember the id past a page reload.
   const invoice = await findActiveInvoiceForTicket(tenantId, ticketId);
 
+  // Daftar periksa (QC): yang aktif untuk tahap saat ini, plus semua yang pernah
+  // diisi di tahap-tahap sebelumnya — bagian kedua itulah buktinya, dan bukti
+  // tidak boleh hilang begitu tiket pindah tahap.
+  const currentNodeId = ticketQuery[0].ticket.currentNodeId;
+  const [checklist, checklistHistory] = await Promise.all([
+    currentNodeId ? getTicketChecklist(tenantId, ticketId, currentNodeId) : Promise.resolve(null),
+    getTicketChecklistHistory(tenantId, ticketId),
+  ]);
+
   const data = {
     ...ticketQuery[0],
     history,
     invoice,
+    checklist,
+    checklistHistory: checklistHistory.filter((h) => h.nodeId !== currentNodeId),
   };
 
   return successResponse(c, data);
@@ -341,6 +353,25 @@ ticketsRouter.patch('/:id/intake-details', requirePermission('ticket.create'), z
     }
     console.error('Failed to update intake details:', err);
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update intake details', undefined, 500);
+  }
+});
+
+// DAFTAR PERIKSA TAHAP (QC)
+//
+// PUT, bukan POST: menyimpan ulang daftar yang sama harus menghasilkan keadaan
+// yang sama, bukan menumpuk baris centang kedua.
+ticketsRouter.put('/:id/checklist', requirePermission('ticket.qc'), zValidator('json', saveChecklistInput), auditMiddleware({ action: 'ticket.save_checklist', entityType: 'service_ticket', entityIdParam: 'id', bodyFields: ['nodeId'] }), async (c) => {
+  const { tenantId, userId } = getAuthContext(c);
+  const ticketId = c.req.param('id');
+  try {
+    const result = await saveTicketChecklist(tenantId, ticketId, userId ?? null, c.req.valid('json'));
+    return successResponse(c, result);
+  } catch (err) {
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
+    console.error('Failed to save ticket checklist:', err);
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to save ticket checklist', undefined, 500);
   }
 });
 

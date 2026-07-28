@@ -150,6 +150,11 @@
             {#if node.allowsInvoicing}
               <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">BAYAR</span>
             {/if}
+            {#if node.checklistItems.length > 0}
+              <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-teal-50 text-teal-700">
+                PERIKSA: {node.checklistItems.length}
+              </span>
+            {/if}
             {#each node.autoPrintDocuments as doc (doc)}
               <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">CETAK: {doc}</span>
             {/each}

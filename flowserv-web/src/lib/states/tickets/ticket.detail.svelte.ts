@@ -295,6 +295,72 @@ export class TicketDetailState {
     return this.currentNode?.allowsInvoicing === true;
   }
 
+  // ---------------------------------------------------------------------------
+  // Daftar periksa (QC) — item ditentukan template, jawabannya milik tiket ini.
+  // ---------------------------------------------------------------------------
+
+  /** Centangan yang sedang disunting, per itemId. Kosong = ikut nilai tersimpan. */
+  checklistDraft = $state<Record<string, { checked: boolean; note: string }>>({});
+  checklistLoading = $state(false);
+  checklistSavedMsg = $state('');
+
+  /** Daftar periksa tahap SAAT INI (null bila tahap ini tak punya). */
+  get checklist(): any | null {
+    return this.data.data?.checklist ?? null;
+  }
+
+  /** Daftar periksa tahap-tahap yang sudah dilewati — bukti, jangan disembunyikan. */
+  get checklistHistory(): any[] {
+    return this.data.data?.checklistHistory ?? [];
+  }
+
+  checklistValue(itemId: string): { checked: boolean; note: string } {
+    const draft = this.checklistDraft[itemId];
+    if (draft) return draft;
+    const line = (this.checklist?.lines ?? []).find((l: any) => l.itemId === itemId);
+    return { checked: !!line?.checked, note: line?.note ?? '' };
+  }
+
+  setChecklistValue(itemId: string, patch: Partial<{ checked: boolean; note: string }>) {
+    const current = this.checklistValue(itemId);
+    this.checklistDraft = { ...this.checklistDraft, [itemId]: { ...current, ...patch } };
+    this.checklistSavedMsg = '';
+  }
+
+  async saveChecklist() {
+    const checklist = this.checklist;
+    if (!checklist) return;
+    this.checklistLoading = true;
+    this.errorMsg = '';
+    this.checklistSavedMsg = '';
+    try {
+      // Item yang sudah dihapus dari template tidak ikut dikirim — server
+      // memang menolaknya, dan jawaban lamanya tetap tersimpan sebagai bukti.
+      const answers = checklist.lines
+        .filter((l: any) => !l.removedFromTemplate)
+        .map((l: any) => {
+          const v = this.checklistValue(l.itemId);
+          return { itemId: l.itemId, checked: v.checked, note: v.note.trim() || null };
+        });
+      if (answers.length === 0) return;
+
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/checklist`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({ nodeId: checklist.nodeId, answers }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.checklistDraft = {};
+        this.checklistSavedMsg = 'Hasil pemeriksaan tersimpan.';
+        await invalidateAll();
+      } else {
+        this.errorMsg = result.error?.message || 'Gagal menyimpan hasil pemeriksaan';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.checklistLoading = false; }
+  }
+
   /** Tahap paling awal template ini — dipakai hanya untuk teks penjelas gerbang. */
   get firstChargeNodeName(): string | null {
     const node = (this.template?.nodes ?? []).find((n: any) => n.allowsCharges);

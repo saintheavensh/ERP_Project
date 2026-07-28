@@ -63,6 +63,21 @@ export const IDS = {
   // same pattern as permAuditView/permBranchManage.
   permPrinterManage: 'd1000000-0000-4000-8000-000000000026',
   permFlowManage: 'd1000000-0000-4000-8000-000000000029',
+  // Mengisi daftar periksa (QC) sebuah tiket. Dipisah dari ticket.diagnose:
+  // yang memeriksa hasil kerja belum tentu yang mendiagnosis, dan di banyak
+  // toko QC akhir justru dilakukan orang lain sebagai kontrol.
+  permTicketQc: 'd1000000-0000-4000-8000-000000000030',
+
+  // Item daftar periksa QC bawaan. Id-nya tetap karena jawaban tiket menunjuk
+  // ke sini; kalimatnya boleh diubah owner kapan saja tanpa memutus jawaban.
+  qcAwalItemNyala: 'd2000000-0000-4000-8000-000000000001',
+  qcAwalItemLayar: 'd2000000-0000-4000-8000-000000000002',
+  qcAwalItemFisik: 'd2000000-0000-4000-8000-000000000003',
+  qcAwalItemSandi: 'd2000000-0000-4000-8000-000000000004',
+  qcAkhirItemKeluhan: 'd2000000-0000-4000-8000-000000000011',
+  qcAkhirItemFungsi: 'd2000000-0000-4000-8000-000000000012',
+  qcAkhirItemFisik: 'd2000000-0000-4000-8000-000000000013',
+  qcAkhirItemSandi: 'd2000000-0000-4000-8000-000000000014',
   // Tahap A (go-live gap Tier-1 #4) — payment-method CRUD. Admin-only, NOT
   // granted to Manager (same pattern as permBranchManage). GET stays open to
   // any authenticated user because the POS checkout reads the list.

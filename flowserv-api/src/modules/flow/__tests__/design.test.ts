@@ -16,6 +16,7 @@ function node(key: string, name = key): FlowDesignInput['nodes'][number] {
     requiresDiagnosis: false,
     allowsInvoicing: false,
     autoPrintDocuments: [],
+    checklistItems: [],
   };
 }
 
@@ -101,6 +102,7 @@ describe('CORE_BACKBONE', () => {
         key: s.key, name: s.name, nodeType: s.nodeType,
         allowsCharges: s.allowsCharges, requiresDiagnosis: s.requiresDiagnosis,
         allowsInvoicing: s.allowsInvoicing, autoPrintDocuments: s.autoPrintDocuments as any,
+        checklistItems: [],
       })),
       transitions: CORE_BACKBONE.flatMap((s) => s.next.map((to) => ({ from: s.key, to }))),
     })).toEqual([]);

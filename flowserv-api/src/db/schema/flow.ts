@@ -93,6 +93,21 @@ export const flowNodes = pgTable('flow_nodes', {
    * mengunci tahap buatannya sendiri lalu terjebak.
    */
   isCore: boolean('is_core').notNull().default(true),
+
+  /**
+   * Daftar item yang harus diperiksa saat tiket berada di tahap ini, mis. QC:
+   * `[{ id, label }]`. Kosong = tahap ini tidak punya daftar periksa.
+   *
+   * Definisinya di sini (bukan tabel sendiri) karena ia bagian dari RANCANGAN
+   * alur: ikut tersimpan atomik bersama tahap & percabangannya lewat
+   * `PUT /v1/flows/:id/design`, sama seperti `autoPrintDocuments`. Jawaban
+   * teknisi per tiket punya rumahnya sendiri di `ticket_checklist_results` —
+   * itu data operasional, bukan konfigurasi.
+   *
+   * `id` per item wajib dan tetap: mengganti kalimat sebuah item tidak boleh
+   * membuat jawaban tiket lama kehilangan pasangannya.
+   */
+  checklistItems: jsonb('checklist_items').notNull().default([]),
 }, (table) => ({
   templateIdx: index('flow_nodes_template_idx').on(table.flowTemplateId),
 }));

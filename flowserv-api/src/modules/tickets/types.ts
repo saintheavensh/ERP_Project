@@ -83,3 +83,17 @@ export const updateIntakeDetailsInput = z.object({
 });
 
 export type UpdateIntakeDetailsInput = z.infer<typeof updateIntakeDetailsInput>;
+
+// Daftar periksa tahap (QC). Seluruh jawaban satu tahap dikirim sekaligus —
+// teknisi mencentang beberapa baris lalu menekan Simpan sekali, dan menyimpan
+// per-centang akan menghasilkan puluhan request untuk satu tindakan.
+export const saveChecklistInput = z.object({
+  nodeId: z.string().uuid(),
+  answers: z.array(z.object({
+    itemId: z.string().uuid(),
+    checked: z.boolean(),
+    note: z.string().max(500).nullable().optional(),
+  })).min(1, 'Tidak ada jawaban untuk disimpan'),
+});
+
+export type SaveChecklistInputSchema = z.infer<typeof saveChecklistInput>;

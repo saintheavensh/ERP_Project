@@ -187,6 +187,46 @@
           </div>
         </fieldset>
 
+        <fieldset data-testid="checklist-editor">
+          <legend class="text-xs font-medium text-slate-600 mb-2">
+            Daftar periksa di tahap ini ({node.checklistItems.length} item)
+          </legend>
+          <p class="text-xs text-slate-500 mb-2">
+            Baris yang dicentang staf saat tiket ada di tahap ini. Dipakai untuk QC:
+            hasilnya tersimpan di tiket lengkap dengan siapa dan kapan, sebagai bukti
+            ke pelanggan. Menghapus baris di sini tidak menghapus bukti tiket lama.
+          </p>
+          <ul class="space-y-2">
+            {#each node.checklistItems as item, i (item.id)}
+              <li class="flex items-center gap-2" data-testid="checklist-item-row">
+                <span class="text-xs text-slate-400 w-4 shrink-0">{i + 1}.</span>
+                <input
+                  bind:value={item.label}
+                  aria-label="Item periksa {i + 1}"
+                  placeholder="mis. Unit menyala dan bisa masuk menu"
+                  class="flex-1 min-w-0 px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button onclick={() => diagram.moveChecklistItem(node.key, i, -1)} disabled={i === 0}
+                  class="w-9 h-9 shrink-0 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30"
+                  aria-label="Naikkan item {i + 1}">↑</button>
+                <button onclick={() => diagram.moveChecklistItem(node.key, i, 1)} disabled={i === node.checklistItems.length - 1}
+                  class="w-9 h-9 shrink-0 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30"
+                  aria-label="Turunkan item {i + 1}">↓</button>
+                <button onclick={() => diagram.removeChecklistItem(node.key, item.id)}
+                  class="w-9 h-9 shrink-0 rounded-lg border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                  aria-label="Hapus item {i + 1}">✕</button>
+              </li>
+            {:else}
+              <li class="text-sm text-slate-500">Belum ada item. Tahap ini tidak menampilkan daftar periksa di tiket.</li>
+            {/each}
+          </ul>
+          <button onclick={() => diagram.addChecklistItem(node.key)}
+            class="mt-2 px-3 py-1.5 text-sm rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+            data-testid="add-checklist-item">
+            + Tambah item periksa
+          </button>
+        </fieldset>
+
         <fieldset>
           <legend class="text-xs font-medium text-slate-600 mb-2">
             Dokumen yang otomatis dicetak saat masuk tahap ini

@@ -21,6 +21,11 @@ import { API_BASE } from '$lib/api/config';
  * perlu menunggu render selesai untuk tahu posisinya.
  */
 
+export interface ChecklistItem {
+  id: string;
+  label: string;
+}
+
 export interface DiagramNode {
   key: string;
   id?: string;
@@ -32,6 +37,12 @@ export interface DiagramNode {
   requiresDiagnosis: boolean;
   allowsInvoicing: boolean;
   autoPrintDocuments: string[];
+  /**
+   * Item yang harus diperiksa saat tiket ada di tahap ini (QC). `id` tiap item
+   * TIDAK berubah saat kalimatnya disunting — jawaban tiket lama menunjuk id
+   * itu, dan bukti yang sudah diberikan ke pelanggan tak boleh terputus.
+   */
+  checklistItems: ChecklistItem[];
   /** Tahap pokok: tak bisa dilepas, urutannya tak bisa ditukar. */
   isCore: boolean;
   /** key tahap-tahap yang boleh dituju dari sini (percabangan). */
@@ -76,6 +87,8 @@ export interface StagePreset {
   allowsCharges: boolean;
   requiresDiagnosis: boolean;
   allowsInvoicing: boolean;
+  /** Contoh item periksa — titik awal, bukan aturan; bebas diubah owner. */
+  checklist?: string[];
 }
 
 export const STAGE_PRESETS: StagePreset[] = [
@@ -84,12 +97,24 @@ export const STAGE_PRESETS: StagePreset[] = [
     name: 'QC Awal',
     description: 'Cek kondisi unit sebelum dibongkar (nyala/tidak, kelengkapan, kerusakan lain). Bukti awal bila nanti ada klaim dari pelanggan.',
     allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+    checklist: [
+      'Unit menyala dan bisa masuk menu',
+      'Kondisi layar (retak/dead pixel) dicatat',
+      'Kondisi fisik & kelengkapan dicatat',
+      'Sandi/pola dari pelanggan sudah dicatat',
+    ],
   },
   {
     id: 'qc-akhir',
     name: 'QC Akhir',
     description: 'Cek hasil perbaikan sebelum diserahkan (unit nyala, keluhan awal hilang), kembalikan sandi/pola ke pelanggan.',
     allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
+    checklist: [
+      'Keluhan awal pelanggan sudah hilang',
+      'Fungsi lain tetap normal (kamera, suara, tombol)',
+      'Tidak ada kerusakan baru pada fisik unit',
+      'Sandi/pola sudah dikembalikan ke pelanggan',
+    ],
   },
   {
     id: 'tunggu-sparepart',
@@ -140,6 +165,9 @@ export class FlowDiagramState {
       requiresDiagnosis: !!n.requiresDiagnosis,
       allowsInvoicing: !!n.allowsInvoicing,
       autoPrintDocuments: Array.isArray(n.autoPrintDocuments) ? [...n.autoPrintDocuments] : [],
+      checklistItems: Array.isArray(n.checklistItems)
+        ? n.checklistItems.filter((i: any) => i && typeof i.id === 'string').map((i: any) => ({ id: i.id, label: i.label ?? '' }))
+        : [],
       isCore: n.isCore !== false,
       next: (transitions ?? []).filter((t: any) => t.fromNodeId === n.id).map((t: any) => t.toNodeId),
     }));
@@ -347,6 +375,7 @@ export class FlowDiagramState {
       requiresDiagnosis: preset.requiresDiagnosis,
       allowsInvoicing: preset.allowsInvoicing,
       autoPrintDocuments: [],
+      checklistItems: (preset.checklist ?? []).map((label) => ({ id: crypto.randomUUID(), label })),
       isCore: false,
       next: [toKey],
     };
@@ -390,6 +419,37 @@ export class FlowDiagramState {
     if (!payload) return;
     if (payload.kind === 'preset') this.insertPreset(payload.preset, fromKey, toKey);
     else this.moveToEdge(payload.key, fromKey, toKey);
+  }
+
+  // ---- Daftar periksa (QC) per tahap ----
+
+  addChecklistItem(key: string) {
+    this.nodes = this.nodes.map((n) =>
+      n.key === key
+        ? { ...n, checklistItems: [...n.checklistItems, { id: crypto.randomUUID(), label: '' }] }
+        : n
+    );
+    this.successMsg = '';
+  }
+
+  removeChecklistItem(key: string, itemId: string) {
+    this.nodes = this.nodes.map((n) =>
+      n.key === key ? { ...n, checklistItems: n.checklistItems.filter((i) => i.id !== itemId) } : n
+    );
+    this.successMsg = '';
+  }
+
+  /** Naik/turun satu baris — urutannya urutan kerja yang dibaca teknisi. */
+  moveChecklistItem(key: string, index: number, delta: number) {
+    this.nodes = this.nodes.map((n) => {
+      if (n.key !== key) return n;
+      const target = index + delta;
+      if (target < 0 || target >= n.checklistItems.length) return n;
+      const items = [...n.checklistItems];
+      [items[index], items[target]] = [items[target], items[index]];
+      return { ...n, checklistItems: items };
+    });
+    this.successMsg = '';
   }
 
   toggleDocument(key: string, doc: string) {
@@ -451,6 +511,9 @@ export class FlowDiagramState {
             requiresDiagnosis: n.requiresDiagnosis,
             allowsInvoicing: n.allowsInvoicing,
             autoPrintDocuments: n.autoPrintDocuments,
+            // Baris kosong dibuang di sini, bukan ditolak server: menekan
+            // "+ tambah item" lalu berpindah pikiran adalah hal biasa.
+            checklistItems: n.checklistItems.filter((i) => i.label.trim().length > 0),
           })),
           transitions: this.nodes.flatMap((n) => n.next.map((to) => ({ from: n.key, to }))),
         }),
