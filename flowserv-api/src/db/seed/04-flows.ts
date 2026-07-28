@@ -1,8 +1,19 @@
 import { eq } from 'drizzle-orm';
 import { flowTemplates, flowNodes, flowTransitions } from '../schema';
 import { backboneStage } from '../../modules/flow/backbone';
+import { capabilitiesFor, stageKindFromCapabilities, type StageKind } from '../../modules/flow/stage-kinds';
 import { IDS } from './ids';
 import type { SeedTx } from './types';
+
+/**
+ * S5 — kapabilitas (allowsCharges/requiresDiagnosis/allowsInvoicing) TIDAK
+ * ditulis tangan di seed; ia diturunkan dari `stageKind`. Kalau kelak sebuah
+ * jenis tahap diubah artinya, seed ikut berubah sendiri dan tak bisa
+ * berselisih dengan alur yang dibuat lewat editor.
+ */
+function withCapabilities<T extends { stageKind: StageKind }>(node: T) {
+  return { ...node, ...capabilitiesFor(node.stageKind) };
+}
 
 export async function seedFlows(tx: SeedTx): Promise<void> {
   // Same "Standard Repair" flow as the old seed-flows.ts, now with fixed IDs
@@ -131,7 +142,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
   // Kapabilitasnya tetap ditulis di sini, TIDAK diturunkan: template ini sudah
   // memasang QC Akhir, jadi pembayaran ada di sana; alur baru (tanpa QC)
   // menaruhnya di Pengerjaan. Perbedaan itu disengaja.
-  await tx.insert(flowNodes).values([
+  await tx.insert(flowNodes).values(([
     {
       id: IDS.nodeServisIntake, flowTemplateId: IDS.flowTemplateServis,
       name: backboneStage('intake').name, nodeType: 'action', sequenceOrder: 1,
@@ -139,7 +150,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       // Kasir hanya mencatat nama/telepon/keluhan. Sparepart SENGAJA belum
       // boleh — unitnya memang belum didiagnosis (keluhan asli pemilik).
       // Label tercetak di sini untuk menandai unit + nomor antrian.
-      allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: false,
+      stageKind: 'penerimaan',
       autoPrintDocuments: ['label'],
     },
     {
@@ -148,7 +159,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       requiredPermissionId: IDS.permTicketDiagnose,
       description: backboneStage('diagnosis').description,
       // "Teknisi menginput diagnosa dan juga estimasi harga dan waktu."
-      allowsCharges: true, requiresDiagnosis: true, allowsInvoicing: false,
+      stageKind: 'pemeriksaan',
       autoPrintDocuments: [],
     },
     // Dua cabang sejajar (sequenceOrder sama) — keputusan kasir setelah teknisi
@@ -159,7 +170,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       description: backboneStage('ditunggu').description,
       // Pelanggan menunggu di tempat: TIDAK ada nota di sini, notanya keluar
       // saat selesai.
-      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      stageKind: 'pengerjaan',
       autoPrintDocuments: [],
     },
     {
@@ -167,14 +178,14 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       name: backboneStage('disimpan').name, nodeType: 'action', sequenceOrder: 3,
       description: backboneStage('disimpan').description,
       // Unit ditinggal: nota tanda terima + label, keduanya tercetak otomatis.
-      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      stageKind: 'pengerjaan',
       autoPrintDocuments: ['tanda_terima', 'label'],
     },
     {
       id: IDS.nodeServisQcAwal, flowTemplateId: IDS.flowTemplateServis,
       name: 'QC Awal', nodeType: 'action', sequenceOrder: 4,
       description: 'Cek kondisi unit sebelum dibongkar (nyala/tidak, kelengkapan, kerusakan lain). Bukti awal bila nanti ada klaim dari pelanggan.',
-      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      stageKind: 'pengerjaan',
       autoPrintDocuments: [],
       // Tahap TAMBAHAN: boleh dilepas/dipasang owner lewat editor diagram.
       // Tulang punggung alur (Intake -> Diagnosis -> cabang -> Pengerjaan ->
@@ -196,7 +207,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       name: backboneStage('pengerjaan').name, nodeType: 'action', sequenceOrder: 5,
       description: backboneStage('pengerjaan').description,
       // Temuan tambahan saat bongkar tetap bisa dicatat (change order, B1).
-      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+      stageKind: 'pengerjaan',
       autoPrintDocuments: [],
     },
     {
@@ -204,7 +215,7 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       name: 'QC Akhir', nodeType: 'action', sequenceOrder: 6,
       description: 'Cek hasil perbaikan sebelum diserahkan (unit nyala, keluhan awal hilang), kembalikan sandi/pola ke pelanggan, lalu buat faktur & terima pembayaran.',
       // "Pembayaran di bagian akhir saja, ketika sudah selesai pengerjaan."
-      allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
+      stageKind: 'penagihan',
       autoPrintDocuments: [],
       isCore: false,
       checklistItems: [
@@ -218,10 +229,10 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
       id: IDS.nodeServisSelesai, flowTemplateId: IDS.flowTemplateServis,
       name: backboneStage('selesai').name, nodeType: 'action', sequenceOrder: 7,
       description: backboneStage('selesai').description,
-      allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: true,
+      stageKind: 'penutup',
       autoPrintDocuments: [],
     },
-  ]).onConflictDoNothing();
+  ] as const).map(withCapabilities)).onConflictDoNothing();
 
   await tx.insert(flowTransitions).values([
     { id: IDS.transServisIntakeToDiagnosis, fromNodeId: IDS.nodeServisIntake, toNodeId: IDS.nodeServisDiagnosis },
@@ -250,12 +261,19 @@ export async function seedFlows(tx: SeedTx): Promise<void> {
     if (nodes.length === 0) continue;
     const maxOrder = Math.max(...nodes.map((n) => n.sequenceOrder));
     for (const node of nodes) {
+      // S5 — perilaku lamanya dinyatakan dulu sebagai kapabilitas, lalu
+      // DIPETAKAN ke jenis tahap; jenisnya yang disimpan, kapabilitasnya
+      // diturunkan lagi darinya. Jadi baris lama pun tunduk pada satu sumber
+      // kebenaran yang sama dengan alur baru — tak ada tiga boolean lepas yang
+      // hanya hidup di sini.
+      const legacy = {
+        allowsCharges: node.sequenceOrder > 1,
+        allowsInvoicing: node.sequenceOrder >= maxOrder - 1,
+        requiresDiagnosis: node.name.toLowerCase().includes('diagnosis'),
+      };
+      const stageKind = stageKindFromCapabilities(legacy);
       await tx.update(flowNodes)
-        .set({
-          allowsCharges: node.sequenceOrder > 1,
-          allowsInvoicing: node.sequenceOrder >= maxOrder - 1,
-          requiresDiagnosis: node.name.toLowerCase().includes('diagnosis'),
-        })
+        .set({ stageKind, ...capabilitiesFor(stageKind) })
         .where(eq(flowNodes.id, node.id));
     }
   }

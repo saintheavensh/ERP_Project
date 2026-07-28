@@ -23,11 +23,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         template: body.data?.template ?? null,
         nodes: body.data?.nodes ?? [],
         transitions: body.data?.transitions ?? [],
+        // S5 — definisi jenis tahap datang dari server, tidak disalin ke FE.
+        stageKinds: body.data?.stageKinds ?? [],
       };
     }
   } catch (e) {
     console.error('Failed to fetch flow template', e);
   }
 
-  return { token, template: null, nodes: [], transitions: [] };
+  return { token, template: null, nodes: [], transitions: [], stageKinds: [] };
 };

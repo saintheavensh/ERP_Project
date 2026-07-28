@@ -46,7 +46,7 @@ describe('renderTemplatePreview — pratinjau memakai mesin cetak yang sama', ()
     for (const paper of ['58mm', '80mm'] as const) {
       const preview = renderTemplatePreview('receipt', paper, config({ header: { showAddress: true } }));
       for (const block of preview.blocks ?? []) {
-        if (block.value) expect(block.value.length).toBeLessThanOrEqual(THERMAL_CHAR_WIDTH[paper]);
+        if ('value' in block) expect(block.value.length).toBeLessThanOrEqual(THERMAL_CHAR_WIDTH[paper]);
       }
     }
   });
@@ -57,14 +57,14 @@ describe('renderTemplatePreview — pratinjau memakai mesin cetak yang sama', ()
     const withAddress = renderTemplatePreview('receipt', '80mm', config({ header: { showAddress: true } }));
     const without = renderTemplatePreview('receipt', '80mm', config({ header: { showAddress: false } }));
 
-    const text = (p: typeof withAddress) => (p.blocks ?? []).map((b) => b.value ?? '').join('\n');
+    const text = (p: typeof withAddress) => (p.blocks ?? []).map((b) => ('value' in b ? b.value : '')).join('\n');
     expect(text(withAddress)).toContain('Jl. Contoh Raya');
     expect(text(without)).not.toContain('Jl. Contoh Raya');
   });
 
   it('catatan kaki yang diketik owner muncul di hasilnya', () => {
     const preview = renderTemplatePreview('receipt', '58mm', config({ footer: { note: 'Garansi 7 hari' } }));
-    const text = (preview.blocks ?? []).map((b) => b.value ?? '').join('\n');
+    const text = (preview.blocks ?? []).map((b) => ('value' in b ? b.value : '')).join('\n');
     expect(text).toContain('Garansi 7 hari');
   });
 
@@ -72,12 +72,12 @@ describe('renderTemplatePreview — pratinjau memakai mesin cetak yang sama', ()
     // Keduanya bukan nota bernilai uang: memaksanya lewat jalur struk akan
     // mencetak "TOTAL Rp0" (lihat catatan di ticket-document.ts).
     const label = renderTemplatePreview('label', '58mm', config());
-    const labelText = (label.blocks ?? []).map((b) => b.value ?? '').join('\n');
+    const labelText = (label.blocks ?? []).map((b) => ('value' in b ? b.value : '')).join('\n');
     expect(labelText).toContain('Budi Santoso');
     expect(labelText).not.toContain('TOTAL');
 
     const tandaTerima = renderTemplatePreview('tanda_terima', '80mm', config());
-    const ttText = (tandaTerima.blocks ?? []).map((b) => b.value ?? '').join('\n');
+    const ttText = (tandaTerima.blocks ?? []).map((b) => ('value' in b ? b.value : '')).join('\n');
     expect(ttText).toContain('Samsung Galaxy A10');
     expect(ttText).not.toContain('TOTAL');
   });

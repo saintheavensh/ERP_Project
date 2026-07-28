@@ -10,6 +10,7 @@ import { test, expect, type Page } from '@playwright/test';
 //   2. yang bisa diatur memang cuma tahap tambahan (QC dsb.) + isi tiap tahap,
 //      dan mengubahnya BENAR-BENAR mengubah cara aplikasi bekerja.
 
+const API_BASE = 'http://localhost:3001/v1';
 const SERVIS_FLOW = '84000000-0000-4000-8000-000000000003';
 const DITUNGGU_FLOW = '84000000-0000-4000-8000-000000000001';
 
@@ -201,43 +202,64 @@ test.describe('desktop (1280x800)', () => {
     await expect(page.getByText(marker)).toBeVisible();
   });
 
-  test('mematikan "input biaya" di sebuah tahap langsung mengunci form biaya di tiket', async ({ page }) => {
+  test('mengubah jenis tahap langsung mengunci form biaya di tiket', async ({ page }) => {
     await login(page);
-    await page.goto(`/flows/${SERVIS_FLOW}`);
-    await page.waitForLoadState('networkidle');
 
-    // Diagnosis default-nya MENGIZINKAN biaya. Matikan, lalu buktikan tiket ikut
-    // berubah — bukti bahwa perilaku benar-benar mengikuti template.
-    const panel = await openStage(page, 'Diagnosis');
-    const chargesToggle = panel.getByRole('checkbox').first();
-    await expect(chargesToggle).toBeChecked();
-    await chargesToggle.uncheck();
-    await page.getByTestId('save-flow').click();
-    await expect(page.getByTestId('flow-saved')).toBeVisible();
+    // S5 — tes ini MENGUBAH template alur bersama. Pengembaliannya wajib ada di
+    // `finally`: saat versi sebelumnya gagal di tengah jalan, langkah pengembalian
+    // tak pernah tercapai dan enam tes lain di spec berbeda ikut gagal dengan
+    // pesan yang tak menyebut penyebabnya sama sekali. Itu justru bentuk kecil
+    // dari kekhawatiran pemilik — "alur di-tweak lalu yang lain rusak".
+    async function setDiagnosisKind(kind: string) {
+      await page.goto(`/flows/${SERVIS_FLOW}`);
+      await page.waitForLoadState('networkidle');
+      await openStage(page, 'Diagnosis');
+      await page.getByTestId('stage-kind').selectOption(kind);
+      await page.getByTestId('save-flow').click();
+      await expect(page.getByTestId('flow-saved')).toBeVisible();
+    }
 
-    await page.goto('/tickets/intake');
-    await page.waitForLoadState('networkidle');
-    await page.fill('#name', `Uji Gerbang ${Date.now()}`);
-    await page.selectOption('#type', 'Smartphone');
-    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
-    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
+    try {
+      // Diagnosis normalnya "pemeriksaan" (boleh catat biaya). Jadikan
+      // "penerimaan" — jenis yang belum mengizinkan biaya — lalu buktikan tiket
+      // ikut berubah: perilaku benar-benar mengikuti template.
+      await page.goto(`/flows/${SERVIS_FLOW}`);
+      await page.waitForLoadState('networkidle');
+      await openStage(page, 'Diagnosis');
+      await expect(page.getByTestId('stage-kind')).toHaveValue('pemeriksaan');
+      await setDiagnosisKind('penerimaan');
 
-    const diagnosisValue = await page.locator('#next option', { hasText: 'Diagnosis' }).first().getAttribute('value');
-    await page.selectOption('#next', diagnosisValue!);
-    await page.getByRole('button', { name: 'Execute' }).click();
-    await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText('Diagnosis');
+      await page.goto('/tickets/intake');
+      await page.waitForLoadState('networkidle');
+      await page.fill('#name', `Uji Gerbang ${Date.now()}`);
+      await page.selectOption('#type', 'Smartphone');
+      await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+      await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
-    // Sebelum perubahan ini, Diagnosis menampilkan form biaya. Sekarang terkunci.
-    await expect(page.getByTestId('charges-locked')).toBeVisible();
+      const diagnosisValue = await page.locator('#next option', { hasText: 'Diagnosis' }).first().getAttribute('value');
+      await page.selectOption('#next', diagnosisValue!);
+      await page.getByRole('button', { name: 'Execute' }).click();
+      await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText('Diagnosis');
 
-    // Kembalikan ke semula supaya spec lain (yang mengandalkan biaya terbuka di
-    // Diagnosis) tidak terpengaruh urutan jalannya tes.
-    await page.goto(`/flows/${SERVIS_FLOW}`);
-    await page.waitForLoadState('networkidle');
-    const restore = await openStage(page, 'Diagnosis');
-    await restore.getByRole('checkbox').first().check();
-    await page.getByTestId('save-flow').click();
-    await expect(page.getByTestId('flow-saved')).toBeVisible();
+      await expect(page.getByTestId('charges-locked')).toBeVisible();
+
+      // ...dan kuncinya BUKAN sekadar tampilan. Sebelum S5, ketiga kapabilitas
+      // hanya dibaca frontend: memanggil API langsung menembusnya begitu saja —
+      // bentuk cacat "tampilan berbohong" yang sama seperti yang dulu
+      // dibereskan Track F. Sekarang servernya sendiri menolak.
+      const ticketId = page.url().split('/').pop()!;
+      const token = (await (await page.request.post(`${API_BASE}/auth/login`, {
+        data: { email: 'admin@demo.com', password: 'admin123' },
+      })).json()).data.token;
+      const res = await page.request.post(`${API_BASE}/tickets/${ticketId}/charges`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { sourceType: 'labor', description: 'Jasa tembus gerbang', unitPrice: 50000, quantity: 1 },
+      });
+      expect(res.status()).toBe(422);
+      expect((await res.json()).error.code).toBe('CHARGES_NOT_ALLOWED_AT_STAGE');
+    } finally {
+      await setDiagnosisKind('pemeriksaan');
+    }
   });
 
   test('alur baru lahir dengan tahap intinya, lalu bisa dihapus lagi', async ({ page }) => {

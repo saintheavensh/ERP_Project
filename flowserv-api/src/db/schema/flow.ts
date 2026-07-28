@@ -62,11 +62,27 @@ export const flowNodes = pgTable('flow_nodes', {
   // menyusun kotak dan panah tanpa mengubah perilaku apa pun.
   // ---------------------------------------------------------------------------
 
-  /** Sparepart & biaya boleh diinput saat tiket berada di tahap ini. */
+  /**
+   * JENIS tahap — sumber kebenaran untuk ketiga kapabilitas di bawahnya.
+   *
+   * Ditambahkan 2026-07-28 (S5) setelah pemilik mengkhawatirkan "aplikasinya
+   * banyak bug karena alur penting terlalu banyak di-tweak". Tiga boolean bebas
+   * = 8 kemungkinan per tahap (~260.000 bentuk untuk alur 6 tahap), padahal
+   * data yang benar-benar dipakai hanya memakai 5 kombinasi. Sekarang owner
+   * memilih SATU jenis, dan kapabilitasnya mengikuti — lihat
+   * `modules/flow/stage-kinds.ts`.
+   *
+   * Ketiga kolom boolean di bawah tetap ada sebagai TURUNAN (ditulis dari
+   * jenis, tak pernah diedit sendiri) supaya semua pembaca lama — kueri,
+   * frontend, tes — tak perlu diubah serentak.
+   */
+  stageKind: varchar('stage_kind', { length: 20 }).notNull().default('penerimaan'),
+
+  /** Turunan dari `stageKind`. Sparepart & biaya boleh diinput di tahap ini. */
   allowsCharges: boolean('allows_charges').notNull().default(false),
-  /** Form hasil diagnosa + estimasi waktu ditampilkan di tahap ini. */
+  /** Turunan dari `stageKind`. Form hasil diagnosa + estimasi ditampilkan. */
   requiresDiagnosis: boolean('requires_diagnosis').notNull().default(false),
-  /** Faktur & pembayaran boleh dibuat saat tiket berada di tahap ini. */
+  /** Turunan dari `stageKind`. Faktur & pembayaran boleh dibuat di tahap ini. */
   allowsInvoicing: boolean('allows_invoicing').notNull().default(false),
   /**
    * Dokumen yang otomatis dicetak begitu tiket MASUK tahap ini, mis.

@@ -186,6 +186,81 @@ Usulan konkretnya — ganti 3 boolean bebas jadi beberapa "jenis tahap" bernama
 kemampuan tetap yang sudah diuji. Belum dikerjakan; dicatat di sini sebagai
 tugas tersendiri.
 
+## S5 — Jenis tahap, dan aturan yang akhirnya benar-benar ditegakkan
+
+Dikerjakan 2026-07-28 setelah pemilik menjawab *"ya lanjutkan usulan anda"*.
+
+**Temuan yang mengubah bentuk pekerjaan ini.** Saat memeriksa kode untuk
+memulai, ternyata `allowsCharges` / `requiresDiagnosis` / `allowsInvoicing`
+**tidak ditegakkan di mana pun di backend** — pencarian menyeluruh hanya
+menemukannya di schema, seed, backbone, dan flow service (baca/tulis rancangan).
+Yang membacanya cuma frontend, untuk mengunci form. Artinya **kuncinya semu**:
+satu panggilan API langsung, atau satu bug di frontend, menembusnya.
+
+Itu bentuk cacat yang sama dengan yang dulu dibereskan Track F — tampilan yang
+berbohong tentang aturan yang sebenarnya tidak ada. Jadi "jenis tahap" saja
+tidak cukup; tanpa penegakan, ia hanya mengganti nama hiasan.
+
+**Yang dikerjakan, dua hal sekaligus:**
+
+1. **`modules/flow/stage-kinds.ts`** — 5 jenis tahap (Penerimaan, Pemeriksaan,
+   Pengerjaan, Penagihan, Penutup), masing-masing membawa kapabilitas tetap.
+   `stage_kind` jadi satu-satunya sumber kebenaran di `flow_nodes`; ketiga kolom
+   boolean tetap ada tapi **selalu diturunkan** (`capabilitiesFor()`), tak pernah
+   ditulis sendiri — di seed, di `createFlowTemplate`, maupun di `saveFlowDesign`.
+   Klien mengirim jenisnya saja, jadi ia **tak punya cara** mengirim kombinasi di
+   luar kelima yang teruji.
+
+   Angka 5 bukan penyederhanaan yang dipaksakan: dari 8 kombinasi yang mungkin,
+   data yang benar-benar ada (seed + backbone) hanya memakai 5. Kelimanya
+   diberi nama; tak ada satu pun tahap yang berubah artinya.
+
+2. **Penegakan di server** — `assertStageAllows()` di `modules/tickets/service.ts`,
+   dipasang di `addCharge`. Menolak dengan **422** `CHARGES_NOT_ALLOWED_AT_STAGE`,
+   pesannya menyebut nama tahapnya. Tiket tanpa tahap aktif (data lama) sengaja
+   tidak diblokir — mengunci tiket yang sedang berjalan lebih merusak daripada
+   aturan yang belum berlaku baginya.
+
+   **Koreksi, ditemukan dengan menjalankan tes.** Gerbang yang sama sempat
+   dipasang di `generateTicketInvoice` (`INVOICING_NOT_ALLOWED_AT_STAGE`) dan
+   **dicabut lagi**. Dua tes e2e menabraknya, dan setelah diperiksa keduanya
+   benar: mereka menerbitkan nota setelah kuotasi disetujui, sebelum
+   pengerjaan — urutan yang normal untuk alur "Ditunggu" (pelanggan setuju,
+   membayar, baru unitnya dikerjakan).
+   Yang memblokir bukan kebijakan toko, melainkan nilai `allowsInvoicing` hasil
+   **tebakan backfill** (`sequenceOrder >= maxOrder - 1`). Menegakkan angka
+   tebakan seolah-olah keputusan justru menghasilkan kelas bug yang track ini
+   ada untuk mencegahnya.
+   `allowsCharges` ditegakkan karena nilainya memang keputusan pemilik yang
+   dinyatakan eksplisit ("sparepart baru boleh setelah diagnosis");
+   `allowsInvoicing` belum pernah diputuskan siapa pun, jadi untuk sekarang ia
+   tetap **petunjuk tampilan, bukan aturan** — dicatat apa adanya di kode,
+   bukan dibiarkan tampak seperti kunci yang nyata.
+
+**Editor:** tiga sakelar → satu pilihan "Jenis tahap" + kalimat penjelas.
+Daftar jenisnya **dikirim server** lewat `GET /v1/flows/:id` (`stageKinds`),
+tidak disalin ke frontend — label, penjelas, dan kapabilitas hanya hidup di satu
+berkas, jadi yang dilihat pemilik selalu sama dengan yang ditegakkan API.
+
+**Diverifikasi langsung (curl, bukan hanya tes):** tiket baru di tahap Intake →
+tambah biaya ditolak `422 CHARGES_NOT_ALLOWED_AT_STAGE "…di tahap \"Intake\""`.
+Kedelapan tahap seed terbaca konsisten antara `stage_kind` dan kapabilitas
+turunannya, dan daftar jenis yang dikirim ke editor cocok dengan kapabilitas
+yang ditegakkan.
+
+**12 tes unit baru** (`__tests__/stage-kinds.test.ts`) menguji klaimnya, bukan
+sekadar fungsinya: jumlah jenis memang sedikit dan tetap, tiap jenis punya
+kombinasi kapabilitas yang **berbeda** (dua jenis identik = kendali mati),
+tahap yang mewajibkan diagnosis harus boleh mencatat biaya, pemetaan baris lama
+bolak-balik tanpa berubah, dan kombinasi tak terpakai tak pernah **melonggarkan**
+aturan.
+
+**Satu perbaikan tambahan pada tes e2e:** tes yang mengubah template alur
+bersama kini mengembalikannya di `finally`. Versi sebelumnya mengembalikan di
+akhir badan tes — jadi saat ia gagal di tengah, pengembaliannya tak pernah
+tercapai dan enam tes lain ikut gagal. Itu persis mekanisme yang dijelaskan di
+bagian sebelumnya.
+
 ## Temuan sampingan (belum diperbaiki, sengaja)
 
 `POST /v1/inventory/:id/receive` — terima stok manual tanpa PO — **tak punya satu pun

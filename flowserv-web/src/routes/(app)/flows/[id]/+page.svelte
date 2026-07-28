@@ -6,7 +6,7 @@
   let { data } = $props();
 
   // svelte-ignore state_referenced_locally
-  const diagram = new FlowDiagramState(data.token, data.template, data.nodes, data.transitions);
+  const diagram = new FlowDiagramState(data.token, data.template, data.nodes, data.transitions, data.stageKinds);
 
   let confirmDelete = $state(false);
 
@@ -160,32 +160,29 @@
             class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"></textarea>
         </div>
 
-        <fieldset>
-          <legend class="text-xs font-medium text-slate-600 mb-2">Yang boleh dikerjakan di tahap ini</legend>
-          <div class="space-y-2">
-            <label class="flex items-start gap-2 text-sm">
-              <input type="checkbox" bind:checked={node.allowsCharges} class="mt-1" />
-              <span>
-                <b>Input sparepart &amp; biaya</b>
-                <span class="block text-xs text-slate-500">Matikan di tahap sebelum unit didiagnosis — memilih sparepart saat itu hanya menebak.</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-2 text-sm">
-              <input type="checkbox" bind:checked={node.requiresDiagnosis} class="mt-1" />
-              <span>
-                <b>Isi hasil diagnosa &amp; estimasi waktu</b>
-                <span class="block text-xs text-slate-500">Menampilkan form diagnosa teknisi dan lama pengerjaan yang dijanjikan.</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-2 text-sm">
-              <input type="checkbox" bind:checked={node.allowsInvoicing} class="mt-1" />
-              <span>
-                <b>Buat faktur &amp; terima pembayaran</b>
-                <span class="block text-xs text-slate-500">Biasanya hanya di tahap akhir, setelah pengerjaan selesai.</span>
-              </span>
-            </label>
-          </div>
-        </fieldset>
+        <!--
+          S5 — SATU pilihan menggantikan tiga sakelar.
+
+          Tiga sakelar bebas berarti 8 kombinasi per tahap; alur 6 tahap =
+          ~260.000 bentuk, hampir semuanya tak pernah diuji. Saat data yang ada
+          diperiksa, cuma 5 kombinasi yang benar-benar dipakai — jadi kelimanya
+          diberi nama. Pemakai memilih peran tahapnya ("ini tahap penagihan"),
+          bukan menebak arti tiga sakelar teknis, dan tiap jenis punya tesnya.
+        -->
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1" for="stage-kind">
+            Jenis tahap
+          </label>
+          <select id="stage-kind" bind:value={node.stageKind} data-testid="stage-kind"
+            class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500">
+            {#each diagram.stageKinds as opt (opt.kind)}
+              <option value={opt.kind}>{opt.label}</option>
+            {/each}
+          </select>
+          <p class="text-xs text-slate-500 mt-1" data-testid="stage-kind-hint">
+            {diagram.stageKinds.find((o) => o.kind === node.stageKind)?.hint ?? ''}
+          </p>
+        </div>
 
         <fieldset data-testid="checklist-editor">
           <legend class="text-xs font-medium text-slate-600 mb-2">

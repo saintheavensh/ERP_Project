@@ -10,6 +10,7 @@ import { successResponse, errorResponse } from '../lib/response';
 import { BusinessError } from '../lib/errors';
 import { flowDesignSchema, createFlowTemplateSchema } from '../modules/flow/types';
 import { saveFlowDesign, createFlowTemplate, deleteFlowTemplate } from '../modules/flow/service';
+import { STAGE_KINDS, STAGE_KIND_DEFINITIONS } from '../modules/flow/stage-kinds';
 
 const flowRouter = new Hono();
 
@@ -68,7 +69,11 @@ flowRouter.get('/:id', async (c) => {
   return successResponse(c, {
     template: template[0],
     nodes,
-    transitions
+    transitions,
+    // S5 — daftar jenis tahap ikut dikirim, bukan disalin ke frontend. Label &
+    // penjelasnya hanya hidup di `modules/flow/stage-kinds.ts`, jadi tak ada
+    // kamus kedua yang bisa berselisih dengan kapabilitas yang ditegakkan.
+    stageKinds: STAGE_KINDS.map((kind) => STAGE_KIND_DEFINITIONS[kind]),
   });
 });
 

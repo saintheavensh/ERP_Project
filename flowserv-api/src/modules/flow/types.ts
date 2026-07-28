@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DOCUMENT_TYPES } from '../printer/types';
+import { STAGE_KINDS } from './stage-kinds';
 
 /**
  * Tahap B — payload editor alur servis (Phase 7.1).
@@ -22,9 +23,13 @@ export const flowDesignNodeSchema = z.object({
   description: z.string().max(500).nullable().optional(),
   nodeType: z.string().max(20).default('action'),
   requiredPermissionId: z.string().uuid().nullable().optional(),
-  allowsCharges: z.boolean().default(false),
-  requiresDiagnosis: z.boolean().default(false),
-  allowsInvoicing: z.boolean().default(false),
+  /**
+   * S5 — SATU pilihan menggantikan tiga sakelar bebas. Kapabilitasnya
+   * diturunkan server-side lewat `capabilitiesFor()`; klien tak lagi bisa
+   * mengirim kombinasi sendiri, jadi bentuk alur yang mungkin tinggal
+   * sebanyak jenis tahap yang ada — dan tiap jenis punya tesnya.
+   */
+  stageKind: z.enum(STAGE_KINDS).default('pengerjaan'),
   autoPrintDocuments: z.array(z.enum(DOCUMENT_TYPES)).default([]),
   // Daftar periksa tahap (QC). `id` dibuat klien dan HARUS tetap saat kalimatnya
   // diubah — jawaban tiket lama menunjuk id ini.

@@ -58,6 +58,30 @@
 >       hanya setinggi kolom biasa. Dikembalikan ke tampak; ketahuan dari 2 tes e2e
 >       sandi/pola yang gagal, bukan dari membaca ulang kode.
 >
+> - [x] **S5 — Jenis tahap + aturan yang akhirnya ditegakkan.** Pemilik: *"yang ada
+>       di benak saya malah nanti aplikasinya banyak bug karena alur penting terlalu
+>       banyak di-tweak."* Tiga boolean bebas per tahap = 8 kombinasi (~260.000 bentuk
+>       untuk alur 6 tahap); data yang benar-benar ada hanya memakai **5**. Kelimanya
+>       diberi nama (Penerimaan/Pemeriksaan/Pengerjaan/Penagihan/Penutup) di
+>       `modules/flow/stage-kinds.ts`; `stage_kind` jadi sumber tunggal dan ketiga
+>       boolean **selalu diturunkan**, jadi klien tak punya cara mengirim kombinasi
+>       di luar yang teruji.
+>       **Temuan yang mengubah bentuk tugas ini:** ketiga kapabilitas itu ternyata
+>       **tidak ditegakkan di mana pun di backend** — hanya dibaca frontend untuk
+>       mengunci form. Kuncinya semu; satu panggilan API langsung menembusnya. Bentuk
+>       cacat yang sama dengan yang dibereskan Track F. Ditutup dengan
+>       `assertStageAllows()` di `addCharge` → **422** `CHARGES_NOT_ALLOWED_AT_STAGE`,
+>       diverifikasi langsung via curl pada tiket nyata di tahap Intake.
+>       **Gerbang serupa untuk penagihan sempat dipasang lalu DICABUT** setelah 2
+>       tes e2e menabraknya dan ternyata tes-nya yang benar: menagih setelah
+>       kuotasi disetujui tapi sebelum pengerjaan adalah urutan normal alur
+>       "Ditunggu". Yang memblokir bukan kebijakan toko melainkan `allowsInvoicing`
+>       hasil tebakan backfill — menegakkan tebakan sebagai kebijakan justru
+>       menghasilkan kelas bug yang track ini ada untuk mencegahnya. Editor:
+>       3 sakelar → 1 pilihan, daftar jenisnya dikirim server (`GET /v1/flows/:id`)
+>       agar tak ada kamus kedua. 12 tes unit baru + tes e2e yang membuktikan API
+>       menolak, bukan sekadar form terkunci.
+>
 > **Ditunda, bukan dibatalkan** (permintaan pemilik tepat sebelum track ini dibuka):
 > editor tata letak nota yang bebas, jenis nota `nota_pengambilan` + `nota_garansi`,
 > dan sakelar harga rincian-vs-total. Ketiganya **menambah hal yang harus diatur** —

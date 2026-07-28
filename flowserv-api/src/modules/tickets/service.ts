@@ -1,5 +1,5 @@
 import { db } from '../../db/connection';
-import { serviceTickets, ticketCharges, inventoryItems, approvalRequests, ticketStageHistory, users, customers, posInvoices, posInvoiceLines } from '../../db/schema';
+import { serviceTickets, ticketCharges, inventoryItems, approvalRequests, ticketStageHistory, users, customers, posInvoices, posInvoiceLines, flowNodes } from '../../db/schema';
 import type { ChargeStatus, LineSource, TicketStatus } from '../../db/schema/enums';
 import { eq, and, asc, ne } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
@@ -138,6 +138,44 @@ async function assertTicketExists(tx: any, tenantId: string, ticketId: string) {
   }
 }
 
+/**
+ * S5 — menegakkan kapabilitas tahap DI SERVER.
+ *
+ * Sebelum ini `allowsCharges`/`allowsInvoicing` hanya dibaca frontend untuk
+ * mengunci form. Artinya kuncinya semu: siapa pun yang memanggil API langsung
+ * (atau satu bug di frontend) bisa menembusnya. Itu bentuk cacat yang sama
+ * dengan yang dulu dibereskan Track F — tampilan yang "berbohong" tentang
+ * aturan yang sebenarnya tidak ada.
+ *
+ * Aturan tahap baru berarti sesuatu begitu ditegakkan di sini.
+ */
+async function assertStageAllows(
+  tx: any,
+  tenantId: string,
+  ticketId: string,
+  capability: 'allowsCharges' | 'allowsInvoicing',
+  code: string,
+  message: (stageName: string) => string
+) {
+  const [row] = await tx
+    .select({
+      stageName: flowNodes.name,
+      allowsCharges: flowNodes.allowsCharges,
+      allowsInvoicing: flowNodes.allowsInvoicing,
+    })
+    .from(serviceTickets)
+    .innerJoin(flowNodes, eq(serviceTickets.currentNodeId, flowNodes.id))
+    .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+
+  // Tiket tanpa tahap aktif (data lama) tidak diblokir — memblokirnya akan
+  // mengunci tiket yang sedang berjalan, dan itu kerusakan yang lebih besar
+  // daripada aturan yang belum berlaku untuknya.
+  if (!row) return;
+  if (!row[capability]) {
+    throw new BusinessError(code, message(row.stageName), 422);
+  }
+}
+
 /** Add an estimated charge. Never touches stock — that is H9. */
 export async function addCharge(
   tenantId: string,
@@ -147,6 +185,10 @@ export async function addCharge(
 ) {
   return db.transaction(async (tx) => {
     await assertTicketExists(tx, tenantId, ticketId);
+    await assertStageAllows(
+      tx, tenantId, ticketId, 'allowsCharges', 'CHARGES_NOT_ALLOWED_AT_STAGE',
+      (stage) => `Sparepart & biaya belum boleh dicatat di tahap "${stage}".`
+    );
 
     let description = input.description;
     let unitPrice = input.unitPrice;
@@ -397,6 +439,24 @@ export async function generateTicketInvoice(
     if (!ticket) {
       throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);
     }
+    // S5 — TIDAK digerbangi `allowsInvoicing`, sengaja, walau gerbangnya sudah
+    // ditulis dan bekerja. Alasannya ditemukan saat menjalankan tes:
+    //
+    // Nilai `allowsInvoicing` pada template lama datang dari tebakan backfill
+    // (`sequenceOrder >= maxOrder - 1` di db/seed/04-flows.ts), bukan dari
+    // keputusan toko mana pun. Menegakkannya berarti menolak penagihan yang
+    // sah — mis. alur "Ditunggu": pelanggan setuju harga, MEMBAYAR, baru
+    // unitnya dikerjakan. Dua tes e2e menabraknya, dan keduanya menggambarkan
+    // urutan kerja yang benar-benar dipakai toko.
+    //
+    // Menegakkan angka tebakan seolah-olah kebijakan justru menghasilkan kelas
+    // bug yang track ini ada untuk mencegahnya. `allowsCharges` ditegakkan
+    // karena nilainya memang keputusan pemilik yang dinyatakan eksplisit
+    // ("sparepart baru boleh setelah diagnosis"); `allowsInvoicing` belum.
+    //
+    // Jadi untuk sekarang ia tetap petunjuk tampilan (tombol nota disembunyikan
+    // di tahap yang tak mengizinkan), BUKAN aturan yang dipaksakan — dan itu
+    // dicatat apa adanya, bukan dibiarkan tampak seperti kunci yang nyata.
 
     // One invoice per ticket (MVP): a non-voided pos_invoices row for this ticket blocks a second.
     const [existing] = await tx

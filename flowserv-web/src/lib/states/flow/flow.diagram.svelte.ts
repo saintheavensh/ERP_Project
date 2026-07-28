@@ -33,9 +33,12 @@ export interface DiagramNode {
   description: string;
   nodeType: string;
   requiredPermissionId: string | null;
-  allowsCharges: boolean;
-  requiresDiagnosis: boolean;
-  allowsInvoicing: boolean;
+  /**
+   * S5 — jenis tahap; kapabilitas (boleh input biaya / wajib diagnosis / boleh
+   * menagih) diturunkan server dari nilai ini. Tiga sakelar lepas sebelumnya
+   * memungkinkan ~260.000 bentuk alur yang tak pernah diuji.
+   */
+  stageKind: string;
   autoPrintDocuments: string[];
   /**
    * Item yang harus diperiksa saat tiket ada di tahap ini (QC). `id` tiap item
@@ -84,9 +87,7 @@ export interface StagePreset {
   id: string;
   name: string;
   description: string;
-  allowsCharges: boolean;
-  requiresDiagnosis: boolean;
-  allowsInvoicing: boolean;
+  stageKind: string;
   /** Contoh item periksa — titik awal, bukan aturan; bebas diubah owner. */
   checklist?: string[];
 }
@@ -96,7 +97,7 @@ export const STAGE_PRESETS: StagePreset[] = [
     id: 'qc-awal',
     name: 'QC Awal',
     description: 'Cek kondisi unit sebelum dibongkar (nyala/tidak, kelengkapan, kerusakan lain). Bukti awal bila nanti ada klaim dari pelanggan.',
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+    stageKind: 'pengerjaan',
     checklist: [
       'Unit menyala dan bisa masuk menu',
       'Kondisi layar (retak/dead pixel) dicatat',
@@ -108,7 +109,7 @@ export const STAGE_PRESETS: StagePreset[] = [
     id: 'qc-akhir',
     name: 'QC Akhir',
     description: 'Cek hasil perbaikan sebelum diserahkan (unit nyala, keluhan awal hilang), kembalikan sandi/pola ke pelanggan.',
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
+    stageKind: 'penagihan',
     checklist: [
       'Keluhan awal pelanggan sudah hilang',
       'Fungsi lain tetap normal (kamera, suara, tombol)',
@@ -120,19 +121,28 @@ export const STAGE_PRESETS: StagePreset[] = [
     id: 'tunggu-sparepart',
     name: 'Menunggu Sparepart',
     description: 'Sparepart belum ada di toko dan harus dipesan dulu. Unit ditahan sampai barangnya datang.',
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+    stageKind: 'pengerjaan',
   },
   {
     id: 'kustom',
     name: 'Tahap Baru',
     description: '',
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+    stageKind: 'pengerjaan',
   },
 ];
 
 export type DragPayload =
   | { kind: 'preset'; preset: StagePreset }
   | { kind: 'node'; key: string };
+
+export interface StageKindOption {
+  kind: string;
+  label: string;
+  hint: string;
+  allowsCharges: boolean;
+  requiresDiagnosis: boolean;
+  allowsInvoicing: boolean;
+}
 
 export class FlowDiagramState {
   token: string;
@@ -149,9 +159,28 @@ export class FlowDiagramState {
   dragging = $state<DragPayload | null>(null);
   /** Sambungan yang sedang di bawah kursor seretan, mis. "a→b". */
   dropTarget = $state<string | null>(null);
+  /**
+   * S5 — daftar jenis tahap + kapabilitasnya, DIKIRIM SERVER
+   * (`GET /v1/flows/:id`). Sengaja tidak disalin ke frontend: label, penjelas,
+   * dan kapabilitas hanya hidup di `modules/flow/stage-kinds.ts`, jadi apa yang
+   * dilihat owner di editor selalu sama dengan apa yang ditegakkan API.
+   */
+  stageKinds = $state<StageKindOption[]>([]);
 
-  constructor(token: string, template: any, nodes: any[], transitions: any[]) {
+  /** Kapabilitas sebuah jenis tahap menurut definisi yang dikirim server. */
+  caps(kind: string): { allowsCharges: boolean; requiresDiagnosis: boolean; allowsInvoicing: boolean } {
+    const found = this.stageKinds.find((k) => k.kind === kind);
+    return found ?? { allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: false };
+  }
+
+  constructor(token: string, template: any, nodes: any[], transitions: any[], stageKinds: any[] = []) {
     this.token = token;
+    this.stageKinds = (stageKinds ?? []).map((k: any) => ({
+      kind: k.kind, label: k.label, hint: k.hint,
+      allowsCharges: !!k.allowsCharges,
+      requiresDiagnosis: !!k.requiresDiagnosis,
+      allowsInvoicing: !!k.allowsInvoicing,
+    }));
     this.templateId = template?.id ?? '';
     this.templateName = template?.name ?? '';
     this.nodes = (nodes ?? []).map((n: any) => ({
@@ -161,9 +190,7 @@ export class FlowDiagramState {
       description: n.description ?? '',
       nodeType: n.nodeType ?? 'action',
       requiredPermissionId: n.requiredPermissionId ?? null,
-      allowsCharges: !!n.allowsCharges,
-      requiresDiagnosis: !!n.requiresDiagnosis,
-      allowsInvoicing: !!n.allowsInvoicing,
+      stageKind: typeof n.stageKind === 'string' ? n.stageKind : 'pengerjaan',
       autoPrintDocuments: Array.isArray(n.autoPrintDocuments) ? [...n.autoPrintDocuments] : [],
       checklistItems: Array.isArray(n.checklistItems)
         ? n.checklistItems.filter((i: any) => i && typeof i.id === 'string').map((i: any) => ({ id: i.id, label: i.label ?? '' }))
@@ -333,10 +360,10 @@ export class FlowDiagramState {
       }
     }
 
-    if (!this.nodes.some((n) => n.allowsCharges)) {
+    if (!this.nodes.some((n) => this.caps(n.stageKind).allowsCharges)) {
       out.push('Tak satu pun tahap mengizinkan input biaya — sparepart & jasa tak akan bisa dicatat di mana pun.');
     }
-    const invoicing = this.nodes.filter((n) => n.allowsInvoicing);
+    const invoicing = this.nodes.filter((n) => this.caps(n.stageKind).allowsInvoicing);
     if (invoicing.length === 0) {
       out.push('Tak satu pun tahap mengizinkan pembayaran — faktur tak akan bisa dibuat.');
     } else if (invoicing.every((n) => n.next.length === 0)) {
@@ -371,9 +398,7 @@ export class FlowDiagramState {
       description: preset.description,
       nodeType: 'action',
       requiredPermissionId: null,
-      allowsCharges: preset.allowsCharges,
-      requiresDiagnosis: preset.requiresDiagnosis,
-      allowsInvoicing: preset.allowsInvoicing,
+      stageKind: preset.stageKind,
       autoPrintDocuments: [],
       checklistItems: (preset.checklist ?? []).map((label) => ({ id: crypto.randomUUID(), label })),
       isCore: false,
@@ -507,9 +532,7 @@ export class FlowDiagramState {
             description: n.description || null,
             nodeType: n.nodeType,
             requiredPermissionId: n.requiredPermissionId,
-            allowsCharges: n.allowsCharges,
-            requiresDiagnosis: n.requiresDiagnosis,
-            allowsInvoicing: n.allowsInvoicing,
+            stageKind: n.stageKind,
             autoPrintDocuments: n.autoPrintDocuments,
             // Baris kosong dibuang di sini, bukan ditolak server: menekan
             // "+ tambah item" lalu berpindah pikiran adalah hal biasa.

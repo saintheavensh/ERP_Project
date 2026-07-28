@@ -141,13 +141,17 @@
             {#if node.next.length === 0}
               <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">AKHIR</span>
             {/if}
-            {#if node.allowsCharges}
+            <!-- S5 — lencana kapabilitas diturunkan dari jenis tahap lewat
+                 definisi yang dikirim server, bukan dari tiga kolom lepas.
+                 Dipanggil bertiga alih-alih {@const}: {@const} hanya boleh jadi
+                 anak langsung sebuah blok, dan di sini induknya sebuah <div>. -->
+            {#if diagram.caps(node.stageKind).allowsCharges}
               <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">BIAYA</span>
             {/if}
-            {#if node.requiresDiagnosis}
+            {#if diagram.caps(node.stageKind).requiresDiagnosis}
               <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">DIAGNOSA</span>
             {/if}
-            {#if node.allowsInvoicing}
+            {#if diagram.caps(node.stageKind).allowsInvoicing}
               <span class="text-[9px] font-medium px-1.5 py-0.5 rounded bg-green-50 text-green-700">BAYAR</span>
             {/if}
             {#if node.checklistItems.length > 0}

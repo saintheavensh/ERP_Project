@@ -75,32 +75,43 @@ test.describe('desktop (1280x800)', () => {
     await expect(row).toBeVisible();
   });
 
-  test('assignment matrix: sets Cabang invoice_a4 from "Belum diatur" to a real assignment', async ({ page }) => {
+  // Sengaja menyasar sel `label` Cabang, BUKAN `invoice_a4`.
+  //
+  // Penugasan printer memakai upsert dan tak punya endpoint hapus, jadi tes ini
+  // tak bisa membersihkan dirinya sendiri. Versi sebelumnya mengisi sel
+  // `invoice_a4` Cabang — sel yang persis diperiksa tes "seed asymmetry" di
+  // atas — sehingga menjalankan berkas ini dua kali membuat tes ITU gagal,
+  // dengan pesan yang tak menyebut penyebabnya sama sekali. Sel `label` Cabang
+  // kosong di seed dan tak diperiksa tes mana pun, jadi tumpukannya tak
+  // mengganggu siapa-siapa, berapa kali pun berkas ini dijalankan.
+  test('assignment matrix: mengarahkan satu jenis dokumen ke printer tertentu', async ({ page }) => {
     await login(page);
     await page.goto('/settings?tab=printers');
     await page.waitForLoadState('networkidle');
 
-    // Cabang has no A4-capable device in the seed -- create one first.
-    const deviceName = `E2E A4 Cabang ${Date.now()}`;
+    // Perangkat BARU tiap kali dijalankan, bukan printer seed. Penugasan itu
+    // upsert, jadi menugaskan ulang ke perangkat yang namanya unik per jalan
+    // membuat tes ini sah diulang berapa pun — tanpa butuh endpoint hapus yang
+    // memang belum ada, dan tanpa mengandalkan seed yang masih perawan.
+    const deviceName = `E2E Label Cabang ${Date.now()}`;
     await page.getByRole('button', { name: '+ Tambah Printer' }).click();
     await page.locator('#device-branch').selectOption({ label: 'Cabang Bandung' });
     await page.locator('#device-name').fill(deviceName);
     await page.locator('#device-connection').selectOption('os_printer');
-    await page.locator('#device-paper').selectOption('A4');
+    await page.locator('#device-paper').selectOption('58mm');
     await page.getByRole('button', { name: 'Simpan' }).click();
     await page.waitForLoadState('networkidle');
 
-    const cell = page.getByTestId(`assign-cell-${BRANCH_CABANG}-invoice_a4`);
-    await expect(cell.getByText('Belum diatur')).toBeVisible();
-    await cell.getByRole('button', { name: 'Atur' }).click();
+    const cell = page.getByTestId(`assign-cell-${BRANCH_CABANG}-label`);
+    await cell.getByRole('button', { name: /Atur|Ubah/ }).click();
 
-    await page.locator('#assign-device').selectOption({ label: `${deviceName} (A4)` });
-    // Template dropdown auto-filters to invoice_a4 + A4 -- only one option seeded.
-    await page.locator('#assign-template').selectOption({ label: 'Invoice Resmi A4' });
+    await page.locator('#assign-device').selectOption({ label: `${deviceName} (58mm)` });
+    // Template dropdown auto-filters to label + 58mm -- only one seeded.
+    await page.locator('#assign-template').selectOption({ label: 'Label Garansi 58mm' });
     await page.getByRole('button', { name: 'Simpan' }).click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByTestId(`assign-cell-${BRANCH_CABANG}-invoice_a4`).getByText(deviceName)).toBeVisible();
+    await expect(page.getByTestId(`assign-cell-${BRANCH_CABANG}-label`).getByText(deviceName)).toBeVisible();
   });
 });
 

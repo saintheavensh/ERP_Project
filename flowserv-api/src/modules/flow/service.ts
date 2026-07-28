@@ -3,6 +3,7 @@ import { flowTemplates, flowNodes, flowTransitions, serviceTickets, ticketStageH
 import { eq, and, inArray } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { CORE_BACKBONE } from './backbone';
+import { capabilitiesFor } from './stage-kinds';
 import type { FlowDesignInput, FlowDesignNodeInput, CreateFlowTemplateInput } from './types';
 
 /**
@@ -221,9 +222,8 @@ export async function createFlowTemplate(tenantId: string, input: CreateFlowTemp
           description: stage.description,
           sequenceOrder: index + 1,
           nodeType: stage.nodeType,
-          allowsCharges: stage.allowsCharges,
-          requiresDiagnosis: stage.requiresDiagnosis,
-          allowsInvoicing: stage.allowsInvoicing,
+          stageKind: stage.stageKind,
+          ...capabilitiesFor(stage.stageKind),
           autoPrintDocuments: stage.autoPrintDocuments,
           isCore: true,
         }))
@@ -390,9 +390,11 @@ export async function saveFlowDesign(tenantId: string, templateId: string, input
         sequenceOrder: index + 1,
         nodeType: node.nodeType,
         requiredPermissionId: node.requiredPermissionId ?? null,
-        allowsCharges: node.allowsCharges,
-        requiresDiagnosis: node.requiresDiagnosis,
-        allowsInvoicing: node.allowsInvoicing,
+        // S5 — jenis tahap adalah satu-satunya yang datang dari klien;
+        // ketiga kapabilitas SELALU diturunkan di sini. Klien tak punya cara
+        // mengirim kombinasi di luar 5 jenis yang sudah teruji.
+        stageKind: node.stageKind,
+        ...capabilitiesFor(node.stageKind),
         autoPrintDocuments: node.autoPrintDocuments,
         checklistItems: node.checklistItems,
       };

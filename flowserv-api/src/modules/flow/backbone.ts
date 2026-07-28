@@ -16,13 +16,14 @@
  * tanpa QC sampai owner memasangnya.
  */
 
+import { type StageKind, capabilitiesFor } from './stage-kinds';
+
 export interface BackboneStage {
   key: string;
   name: string;
   description: string;
-  allowsCharges: boolean;
-  requiresDiagnosis: boolean;
-  allowsInvoicing: boolean;
+  /** Jenis tahap — kapabilitasnya diturunkan dari sini, tidak ditulis terpisah. */
+  stageKind: StageKind;
   autoPrintDocuments: string[];
   nodeType: string;
   /** key tahap berikutnya; kosong = tahap akhir. */
@@ -35,7 +36,7 @@ export const CORE_BACKBONE: BackboneStage[] = [
     name: 'Intake',
     description: 'Kasir mencatat nama, nomor telepon, dan keluhan pelanggan. Label unit + nomor antrian dicetak di sini, lalu pelanggan menunggu dipanggil.',
     // Sparepart sengaja belum boleh: unitnya memang belum didiagnosis.
-    allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: false,
+    stageKind: 'penerimaan',
     autoPrintDocuments: ['label'],
     nodeType: 'action',
     next: ['diagnosis'],
@@ -44,7 +45,7 @@ export const CORE_BACKBONE: BackboneStage[] = [
     key: 'diagnosis',
     name: 'Diagnosis',
     description: 'Teknisi memeriksa unit, lalu mengisi hasil diagnosa, estimasi biaya (sparepart & jasa), dan estimasi lama pengerjaan. Sampaikan ke pelanggan sebelum lanjut.',
-    allowsCharges: true, requiresDiagnosis: true, allowsInvoicing: false,
+    stageKind: 'pemeriksaan',
     autoPrintDocuments: [],
     nodeType: 'action',
     // Percabangan setelah harga & estimasi waktu disampaikan: ditunggu,
@@ -55,7 +56,7 @@ export const CORE_BACKBONE: BackboneStage[] = [
     key: 'ditunggu',
     name: 'Ditunggu',
     description: 'Pelanggan setuju dan menunggu di tempat. Tidak ada nota yang dicetak sekarang — nota keluar saat pengerjaan selesai dan dibayar.',
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+    stageKind: 'pengerjaan',
     autoPrintDocuments: [],
     nodeType: 'action',
     next: ['pengerjaan'],
@@ -64,7 +65,7 @@ export const CORE_BACKBONE: BackboneStage[] = [
     key: 'disimpan',
     name: 'Unit Disimpan',
     description: 'Pelanggan setuju dan meninggalkan unit di toko. Nota tanda terima + label dicetak otomatis sebagai bukti titip; unit disimpan sampai giliran dikerjakan.',
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: false,
+    stageKind: 'pengerjaan',
     autoPrintDocuments: ['tanda_terima', 'label'],
     nodeType: 'action',
     next: ['pengerjaan'],
@@ -76,7 +77,7 @@ export const CORE_BACKBONE: BackboneStage[] = [
     // Pembayaran diizinkan di sini, bukan hanya di tahap akhir: tiket sudah
     // TERTUTUP begitu masuk tahap akhir, jadi kasir harus bisa menagih saat
     // pengerjaan selesai tapi tiketnya masih hidup.
-    allowsCharges: true, requiresDiagnosis: false, allowsInvoicing: true,
+    stageKind: 'penagihan',
     autoPrintDocuments: [],
     nodeType: 'action',
     next: ['selesai'],
@@ -85,7 +86,7 @@ export const CORE_BACKBONE: BackboneStage[] = [
     key: 'selesai',
     name: 'Selesai',
     description: 'Unit sudah diserahkan ke pelanggan dan tiket ditutup. Tahap akhir — tidak ada langkah setelah ini.',
-    allowsCharges: false, requiresDiagnosis: false, allowsInvoicing: true,
+    stageKind: 'penutup',
     autoPrintDocuments: [],
     nodeType: 'action',
     // Tanpa perpindahan keluar — mesin alur mengenali tahap akhir secara
@@ -99,4 +100,9 @@ export function backboneStage(key: string): BackboneStage {
   const found = CORE_BACKBONE.find((s) => s.key === key);
   if (!found) throw new Error(`Unknown backbone stage: ${key}`);
   return found;
+}
+
+/** Kapabilitas sebuah tahap tulang punggung, diturunkan dari jenisnya. */
+export function backboneCapabilities(key: string) {
+  return capabilitiesFor(backboneStage(key).stageKind);
 }
