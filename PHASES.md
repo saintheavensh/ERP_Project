@@ -1187,7 +1187,44 @@ missing.
       > **136 passing**, backend **242**. **Not done, stated plainly:** QC results
       > are not yet printed on the receipt/A4 — that touches the shared print
       > render engine and belongs in its own task.
-- [ ] 7.2 Printer Template Builder: WYSIWYG editor + preview
+- [x] 7.2 Printer Template Builder: WYSIWYG editor + preview — **done 2026-07-28
+      on `go-live/tahap-b`**, requested directly by the owner ("buat template
+      notanya, bisa diedit dan pilih templatenya, dan sediakan previewnya —
+      usahakan previewnya sama dengan kenyataannya").
+      **The last clause is the whole design constraint.** The only way to
+      guarantee it is to not write a second render path: new
+      `modules/printer/sample.ts` calls the *same* builders production printing
+      calls — `buildDocumentData` + `renderThermalBlocks` for receipt/A4,
+      `buildLabelBlocks`/`buildTandaTerimaBlocks` for label/tanda_terima (which
+      deliberately bypass the money-receipt shape, see 6A) — and only the data
+      differs, a fixed `SAMPLE_INVOICE_BUNDLE`/`SAMPLE_TICKET_BUNDLE`. The
+      sample is deliberately "full" (two line items, a discount, cash tendered
+      + change, cashier and technician names) because a bland sample makes some
+      toggles change nothing on screen, which is worse than no preview at all.
+      The lead unit test asserts `renderTemplatePreview(...) === renderThermalBlocks(buildDocumentData(...))`
+      block-for-block, so anyone who later forks a preview-only renderer breaks
+      the build. 8 new unit tests total (paper-width fit, per-flag effect,
+      A4-emits-no-blocks, label never printing "TOTAL Rp0", label-asked-for-A4
+      falling back to small paper, and a guard on the sample's own richness).
+      BE: `POST /v1/printer/templates/preview` takes the **layoutConfig itself**
+      rather than a template id — that is what lets the owner see an unsaved
+      switch — plus `DELETE /v1/printer/templates/:id` refusing with 422
+      `TEMPLATE_IN_USE` and naming the branches still assigned to it, instead of
+      a foreign-key 500. Both admin-only (`printer.manage`) and audited.
+      FE: `TemplateEditor.svelte` — a 250ms-debounced live preview rendered by
+      the very same `ThermalPreview`/`A4Invoice` components used to print real
+      invoices, next to the switches. Switches are filtered per document type
+      and paper size (a logo toggle on a 58mm receipt would be a dead control,
+      the same class of bug Track F existed to fix). Templates table gained
+      Edit / Duplikat / Hapus plus a Buat Template dialog; creating or
+      duplicating opens the editor immediately, since a fresh template always
+      needs configuring. 6 Playwright tests, including one asserting no rendered
+      line exceeds 48 characters and one proving A4 never renders thermal
+      blocks. Tests that mutate a template create their own via the API rather
+      than editing the seeded one — the first run of this spec failed exactly
+      because a mid-test failure left the shared seed template dirty. Full
+      suite: **142 Playwright + 250 backend unit passing**; `tsc` +
+      `svelte-check` (745 files) 0 errors.
 - [ ] 7.3 RBAC Management UI: Visual permission matrix (depends on 4.5B)
 - [ ] 7.4 Git commit: `feat: phase 7 complete — builder UIs`
 

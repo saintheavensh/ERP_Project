@@ -11,8 +11,10 @@ import {
   createTemplateSchema,
   updateTemplateSchema,
   upsertAssignmentSchema,
+  previewTemplateSchema,
 } from '../modules/printer/types';
 import * as printerService from '../modules/printer/service';
+import { renderTemplatePreview } from '../modules/printer/sample';
 
 // 6A.3 — config CRUD only (devices/templates/assignments). All admin-only
 // (printer.manage), same pattern as branch.manage/settings.manage_company —
@@ -118,6 +120,41 @@ printerRouter.patch(
       return successResponse(c, template);
     } catch (err) {
       return handleError(c, err, 'Failed to update printer template');
+    }
+  }
+);
+
+// Phase 7.2 — pratinjau rancangan template SEBELUM disimpan.
+//
+// Body membawa layoutConfig-nya, bukan id template: itulah gunanya — owner
+// menggeser sakelar dan langsung melihat hasilnya. Rendernya memakai builder
+// yang sama persis dengan cetak sungguhan (modules/printer/sample.ts), hanya
+// datanya yang contoh.
+printerRouter.post(
+  '/templates/preview',
+  requirePermission('printer.manage'),
+  zValidator('json', previewTemplateSchema),
+  async (c) => {
+    const { documentType, paperSize, layoutConfig } = c.req.valid('json');
+    try {
+      return successResponse(c, renderTemplatePreview(documentType, paperSize, layoutConfig));
+    } catch (err) {
+      return handleError(c, err, 'Failed to render template preview');
+    }
+  }
+);
+
+printerRouter.delete(
+  '/templates/:id',
+  requirePermission('printer.manage'),
+  auditMiddleware({ action: 'printer_template.delete', entityType: 'printer_template', entityIdParam: 'id' }),
+  async (c) => {
+    const { tenantId } = getAuthContext(c);
+    try {
+      await printerService.deleteTemplate(tenantId, c.req.param('id'));
+      return c.body(null, 204);
+    } catch (err) {
+      return handleError(c, err, 'Failed to delete printer template');
     }
   }
 );

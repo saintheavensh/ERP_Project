@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
   import { API_BASE } from '$lib/api/config';
   import { PRINTER_AGENT_URL } from '$lib/api/printer-agent';
   import PrinterScanPicker from './PrinterScanPicker.svelte';
+  import TemplateEditor from './TemplateEditor.svelte';
 
   let { data } = $props<{ data: any }>();
   let devices = $derived(data.printerDevices || []);
@@ -32,6 +34,104 @@
 
   function assignmentFor(branchId: string, documentType: string) {
     return assignments.find((a: any) => a.branchId === branchId && a.documentType === documentType);
+  }
+
+  // ---- Templates (Phase 7.2) ----
+
+  let editingTemplate = $state<any>(null);
+  let deletingTemplate = $state<any>(null);
+  let showTemplateCreate = $state(false);
+  let templateError = $state('');
+  let templateBusy = $state(false);
+
+  const DEFAULT_LAYOUT = {
+    header: { showStoreName: true, showAddress: false, showPhone: false, showLogo: false },
+    items: { showLineSubtotal: false, showDescription: false },
+    extra: { showCashierName: false, showTicketInfo: false, showSignature: false },
+    footer: { note: null, warrantyPolicy: null },
+  };
+
+  let newTemplate = $state({ name: '', documentType: 'receipt', paperSize: '80mm' });
+
+  async function createTemplate() {
+    if (!newTemplate.name.trim()) return;
+    templateBusy = true;
+    templateError = '';
+    try {
+      const res = await fetch(`${API_BASE}/printer/templates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` },
+        body: JSON.stringify({
+          name: newTemplate.name.trim(),
+          documentType: newTemplate.documentType,
+          paperSize: newTemplate.paperSize,
+          layoutConfig: DEFAULT_LAYOUT,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error?.message || 'Gagal membuat template');
+      showTemplateCreate = false;
+      newTemplate = { name: '', documentType: 'receipt', paperSize: '80mm' };
+      await invalidateAll();
+      // Langsung dibuka: template baru selalu perlu diatur, dan membiarkannya
+      // tertutup berarti owner harus mencarinya sendiri di tabel.
+      editingTemplate = result.data;
+    } catch (err: any) {
+      templateError = err.message;
+    } finally {
+      templateBusy = false;
+    }
+  }
+
+  /** Titik awal aman untuk mengubah tata letak tanpa menyentuh yang sedang dipakai. */
+  async function duplicateTemplate(template: any) {
+    templateBusy = true;
+    templateError = '';
+    try {
+      const res = await fetch(`${API_BASE}/printer/templates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.token}` },
+        body: JSON.stringify({
+          name: `${template.name} (salinan)`,
+          documentType: template.documentType,
+          paperSize: template.paperSize,
+          layoutConfig: template.layoutConfig,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error?.message || 'Gagal menduplikasi template');
+      await invalidateAll();
+      editingTemplate = result.data;
+    } catch (err: any) {
+      templateError = err.message;
+    } finally {
+      templateBusy = false;
+    }
+  }
+
+  async function confirmDeleteTemplate() {
+    if (!deletingTemplate) return;
+    templateBusy = true;
+    templateError = '';
+    try {
+      const res = await fetch(`${API_BASE}/printer/templates/${deletingTemplate.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      if (res.status !== 204) {
+        const result = await res.json();
+        throw new Error(result.error?.message || 'Gagal menghapus template');
+      }
+      deletingTemplate = null;
+      await invalidateAll();
+    } catch (err: any) {
+      // Alasan penolakan (mis. masih dipakai cabang) muncul di daftar, bukan
+      // hilang bersama dialognya.
+      deletingTemplate = null;
+      templateError = err.message;
+    } finally {
+      templateBusy = false;
+    }
   }
 
   // ---- Devices ----
@@ -271,30 +371,44 @@
     </div>
   </div>
 
-  <!-- Templates (read-only — the WYSIWYG editor is a Phase 7 task) -->
+  <!-- Templates — Phase 7.2: bisa diedit, ditiru, dihapus, dengan pratinjau -->
   <div class="space-y-4">
-    <div>
-      <h2 class="font-semibold text-slate-900">Template Cetak</h2>
-      <p class="text-sm text-slate-500">
-        Template bawaan per jenis dokumen &amp; ukuran kertas. Mengedit tata letak template
-        belum tersedia di UI ini — direncanakan sebagai editor WYSIWYG di fase berikutnya.
-      </p>
+    <div class="flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <h2 class="font-semibold text-slate-900">Template Nota</h2>
+        <p class="text-sm text-slate-500 max-w-2xl">
+          Mengatur apa saja yang tercetak di tiap jenis nota. Klik <b>Edit</b> untuk mengubahnya
+          sambil melihat pratinjau — pratinjaunya memakai mesin cetak yang sama dengan cetakan
+          sungguhan, hanya datanya contoh. Pilih template mana yang dipakai tiap cabang di
+          tabel <b>Penugasan</b> di bawah.
+        </p>
+      </div>
+      <button onclick={() => (showTemplateCreate = true)}
+        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+        data-testid="new-template">
+        Buat Template
+      </button>
     </div>
+
+    {#if templateError}
+      <div class="p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200" data-testid="template-list-error">{templateError}</div>
+    {/if}
 
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" data-testid="printer-templates-table">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[520px] text-left border-collapse">
+        <table class="w-full min-w-[640px] text-left border-collapse">
           <thead>
             <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
               <th class="p-4">Nama Template</th>
               <th class="p-4">Jenis Dokumen</th>
               <th class="p-4">Ukuran Kertas</th>
               <th class="p-4">Default</th>
+              <th class="p-4 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
             {#each templates as template (template.id)}
-              <tr class="hover:bg-slate-50 transition-colors">
+              <tr class="hover:bg-slate-50 transition-colors" data-testid="template-row">
                 <td class="p-4 font-medium text-slate-900">{template.name}</td>
                 <td class="p-4 text-slate-600">{documentTypeLabel(template.documentType)}</td>
                 <td class="p-4 text-slate-600">{template.paperSize}</td>
@@ -303,10 +417,23 @@
                     <span class="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">Default</span>
                   {/if}
                 </td>
+                <td class="p-4">
+                  <div class="flex flex-wrap justify-end gap-1">
+                    <button onclick={() => (editingTemplate = template)}
+                      class="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
+                      data-testid="edit-template">Edit</button>
+                    <button onclick={() => duplicateTemplate(template)}
+                      class="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                      data-testid="duplicate-template">Duplikat</button>
+                    <button onclick={() => (deletingTemplate = template)}
+                      class="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                      data-testid="delete-template">Hapus</button>
+                  </div>
+                </td>
               </tr>
             {:else}
               <tr>
-                <td colspan="4" class="p-8 text-center text-slate-500">Belum ada template.</td>
+                <td colspan="5" class="p-8 text-center text-slate-500">Belum ada template.</td>
               </tr>
             {/each}
           </tbody>
@@ -543,6 +670,79 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+{/if}
+
+<!-- Phase 7.2 — editor template + pratinjau -->
+{#if editingTemplate}
+  <TemplateEditor
+    token={data.token}
+    template={editingTemplate}
+    onclose={() => (editingTemplate = null)}
+    onsaved={async () => { editingTemplate = null; await invalidateAll(); }}
+  />
+{/if}
+
+{#if showTemplateCreate}
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 space-y-4">
+      <h2 class="font-bold text-lg text-slate-900">Buat Template Nota</h2>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1" for="new-tpl-name">Nama template</label>
+        <input id="new-tpl-name" bind:value={newTemplate.name} placeholder="mis. Struk Promo 80mm"
+          class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1" for="new-tpl-doc">Jenis dokumen</label>
+        <select id="new-tpl-doc" bind:value={newTemplate.documentType}
+          class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="receipt">Struk</option>
+          <option value="invoice_a4">Invoice A4</option>
+          <option value="label">Label</option>
+          <option value="tanda_terima">Nota Tanda Terima</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1" for="new-tpl-paper">Ukuran kertas</label>
+        <select id="new-tpl-paper" bind:value={newTemplate.paperSize}
+          class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="58mm">58mm</option>
+          <option value="80mm">80mm</option>
+          <option value="A4">A4</option>
+        </select>
+        <p class="text-xs text-slate-500 mt-1">
+          Ukuran kertas tidak bisa diubah setelah dibuat — tata letaknya berbeda total.
+        </p>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button onclick={() => (showTemplateCreate = false)} class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Batal</button>
+        <button onclick={createTemplate} disabled={templateBusy || !newTemplate.name.trim()}
+          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+          data-testid="confirm-new-template">
+          {templateBusy ? 'Membuat...' : 'Buat'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+{#if deletingTemplate}
+  <div class="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-lg w-full max-w-sm p-5 space-y-4">
+      <h2 class="font-bold text-lg text-slate-900">Hapus "{deletingTemplate.name}"?</h2>
+      <p class="text-sm text-slate-600">
+        Template yang masih dipasang di sebuah cabang tidak bisa dihapus — ganti dulu
+        template cabang itu di tabel Penugasan.
+      </p>
+      <div class="flex justify-end gap-2">
+        <button onclick={() => (deletingTemplate = null)} class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900">Batal</button>
+        <button onclick={confirmDeleteTemplate} disabled={templateBusy}
+          class="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+          data-testid="confirm-delete-template">
+          {templateBusy ? 'Menghapus...' : 'Hapus'}
+        </button>
+      </div>
     </div>
   </div>
 {/if}

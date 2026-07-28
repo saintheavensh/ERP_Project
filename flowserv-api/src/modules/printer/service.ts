@@ -98,6 +98,41 @@ export async function updateTemplate(tenantId: string, id: string, input: Update
   return updated;
 }
 
+/**
+ * Hapus template nota.
+ *
+ * Ditolak bila masih dipasang di sebuah cabang — kalau dibiarkan, foreign key
+ * yang menolaknya (500 tanpa penjelasan), atau lebih buruk: cabang itu
+ * kehilangan template dan tiba-tiba tak bisa mencetak. Sebut cabangnya supaya
+ * owner tahu harus mengganti apa dulu.
+ */
+export async function deleteTemplate(tenantId: string, id: string) {
+  const existing = await db.query.printerTemplates.findFirst({
+    where: and(eq(printerTemplates.id, id), eq(printerTemplates.tenantId, tenantId)),
+  });
+  if (!existing) throw new BusinessError('NOT_FOUND', 'Printer template not found', 404);
+
+  const inUse = await db.query.printerAssignments.findMany({
+    where: and(
+      eq(printerAssignments.tenantId, tenantId),
+      eq(printerAssignments.printerTemplateId, id)
+    ),
+    with: { branch: true },
+  });
+  if (inUse.length > 0) {
+    const branchNames = inUse.map((a: any) => a.branch?.name ?? 'cabang');
+    throw new BusinessError(
+      'TEMPLATE_IN_USE',
+      `Template ini masih dipakai ${branchNames.join(', ')}. Pasang template lain di cabang itu dulu, baru hapus.`,
+      422
+    );
+  }
+
+  await db.delete(printerTemplates)
+    .where(and(eq(printerTemplates.id, id), eq(printerTemplates.tenantId, tenantId)));
+  return { id };
+}
+
 export async function listAssignments(tenantId: string) {
   return db.query.printerAssignments.findMany({
     where: eq(printerAssignments.tenantId, tenantId),

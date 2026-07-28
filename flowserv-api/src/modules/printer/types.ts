@@ -95,6 +95,15 @@ export const updateTemplateSchema = z.object({
 });
 export type UpdateTemplateInput = z.infer<typeof updateTemplateSchema>;
 
+// Phase 7.2 — pratinjau. `layoutConfig` dikirim utuh (bukan id template) supaya
+// owner bisa melihat hasil sakelar yang belum disimpan.
+export const previewTemplateSchema = z.object({
+  documentType: z.enum(DOCUMENT_TYPES),
+  paperSize: z.enum(PAPER_SIZES),
+  layoutConfig: layoutConfigSchema,
+});
+export type PreviewTemplateInput = z.infer<typeof previewTemplateSchema>;
+
 // Upsert semantics on purpose: (branchId, documentType) is unique, and the
 // natural UI action is "set what Receipt prints to for this branch", not
 // separately create-then-update.
