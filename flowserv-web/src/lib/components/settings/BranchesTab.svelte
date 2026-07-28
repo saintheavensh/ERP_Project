@@ -88,7 +88,7 @@
               <td class="p-4 font-medium text-slate-900">{branch.name}</td>
               <td class="p-4 text-slate-600">{branch.address || '-'}</td>
               <td class="p-4 text-right">
-                <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={() => openEdit(branch)}>Edit</button>
+                <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={() => openEdit(branch)}>Ubah</button>
               </td>
             </tr>
           {:else}
@@ -139,7 +139,7 @@
   <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-        <h3 class="font-semibold text-lg text-slate-900">Edit Cabang</h3>
+        <h3 class="font-semibold text-lg text-slate-900">Ubah Cabang</h3>
         <button class="text-slate-400 hover:text-slate-600" aria-label="Tutup" onclick={() => editingId = null}>
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>

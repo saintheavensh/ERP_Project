@@ -23,11 +23,11 @@ test.describe('desktop (1280x800)', () => {
     await page.waitForLoadState('networkidle');
 
     const name = `Sparepart ${Date.now()}`;
-    await page.getByRole('button', { name: 'Add Customer' }).click();
+    await page.getByRole('button', { name: 'Tambah Pelanggan' }).click();
     await page.locator('#name').fill(name);
     await page.locator('#customer-type').selectOption('sparepart');
     await page.getByRole('button', { name: 'Save Customer' }).click();
-    await expect(page.getByRole('heading', { name: 'Add New Customer' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Tambah Pelanggan' })).toBeHidden();
 
     // Re-navigate (this list's load doesn't refresh in place — a pre-existing quirk).
     await page.goto('/customers');

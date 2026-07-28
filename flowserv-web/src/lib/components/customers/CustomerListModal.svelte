@@ -7,7 +7,7 @@
 {#if state.showModal}
   <div class="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-      <h2 class="text-xl font-bold mb-4 text-slate-900">Add New Customer</h2>
+      <h2 class="text-xl font-bold mb-4 text-slate-900">Tambah Pelanggan</h2>
       
       {#if state.errorMsg}
         <div class="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100">
@@ -30,7 +30,7 @@
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="phone">Phone Number</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="phone">Nomor Telepon</label>
           <input id="phone" type="tel" bind:value={state.newCustomer.phone} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="08123456789">
         </div>
         <div>
@@ -53,7 +53,7 @@
         <button 
           onclick={() => state.showModal = false}
           class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium transition-colors">
-          Cancel
+          Batal
         </button>
         <button 
           onclick={() => state.createCustomer()}

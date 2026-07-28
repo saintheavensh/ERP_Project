@@ -14,7 +14,7 @@
 
 <div class="p-4 md:p-6 max-w-6xl mx-auto">
   <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-slate-900">Customers</h1>
+    <h1 class="text-2xl font-bold text-slate-900">Pelanggan</h1>
     <div class="flex flex-wrap items-center gap-2">
       <!-- Tahap-B — filter kategori pelanggan -->
       <select bind:value={state.typeFilter} aria-label="Filter kategori"
@@ -26,7 +26,7 @@
       <button
         onclick={() => state.showModal = true}
         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-        Add Customer
+        Tambah Pelanggan
       </button>
     </div>
   </div>
@@ -36,11 +36,11 @@
     <table class="w-full min-w-[560px] text-left text-sm">
       <thead class="bg-slate-50 text-slate-500 border-b border-gray-200">
         <tr>
-          <th class="px-6 py-4 font-medium">Name</th>
+          <th class="px-6 py-4 font-medium">Nama</th>
           <th class="px-6 py-4 font-medium">Kategori</th>
-          <th class="px-6 py-4 font-medium">Phone</th>
+          <th class="px-6 py-4 font-medium">Telepon</th>
           <th class="px-6 py-4 font-medium">Email</th>
-          <th class="px-6 py-4 font-medium text-right">Actions</th>
+          <th class="px-6 py-4 font-medium text-right">Aksi</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -56,14 +56,14 @@
             <td class="px-6 py-4 text-slate-600">{customer.email || '-'}</td>
             <td class="px-6 py-4 text-right">
               <a href={`/customers/${customer.id}`} class="text-blue-600 hover:text-blue-800 font-medium">
-                View &rarr;
+                Lihat &rarr;
               </a>
             </td>
           </tr>
         {:else}
           <tr>
             <td colspan="5" class="px-6 py-8 text-center text-slate-500">
-              No customers found. Click "Add Customer" to create one.
+              Belum ada pelanggan. Klik "Tambah Pelanggan" untuk menambah.
             </td>
           </tr>
         {/each}

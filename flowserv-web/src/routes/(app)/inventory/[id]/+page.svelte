@@ -93,7 +93,7 @@
         onclick={() => showEditModal = true}
         class="px-4 py-2 text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg font-medium text-sm transition-colors"
       >
-        Edit Produk
+        Ubah Produk
       </button>
     {/if}
   </div>
@@ -126,7 +126,7 @@
     </div>
   {:else}
     <div class="p-12 text-center text-slate-500">
-      Loading product details...
+      Memuat rincian produk...
     </div>
   {/if}
 </div>

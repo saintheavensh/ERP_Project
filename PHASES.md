@@ -15,6 +15,59 @@
 
 ## Current Phase: `Go-live Tahap B` — pilot readiness (see `plan/go-live-tahap-b-onward.md`)
 
+> **⚠️ Updated 2026-07-28 — track PENYEDERHANAAN dibuka, dan ini yang paling penting
+> di file ini sekarang.** Lihat **[`plan/go-live-penyederhanaan.md`](plan/go-live-penyederhanaan.md)**.
+>
+> Pemilik menghentikan pekerjaan template nota dengan dua kalimat yang mendiagnosis
+> produk ini lebih tajam daripada audit mana pun:
+>
+> > *"aplikasi ini menjadi terlalu rumit untuk digunakan"*
+> > *"saya ingin membuat aplikasi ini sefleksibel dan sedinamis mungkin tetapi malah
+> > jadi lebih rumit untuk orang yang tidak mengerti teknologi, sedangkan pasar yang
+> > akan datang adalah pasar yang hampir rata-rata kurang ahli mengoperasikan komputer."*
+>
+> **Akar masalahnya ada di file ini.** PHASES.md punya 12 fase dan **tidak satu pun
+> tugasnya berbunyi "kurangi"** — tiap fase menambah modul, tak ada yang merapikan.
+> Hasilnya terukur pada 2026-07-28: 34 halaman, 124 endpoint, 22 baris menu, 6 tab
+> Setelan, 97 berkas `.svelte` (50 memuat teks UI bahasa Inggris), 10 kolom untuk
+> menerima satu unit, dan **tiga layar berbeda yang sama-sama berarti "barang datang"**
+> (`Goods Receipt (Gudang)`, `Receive Items (Warehouse)`, `Receive PO (Warehouse)`) —
+> dua di antaranya benar-benar identik, sama-sama mengambil PO berstatus `ordered`.
+>
+> Prinsip yang mengikat track ini: **"atur sekali, lalu menghilang."** Fleksibilitas
+> mesinnya tidak dikurangi sedikit pun (flow engine, template, RBAC utuh); yang
+> dikurangi adalah **permukaan yang dilihat pemakai harian**.
+>
+> - [x] **S1 — Bahasa & istilah.** 27 judul halaman + teks UI di 51 berkas jadi satu
+>       bahasa toko: `Goods Receipt`→Barang Masuk, `Accounts Payable`→Hutang ke Supplier,
+>       `Finance Ledger`→Buku Kas, `New Service Intake`→Terima Unit, dst. Menutup utang
+>       lama di Architecture Debt ("mix Indonesian and English — pick one"). Judul statis
+>       `System Dashboard` di header dihapus: ia tertulis sama di 33 dari 34 halaman.
+> - [x] **S2 — Sidebar diringkas: 22 baris → 6** (Beranda/Servis/Kasir/Stok/Pelanggan +
+>       "Lainnya" yang **tertutup** secara default). Teknisi 3 baris, kasir 3 baris.
+> - [x] **S3 — Enam layar pembelian → satu daftar bertab.** `/inventory/receive`,
+>       `purchasing/receipts`, `purchasing/orders`, `purchasing/invoices` dihapus;
+>       tujuannya diserap jadi **tombol aksi per baris** yang menyesuaikan keadaan PO
+>       ("Terima Barang" saat menunggu, "Catat Nota" saat sudah diterima) — jadi tak
+>       ada lagi yang perlu menebak harus membuka layar mana. Endpoint & aturan bisnis
+>       tak disentuh.
+> - [x] **S4 — Terima unit: 9 kolom → 7 terlihat.** Email & nomor seri dilipat ke
+>       "Data tambahan (opsional)". Tak ada yang dihapus atau berhenti tersimpan.
+>       **Koreksi:** percobaan pertama ikut melipat sandi/pola dengan alasan "pad
+>       polanya memakan ruang" — keliru, `PasscodeField` default-nya mode PIN dan
+>       hanya setinggi kolom biasa. Dikembalikan ke tampak; ketahuan dari 2 tes e2e
+>       sandi/pola yang gagal, bukan dari membaca ulang kode.
+>
+> **Ditunda, bukan dibatalkan** (permintaan pemilik tepat sebelum track ini dibuka):
+> editor tata letak nota yang bebas, jenis nota `nota_pengambilan` + `nota_garansi`,
+> dan sakelar harga rincian-vs-total. Ketiganya **menambah hal yang harus diatur** —
+> mengerjakannya saat itu berarti menambah ke tumpukan yang persis sedang dikeluhkan.
+>
+> **Temuan sampingan, belum diperbaiki:** `POST /v1/inventory/:id/receive`
+> (terima stok manual tanpa PO) **tidak punya pemanggil di frontend sama sekali** —
+> endpoint yatim, sudah begitu sebelum track ini. Bentuk cacat yang sama dengan yang
+> Track F dulu bereskan. Dicatat di sini supaya tidak hilang lagi.
+
 > **⚠️ Updated 2026-07-27.** Work is no longer tracked by the numbered phases alone —
 > the go-live track (`plan/go-live-plan.md` → `plan/go-live-tahap-b-onward.md`) drives
 > priority, and it pulls phase items in when the pilot actually needs them. Two things

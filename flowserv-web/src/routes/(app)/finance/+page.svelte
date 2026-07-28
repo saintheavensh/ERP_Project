@@ -9,12 +9,12 @@
 </script>
 
 <svelte:head>
-  <title>Finance Dashboard | FlowServ</title>
+  <title>Keuangan | FlowServ</title>
 </svelte:head>
 
 <div class="max-w-6xl mx-auto">
   <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <h1 class="text-2xl font-bold text-slate-900">Finance Dashboard</h1>
+    <h1 class="text-2xl font-bold text-slate-900">Keuangan</h1>
 
     <!-- P5 — mode toggle. Two links (?mode=simple|accountant), not a client
          toggle: SSR-friendly, bookmarkable, same idiom the Kanban board uses
@@ -53,7 +53,7 @@
         <div class="flex items-center justify-between mb-4">
           <h2 class="font-semibold text-slate-800">Ringkasan Laba Rugi (Bulan Ini)</h2>
           <a href="/finance/ledger" class="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
-            Lihat Buku Besar &rarr;
+            Lihat Buku Kas &rarr;
           </a>
         </div>
         <!-- Single-sided ledger, not a real Chart-of-Accounts P&L — see

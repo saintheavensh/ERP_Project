@@ -41,12 +41,14 @@ test.describe('mobile viewport (375x667) — P7 fixed pages', () => {
     await assertNoOverflow(page, '/finance/receivables', '03-finance-receivables');
   });
 
+  // S3 (penyederhanaan) — keempat daftar pembelian yang dulu terpisah kini satu
+  // halaman bertab. Yang diperiksa tetap sama: tiap tab tak boleh meluber.
   test('purchasing list pages (P7.2)', async ({ page }) => {
     await login(page);
     await assertNoOverflow(page, '/inventory/purchasing', '04-purchasing-all');
-    await assertNoOverflow(page, '/inventory/purchasing/orders', '05-purchasing-orders');
-    await assertNoOverflow(page, '/inventory/purchasing/receipts', '06-purchasing-receipts');
-    await assertNoOverflow(page, '/inventory/purchasing/invoices', '07-purchasing-invoices');
+    await assertNoOverflow(page, '/inventory/purchasing?status=menunggu', '05-purchasing-menunggu');
+    await assertNoOverflow(page, '/inventory/purchasing?status=nota', '06-purchasing-nota');
+    await assertNoOverflow(page, '/inventory/purchasing?status=selesai', '07-purchasing-selesai');
   });
 
   test('purchasing new-PO form (P7.3)', async ({ page }) => {
@@ -56,7 +58,6 @@ test.describe('mobile viewport (375x667) — P7 fixed pages', () => {
 
   test('inventory sub-pages (P7.4)', async ({ page }) => {
     await login(page);
-    await assertNoOverflow(page, '/inventory/receive', '09-inventory-receive');
     await assertNoOverflow(page, '/inventory/brands', '10-inventory-brands');
     await assertNoOverflow(page, '/inventory/categories', '11-inventory-categories');
     await assertNoOverflow(page, '/inventory/opname', '12-inventory-opname');
@@ -105,7 +106,7 @@ test.describe('desktop viewport (1280x800) — confirm unchanged', () => {
     await page.waitForLoadState('networkidle');
     await expect(page.locator('table').first()).toBeVisible();
 
-    await page.goto('/inventory/purchasing/orders');
+    await page.goto('/inventory/purchasing?status=menunggu');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('table').first()).toBeVisible();
   });

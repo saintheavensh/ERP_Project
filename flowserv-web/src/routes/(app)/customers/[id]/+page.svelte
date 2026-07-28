@@ -100,12 +100,12 @@
             href="/tickets/intake?customerId={state.customer?.id}&assetId={asset.id}"
             class="text-blue-600 hover:text-blue-800 text-sm font-medium border border-blue-200 px-3 py-1 rounded bg-blue-50"
           >
-            Create Ticket
+            Servis Unit Ini
           </a>
         </div>
       {:else}
         <div class="px-6 py-8 text-center text-slate-500">
-          No devices registered yet.
+          Belum ada unit terdaftar.
         </div>
       {/each}
     </div>

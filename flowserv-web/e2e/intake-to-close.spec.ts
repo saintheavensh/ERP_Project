@@ -45,7 +45,7 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   // 2. New Intake — create a ticket for a brand-new customer.
   await page.goto('/tickets/intake');
   await page.waitForLoadState('networkidle');
-  await expect(page.getByRole('heading', { name: 'New Service Intake' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Terima Unit' })).toBeVisible();
   const uniqueName = `QA Playwright ${Date.now()}`;
   await page.fill('#name', uniqueName);
   await expect(page.locator('#name')).toHaveValue(uniqueName);
@@ -58,7 +58,7 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   // ditunggu/disimpan setelah diagnosis, jadi tiket memakai alur default toko
   // ("Servis", satu template bercabang).
   await shot(page, '02-intake-filled');
-  await page.getByRole('button', { name: 'Create Ticket' }).click();
+  await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
   // 3. Lands on the ticket detail (intake goto's /tickets/:id).
   await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });

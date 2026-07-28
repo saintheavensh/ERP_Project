@@ -26,16 +26,16 @@
     
     <div class="col-span-2 sm:col-span-1">
       <label class="block text-sm font-medium text-slate-700 mb-1" for="email">Email</label>
-      <input id="email" type="email" bind:value={state.form.email} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. sales@supplier.com">
+      <input id="email" type="email" bind:value={state.form.email} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="mis. sales@supplier.com">
     </div>
     
     <div class="col-span-2 sm:col-span-1">
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="contact">Phone / Contact Info</label>
-      <input id="contact" type="text" bind:value={state.form.contactInfo} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. WA: 08123...">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="contact">Telepon / Kontak</label>
+      <input id="contact" type="text" bind:value={state.form.contactInfo} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="mis. WA: 08123...">
     </div>
     
     <div class="col-span-2 sm:col-span-1">
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="type">Type</label>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="type">Tipe</label>
       <select id="type" bind:value={state.form.type} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
         <option value="wholesale">Wholesale</option>
         <option value="retailer">Retailer</option>
@@ -43,8 +43,8 @@
     </div>
 
     <div class="col-span-2">
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="photo_url">Photo / Logo URL</label>
-      <input id="photo_url" type="url" bind:value={state.form.photoUrl} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="e.g. https://example.com/logo.png">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="photo_url">Foto / URL Logo</label>
+      <input id="photo_url" type="url" bind:value={state.form.photoUrl} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" placeholder="mis. https://example.com/logo.png">
     </div>
   </div>
 
@@ -52,7 +52,7 @@
     <h3 class="text-lg font-medium text-slate-900 mb-4">Policies</h3>
     <div class="grid grid-cols-2 gap-6">
       <div class="col-span-2 sm:col-span-1">
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="payment_type">Payment Method</label>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="payment_type">Metode Pembayaran</label>
         <select id="payment_type" bind:value={state.form.paymentType} class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
           <option value="cash">Cash / COD</option>
           <option value="tempo">Tempo (Term)</option>
@@ -84,9 +84,9 @@
   </div>
   
     <div class="pt-4 flex justify-end gap-3 border-t border-slate-200">
-      <a href="/inventory/suppliers" class="px-6 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors">Cancel</a>
+      <a href="/inventory/suppliers" class="px-6 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors">Batal</a>
       <button type="submit" disabled={state.loading} class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
-        {state.loading ? 'Saving...' : 'Save Changes'}
+        {state.loading ? 'Saving...' : 'Simpan Perubahan'}
       </button>
     </div>
   </form>

@@ -99,7 +99,7 @@
     <thead>
       <tr class="border-b border-slate-300 text-left text-slate-500">
         <th class="py-2">Deskripsi</th>
-        <th class="py-2 text-center">Qty</th>
+        <th class="py-2 text-center">Jumlah</th>
         <th class="py-2 text-right">Harga</th>
         {#if data.display.showLineSubtotal}<th class="py-2 text-right">Subtotal</th>{/if}
       </tr>

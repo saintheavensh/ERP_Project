@@ -66,7 +66,7 @@ test.describe('desktop (1280x800)', () => {
     await expect(row.getByText('Jaringan')).toBeVisible();
 
     const updatedName = `${deviceName} (Diperbarui)`;
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await row.getByRole('button', { name: 'Ubah' }).click();
     await page.locator('#edit-device-name').fill(updatedName);
     await page.getByRole('button', { name: 'Simpan Perubahan' }).click();
     await page.waitForLoadState('networkidle');

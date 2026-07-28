@@ -351,7 +351,7 @@
                         {testPrintStatus[device.id] === 'printing' ? 'Mencetak...' : 'Test Cetak'}
                       </button>
                     {/if}
-                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={() => openEditDevice(device)}>Edit</button>
+                    <button class="text-blue-600 hover:text-blue-800 text-sm font-medium" onclick={() => openEditDevice(device)}>Ubah</button>
                   </div>
                   {#if testPrintStatus[device.id] === 'printed'}
                     <p class="text-xs text-green-700" data-testid="test-print-device-status">Terkirim — cek hasil cetak fisik.</p>
@@ -377,7 +377,7 @@
       <div>
         <h2 class="font-semibold text-slate-900">Template Nota</h2>
         <p class="text-sm text-slate-500 max-w-2xl">
-          Mengatur apa saja yang tercetak di tiap jenis nota. Klik <b>Edit</b> untuk mengubahnya
+          Mengatur apa saja yang tercetak di tiap jenis nota. Klik <b>Ubah</b> untuk mengubahnya
           sambil melihat pratinjau — pratinjaunya memakai mesin cetak yang sama dengan cetakan
           sungguhan, hanya datanya contoh. Pilih template mana yang dipakai tiap cabang di
           tabel <b>Penugasan</b> di bawah.
@@ -421,7 +421,7 @@
                   <div class="flex flex-wrap justify-end gap-1">
                     <button onclick={() => (editingTemplate = template)}
                       class="px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg font-medium"
-                      data-testid="edit-template">Edit</button>
+                      data-testid="edit-template">Ubah</button>
                     <button onclick={() => duplicateTemplate(template)}
                       class="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
                       data-testid="duplicate-template">Duplikat</button>
@@ -564,7 +564,7 @@
   <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden max-h-[90vh] flex flex-col">
       <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
-        <h3 class="font-semibold text-lg text-slate-900">Edit Printer</h3>
+        <h3 class="font-semibold text-lg text-slate-900">Ubah Printer</h3>
         <button class="text-slate-400 hover:text-slate-600" aria-label="Tutup" onclick={() => editingDeviceId = null}>
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>

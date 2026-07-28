@@ -41,7 +41,7 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#model', 'A05');
     await page.fill('#complaint', 'LCD retak parah');
     await page.fill('#passcode', '1234'); // sandi -> harus muncul di label QC
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // Tahap B — langsung bisa dicetak di Intake, tanpa transisi apa pun.
@@ -81,7 +81,7 @@ test.describe('desktop (1280x800)', () => {
       await page.selectOption('#type', 'Laptop');
       await page.fill('#brand', 'Asus');
       await page.fill('#complaint', complaint);
-      await page.getByRole('button', { name: 'Create Ticket' }).click();
+      await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
       await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     }
 
@@ -125,7 +125,7 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#name', `Print Ditunggu ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#complaint', 'Keyboard rusak');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     const moveTo = async (stage: string) => {
@@ -211,7 +211,7 @@ test.describe('mobile (375x667)', () => {
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#complaint', 'Baterai boros');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();

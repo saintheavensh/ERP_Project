@@ -18,11 +18,11 @@
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
     </a>
     <div class="flex-1 min-w-[200px]">
-      <h1 class="text-2xl font-bold text-slate-900">Supplier Management</h1>
+      <h1 class="text-2xl font-bold text-slate-900">Supplier</h1>
       <p class="text-slate-500 mt-1">Manage suppliers, contacts, and their return/warranty policies.</p>
     </div>
     <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors" onclick={() => state.showAddModal = true}>
-      New Supplier
+      Supplier Baru
     </button>
   </div>
 

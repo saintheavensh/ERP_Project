@@ -166,7 +166,7 @@
   <div class="bg-white sm:rounded-xl shadow-lg w-full max-w-5xl my-0 sm:my-8" data-testid="template-editor">
     <div class="flex flex-wrap items-center justify-between gap-2 p-4 border-b border-slate-200">
       <div class="min-w-0">
-        <h2 class="font-bold text-lg text-slate-900">Edit Template Nota</h2>
+        <h2 class="font-bold text-lg text-slate-900">Ubah Template Nota</h2>
         <p class="text-xs text-slate-500">
           {template.documentType} &middot; {template.paperSize} &middot; pratinjau di samping memakai
           mesin cetak yang sama dengan cetakan sungguhan

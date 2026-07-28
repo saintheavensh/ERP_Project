@@ -28,7 +28,7 @@
 </svelte:head>
 
 <div class="max-w-5xl mx-auto space-y-6">
-  <h1 class="text-2xl font-bold text-slate-900">Pengaturan</h1>
+  <h1 class="text-2xl font-bold text-slate-900">Setelan</h1>
 
   <!-- Mobile-first: tabs scroll horizontally rather than wrapping/shrinking
        into unreadable pills at 375px (same idiom as the ticket board's

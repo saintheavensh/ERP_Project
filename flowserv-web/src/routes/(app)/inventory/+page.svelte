@@ -16,7 +16,7 @@
 <div class="max-w-7xl mx-auto space-y-6">
   <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-2xl font-bold text-slate-900">Inventory Management</h1>
+      <h1 class="text-2xl font-bold text-slate-900">Stok Barang</h1>
       <p class="text-slate-500 mt-1">Manage parts, stock levels, and reorder points.</p>
     </div>
     <div class="flex flex-wrap gap-3">
@@ -24,7 +24,7 @@
         Lihat sebagai Katalog
       </a>
       <a href="/inventory/categories" class="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 px-4 py-2 rounded-lg font-medium transition-colors">
-        Manage Categories
+        Kelola Kategori
       </a>
       <button class="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm" onclick={() => inv.showAddModal = true}>
         + Add Item

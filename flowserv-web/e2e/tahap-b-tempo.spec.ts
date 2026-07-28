@@ -23,7 +23,7 @@ test.describe('desktop (1280x800)', () => {
     await page.waitForLoadState('networkidle');
 
     const name = `Tempo UI ${Date.now()}`;
-    await page.getByRole('button', { name: 'Add Customer' }).click();
+    await page.getByRole('button', { name: 'Tambah Pelanggan' }).click();
     await page.locator('#name').fill(name);
     await page.locator('#allow-tempo').check(); // izinkan tempo saat pembuatan
     await page.getByRole('button', { name: 'Save Customer' }).click();
@@ -31,14 +31,14 @@ test.describe('desktop (1280x800)', () => {
     // Modal closes on success. Re-navigate for a fresh list load (this list's
     // server load uses a plain fetch, so invalidateAll doesn't refresh it in
     // place — a pre-existing quirk, unrelated to tempo).
-    await expect(page.getByRole('heading', { name: 'Add New Customer' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Tambah Pelanggan' })).toBeHidden();
     await page.goto('/customers');
     await page.waitForLoadState('networkidle');
 
     // Open the new customer's detail page.
     const row = page.getByRole('row').filter({ hasText: name });
     await expect(row).toBeVisible();
-    await row.getByRole('link', { name: /View/ }).click();
+    await row.getByRole('link', { name: /Lihat/ }).click();
     await page.waitForURL(/\/customers\/[0-9a-f-]{36}$/, { timeout: 20_000 });
 
     // The create-form checkbox took effect end-to-end.
@@ -62,13 +62,13 @@ test.describe('mobile (375x667)', () => {
     await page.goto('/customers');
     await page.waitForLoadState('networkidle');
     const name = `Tempo Mobile ${Date.now()}`;
-    await page.getByRole('button', { name: 'Add Customer' }).click();
+    await page.getByRole('button', { name: 'Tambah Pelanggan' }).click();
     await page.locator('#name').fill(name);
     await page.getByRole('button', { name: 'Save Customer' }).click();
-    await expect(page.getByRole('heading', { name: 'Add New Customer' })).toBeHidden();
+    await expect(page.getByRole('heading', { name: 'Tambah Pelanggan' })).toBeHidden();
     await page.goto('/customers');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('row').filter({ hasText: name }).getByRole('link', { name: /View/ }).click();
+    await page.getByRole('row').filter({ hasText: name }).getByRole('link', { name: /Lihat/ }).click();
     await page.waitForURL(/\/customers\/[0-9a-f-]{36}$/, { timeout: 20_000 });
     await expect(page.getByTestId('tempo-card')).toBeVisible();
     const bodyWidth = await page.evaluate(() => document.documentElement.scrollWidth);

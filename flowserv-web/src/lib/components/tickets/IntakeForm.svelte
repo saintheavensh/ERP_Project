@@ -16,16 +16,13 @@
 
 <form onsubmit={(e) => { e.preventDefault(); state.submitIntake(); }} class="space-y-8 bg-white p-8 rounded-xl shadow-sm border border-gray-200">
   
-  <!-- Customer Info -->
+  <!-- Pelanggan -->
   <div>
-    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center border-b pb-2">
-      <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">1</span>
-      Customer Details
-    </h2>
+    <h2 class="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Pelanggan</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="relative">
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="name">Customer Name *</label>
-        <input id="name" type="text" bind:value={state.form.customerName} oninput={() => state.searchCustomer()} autocomplete="off" required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. John Doe">
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="name">Nama <span class="text-red-500">*</span></label>
+        <input id="name" type="text" bind:value={state.form.customerName} oninput={() => state.searchCustomer()} autocomplete="off" required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nama pelanggan">
         
         {#if state.showDropdown && state.filteredCustomers.length > 0}
           <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -39,7 +36,7 @@
                       <span class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700">Sparepart</span>
                     {/if}
                   </div>
-                  <div class="text-xs text-slate-500">{c.phone || 'No phone'}</div>
+                  <div class="text-xs text-slate-500">{c.phone || 'Tanpa nomor'}</div>
                 </button>
               </li>
             {/each}
@@ -48,34 +45,27 @@
         {#if state.form.customerId}
           <div class="text-xs text-green-600 mt-1 flex items-center">
             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-            Existing customer selected
+            Pelanggan lama dipilih
           </div>
         {/if}
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="phone">Phone Number (Optional)</label>
-        <input id="phone" type="tel" bind:value={state.form.customerPhone} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 {state.form.customerId ? 'bg-slate-50 text-slate-500' : ''}" placeholder="e.g. 08123456789" readonly={!!state.form.customerId}>
-      </div>
-      <div class="md:col-span-2">
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="email">Email Address (Optional)</label>
-        <input id="email" type="email" bind:value={state.form.customerEmail} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 {state.form.customerId ? 'bg-slate-50 text-slate-500' : ''}" placeholder="john@example.com" readonly={!!state.form.customerId}>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="phone">No. HP</label>
+        <input id="phone" type="tel" bind:value={state.form.customerPhone} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 {state.form.customerId ? 'bg-slate-50 text-slate-500' : ''}" placeholder="08123456789" readonly={!!state.form.customerId}>
       </div>
     </div>
   </div>
 
-  <!-- Device Info -->
+  <!-- Unit -->
   <div>
-    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center border-b pb-2">
-      <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">2</span>
-      Device / Asset Information
-    </h2>
+    <h2 class="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Unit yang Diservis</h2>
     {#if state.form.assetId}
       <!-- F7 — arrived from a customer's device via "Create Ticket"; the device is
            fixed (assetId is sent as-is, no new asset is created on submit). -->
       <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
         <div class="text-xs text-green-600 mb-2 flex items-center">
           <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-          Existing device selected
+          Unit lama dipilih
         </div>
         <div class="font-medium text-slate-900">
           <span class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded text-xs uppercase tracking-wider">{state.form.assetType}</span>
@@ -88,19 +78,19 @@
     {:else}
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="type">Device Type *</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="type">Jenis <span class="text-red-500">*</span></label>
           <select id="type" bind:value={state.form.assetType} required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-            <option value="">Select Type...</option>
+            <option value="">Pilih Jenis...</option>
             <option value="Smartphone">Smartphone</option>
             <option value="Laptop">Laptop</option>
             <option value="Tablet">Tablet</option>
             <option value="Smartwatch">Smartwatch</option>
-            <option value="Other">Other</option>
+            <option value="Other">Lainnya</option>
           </select>
         </div>
         <div class="relative">
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Brand</label>
-          <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchBrand()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Samsung">
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Merek</label>
+          <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchBrand()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. Samsung">
           {#if state.showBrandDropdown && state.brandResults.length > 0}
             <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto" data-testid="brand-dropdown">
               {#each state.brandResults as b}
@@ -129,10 +119,6 @@
             </ul>
           {/if}
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="sn">Serial Number / IMEI</label>
-          <input id="sn" type="text" bind:value={state.form.assetSn} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="...">
-        </div>
       </div>
 
       <!-- Tahap A — device catalog match: spesifikasi (teks) saja untuk
@@ -153,21 +139,53 @@
         </div>
       {/if}
     {/if}
-    <!-- Tahap A — go-live gap Tier-1 #2. Optional; recorded now, given back at
-         handover (QC Akhir). Shown for both new and pre-selected devices. -->
+
+    <!--
+      Tahap A gap Tier-1 #2 — sandi/pola TETAP terlihat, tidak dilipat.
+      Pertimbangan S4 sempat memindahkannya ke bagian opsional dengan alasan
+      "pad polanya memakan banyak ruang"; itu keliru. `PasscodeField` default-nya
+      mode PIN — hanya dua tombol kecil + satu input, setinggi kolom biasa; pad
+      pola baru muncul kalau ditekan "Pola". Dan untuk servis HP, teknisi hampir
+      selalu perlu membuka unitnya, jadi ini bagian dari pekerjaan intake, bukan
+      pelengkap.
+    -->
     <div class="mt-4">
-      <span class="block text-sm font-medium text-slate-700 mb-1">Sandi / Pola (Opsional)</span>
+      <span class="block text-sm font-medium text-slate-700 mb-1">Sandi / Pola (opsional)</span>
       <PasscodeField value={state.form.devicePasscode} onchange={(v) => (state.form.devicePasscode = v)} id="passcode" />
       <p class="text-xs text-slate-500 mt-1">Pilih <strong>Pola</strong> lalu gambar polanya agar tercatat pasti (bukan "L terbalik"). Dikembalikan ke pelanggan saat serah-terima.</p>
     </div>
+
+    <!--
+      S4 (track penyederhanaan) — yang benar-benar jarang dipakai di meja depan:
+      email pelanggan dan nomor seri/IMEI. Keduanya tetap tersimpan seperti
+      sebelumnya; yang berubah hanya bahwa kasir tak lagi melewatinya untuk
+      setiap unit yang masuk.
+    -->
+    <details class="mt-4 border border-slate-200 rounded-lg" data-testid="intake-optional">
+      <summary class="px-4 py-2.5 text-sm font-medium text-slate-700 cursor-pointer select-none hover:bg-slate-50 rounded-lg">
+        Data tambahan (opsional) &mdash; email, nomor seri
+      </summary>
+      <div class="p-4 pt-2 space-y-4 border-t border-slate-100">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="email">Email pelanggan</label>
+          <input id="email" type="email" bind:value={state.form.customerEmail}
+            class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 {state.form.customerId ? 'bg-slate-50 text-slate-500' : ''}"
+            placeholder="nama@email.com" readonly={!!state.form.customerId}>
+        </div>
+        {#if !state.form.assetId}
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="sn">Nomor Seri / IMEI</label>
+            <input id="sn" type="text" bind:value={state.form.assetSn}
+              class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="Kosongkan bila tidak ada">
+          </div>
+        {/if}
+      </div>
+    </details>
   </div>
 
   <!-- Service Details -->
   <div>
-    <h2 class="text-lg font-semibold text-slate-800 mb-4 flex items-center border-b pb-2">
-      <span class="bg-blue-100 text-blue-700 w-6 h-6 rounded-full inline-flex items-center justify-center text-sm mr-2">3</span>
-      Service Details
-    </h2>
+    <h2 class="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Keluhan</h2>
     <!-- Tahap A — go-live gap Tier-1 #3. Optional but encouraged: feeds the
          label/tanda-terima print documents ("kerusakan"). SVC-001 always
          named complaint capture as part of intake; no field for it existed
@@ -211,9 +229,9 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        Processing...
+        Menyimpan...
       {:else}
-        Create Ticket
+        Simpan &amp; Terima Unit
       {/if}
     </button>
   </div>

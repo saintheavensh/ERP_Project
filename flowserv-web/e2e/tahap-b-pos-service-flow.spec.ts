@@ -106,7 +106,7 @@ test.describe('Servis — sparepart & pembayaran digerbangi tahap (keluhan #3 & 
     await page.fill('#name', `Gerbang Sparepart ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#complaint', 'Tidak bisa charge');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // Intake: terkunci (template menandai allowsCharges=false di sini), dan

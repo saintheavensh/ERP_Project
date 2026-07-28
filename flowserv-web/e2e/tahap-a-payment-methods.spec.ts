@@ -49,7 +49,7 @@ test.describe('desktop (1280x800)', () => {
 
     // Deactivate via the edit modal — it should then read "Nonaktif" and, being
     // inactive, must NOT appear at the POS checkout (asserted below in a POS test).
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await row.getByRole('button', { name: 'Ubah' }).click();
     await page.locator('#edit-pm-name').waitFor();
     await page.locator('input[type="checkbox"]').uncheck();
     await page.getByRole('button', { name: 'Simpan Perubahan' }).click();

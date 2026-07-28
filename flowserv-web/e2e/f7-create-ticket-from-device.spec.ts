@@ -33,25 +33,25 @@ test('creates a ticket from a customer device via the previously-dead button', a
   await page.waitForLoadState('networkidle');
   const row = page.locator('tr', { hasText: 'Budi' }).first();
   await expect(row).toBeVisible();
-  await row.getByRole('link', { name: /View/ }).click();
+  await row.getByRole('link', { name: /Lihat/ }).click();
   await page.waitForURL(/\/customers\/[0-9a-f-]{36}/, { timeout: 20_000 });
   await shot(page, '01-customer-detail');
 
   // 3. Click "Create Ticket" on the registered device — the button that used to do nothing.
-  await expect(page.getByRole('link', { name: 'Create Ticket' })).toBeVisible();
-  await page.getByRole('link', { name: 'Create Ticket' }).click();
+  await expect(page.getByRole('link', { name: 'Servis Unit Ini' })).toBeVisible();
+  await page.getByRole('link', { name: 'Servis Unit Ini' }).click();
   await page.waitForURL(/\/tickets\/intake\?customerId=.+&assetId=.+/, { timeout: 20_000 });
   await page.waitForLoadState('networkidle');
 
   // 4. Intake arrives pre-filled and locked, not blank.
-  await expect(page.getByText('Existing customer selected')).toBeVisible();
-  await expect(page.getByText('Existing device selected')).toBeVisible();
+  await expect(page.getByText('Pelanggan lama dipilih')).toBeVisible();
+  await expect(page.getByText('Unit lama dipilih')).toBeVisible();
   await expect(page.locator('#name')).toHaveValue('Budi Santoso');
   await shot(page, '02-intake-prefilled');
 
   // 5. Submit — the device section has no inputs to fill (locked), and since
   // Tahap B the form no longer asks for a flow (tiket memakai alur default toko).
-  await page.getByRole('button', { name: 'Create Ticket' }).click();
+  await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
   // 6. Lands on the new ticket, linked to the right customer + device.
   await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });

@@ -51,7 +51,7 @@ test('toggling to Accountant Mode shows the P&L table and a link to the raw ledg
   await expect(page.getByText('Laba Kotor')).toBeVisible();
   await shot(page, '02-accountant-mode');
 
-  await page.getByRole('link', { name: 'Lihat Buku Besar →' }).click();
+  await page.getByRole('link', { name: 'Lihat Buku Kas →' }).click();
   await page.waitForURL(/\/finance\/ledger$/);
 });
 

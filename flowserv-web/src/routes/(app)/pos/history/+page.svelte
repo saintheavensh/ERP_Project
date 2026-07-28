@@ -12,7 +12,7 @@
 <div class="p-6 max-w-7xl mx-auto">
   <div class="flex justify-between items-center mb-6">
     <div>
-      <h1 class="text-2xl font-bold text-slate-800">Riwayat Penjualan (POS)</h1>
+      <h1 class="text-2xl font-bold text-slate-800">Riwayat Penjualan</h1>
       <p class="text-slate-500 text-sm mt-1">Daftar transaksi kasir yang telah selesai</p>
     </div>
     

@@ -13,14 +13,14 @@
         <input type="text" bind:value={state.newBrandName} placeholder="Brand Name (e.g. LifeFuture)" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
         <input type="text" bind:value={state.newBrandGrade} placeholder="Quality Grade (e.g. OEM, Original)" class="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
         <button type="button" disabled={!state.newBrandName || state.loading} onclick={() => state.createAndLinkBrand()} class="w-full py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-900 transition-colors disabled:opacity-50">
-          Create & Link Brand
+          Buat & Hubungkan Merek
         </button>
       </div>
     {:else}
       <p class="text-sm text-slate-500 mt-1">Link brands that are available from this retailer.</p>
       <div class="mt-4 flex gap-2">
         <select bind:value={state.selectedBrandId} class="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
-          <option value="">Select a brand...</option>
+          <option value="">Pilih merek...</option>
           {#each state.allBrands as b}
             {#if !state.supplier.supplierBrands?.find((sb: any) => sb.partBrandId === b.id)}
               <option value={b.id}>{b.name} - {b.qualityGrade}</option>
@@ -50,7 +50,7 @@
         {/each}
       {:else}
         <li class="p-6 text-center text-slate-500 text-sm">
-          No brands linked to this supplier yet.
+          Belum ada merek terhubung ke supplier ini.
         </li>
       {/if}
     </ul>

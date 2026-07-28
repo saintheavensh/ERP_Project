@@ -6,12 +6,12 @@
 </script>
 
 <svelte:head>
-  <title>Service Tickets | FlowServ</title>
+  <title>Servis | FlowServ</title>
 </svelte:head>
 
 <div class="p-4 md:p-6 max-w-6xl mx-auto">
   <div class="flex flex-wrap gap-3 justify-between items-center mb-6">
-    <h1 class="text-2xl font-bold text-slate-900">Service Tickets</h1>
+    <h1 class="text-2xl font-bold text-slate-900">Servis</h1>
     <div class="flex items-center gap-2">
       <a href="/tickets/board"
         class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
@@ -22,7 +22,7 @@
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        New Intake
+        Terima Unit
       </a>
     </div>
   </div>
@@ -36,8 +36,8 @@
           <th class="px-6 py-4 font-medium">Service Type</th>
           <th class="px-6 py-4 font-medium">Current Stage</th>
           <th class="px-6 py-4 font-medium">Status</th>
-          <th class="px-6 py-4 font-medium">Date</th>
-          <th class="px-6 py-4 font-medium text-right">Actions</th>
+          <th class="px-6 py-4 font-medium">Tanggal</th>
+          <th class="px-6 py-4 font-medium text-right">Aksi</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
@@ -77,8 +77,8 @@
               <svg class="w-12 h-12 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
               </svg>
-              <div class="text-lg font-medium text-slate-900 mb-1">No tickets found</div>
-              <p>Click "New Intake" to create your first service ticket.</p>
+              <div class="text-lg font-medium text-slate-900 mb-1">Belum ada servis.</div>
+              <p>Click "Terima Unit" to create your first service ticket.</p>
             </td>
           </tr>
         {/each}

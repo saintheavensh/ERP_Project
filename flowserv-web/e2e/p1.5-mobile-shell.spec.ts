@@ -42,9 +42,9 @@ test.describe('mobile viewport (375x667)', () => {
     await expect(sidebar).toHaveClass(/-translate-x-full/);
 
     // Hamburger opens it.
-    await page.getByRole('button', { name: 'Open menu' }).click();
+    await page.getByRole('button', { name: 'Buka menu' }).click();
     await expect(sidebar).toHaveClass(/translate-x-0/);
-    await expect(page.getByRole('link', { name: 'Tickets' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Servis', exact: true })).toBeVisible();
     await page.waitForTimeout(250); // let the 200ms slide transition finish before the screenshot
     await shot(page, '02-drawer-open');
 
@@ -53,19 +53,19 @@ test.describe('mobile viewport (375x667)', () => {
     // area behind the drawer, but the drawer visually sits on top there — a
     // real tap on the visible backdrop, to the right of the drawer, is what
     // this simulates).
-    await page.getByRole('button', { name: 'Close menu overlay' }).click({ position: { x: 320, y: 300 } });
+    await page.getByRole('button', { name: 'Tutup menu (latar)' }).click({ position: { x: 320, y: 300 } });
     await expect(sidebar).toHaveClass(/-translate-x-full/);
     await shot(page, '03-drawer-closed-after-backdrop-tap');
 
     // The explicit X button inside the drawer header also closes it.
-    await page.getByRole('button', { name: 'Open menu' }).click();
+    await page.getByRole('button', { name: 'Buka menu' }).click();
     await expect(sidebar).toHaveClass(/translate-x-0/);
-    await page.getByRole('button', { name: 'Close menu', exact: true }).click();
+    await page.getByRole('button', { name: 'Tutup menu', exact: true }).click();
     await expect(sidebar).toHaveClass(/-translate-x-full/);
 
     // Opening it and navigating closes it too (afterNavigate hook).
-    await page.getByRole('button', { name: 'Open menu' }).click();
-    await page.getByRole('link', { name: 'Tickets' }).click();
+    await page.getByRole('button', { name: 'Buka menu' }).click();
+    await page.getByRole('link', { name: 'Servis', exact: true }).click();
     await page.waitForURL(/\/tickets$/);
     await expect(sidebar).toHaveClass(/-translate-x-full/);
 
@@ -104,8 +104,8 @@ test.describe('desktop viewport (1280x800) — confirm unchanged', () => {
   test('sidebar is always visible, no hamburger', async ({ page }) => {
     await login(page);
     await page.waitForLoadState('networkidle');
-    await expect(page.getByRole('link', { name: 'Tickets' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open menu' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'Servis', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Buka menu' })).not.toBeVisible();
     await shot(page, '06-desktop-unchanged');
   });
 });

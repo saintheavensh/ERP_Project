@@ -54,7 +54,7 @@ test.describe('desktop (1280x800)', () => {
     await expect(row).toBeVisible();
     await expect(row.getByText('Jl. E2E Awal')).toBeVisible();
 
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await row.getByRole('button', { name: 'Ubah' }).click();
     await page.locator('#edit-branch-address').fill('Jl. E2E Diperbarui');
     await page.getByRole('button', { name: 'Simpan Perubahan' }).click();
 
@@ -87,7 +87,7 @@ test.describe('desktop (1280x800)', () => {
     expect(loginRes.ok()).toBe(true);
 
     // Deactivate via the edit modal.
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await row.getByRole('button', { name: 'Ubah' }).click();
     await page.locator('#edit-user-status').selectOption('inactive');
     await page.getByRole('button', { name: 'Simpan Perubahan' }).click();
     await page.waitForLoadState('networkidle');
@@ -113,7 +113,7 @@ test.describe('desktop (1280x800)', () => {
 
     await expect(page.locator('table')).toBeVisible();
     await expect(page.getByRole('button', { name: '+ Tambah Metode' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Edit' }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ubah' }).first()).toBeVisible();
   });
 
   test('tab links switch the active panel via the ?tab= query', async ({ page }) => {

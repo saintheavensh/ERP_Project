@@ -91,12 +91,12 @@
                 {/if}
               </td>
               <td class="p-3">
-                {#if margin.text !== 'No Cost Data'}
+                {#if margin.text !== 'Belum ada data modal'}
                   <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold {margin.bg} {margin.color}">
                     {margin.text}
                   </span>
                 {:else}
-                  <span class="text-xs text-slate-400 italic">No Cost Data</span>
+                  <span class="text-xs text-slate-400 italic">Belum ada data modal</span>
                 {/if}
               </td>
               <td class="p-3 text-right">

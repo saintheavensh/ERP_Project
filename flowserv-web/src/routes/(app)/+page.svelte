@@ -47,7 +47,7 @@
 </svelte:head>
 
 <div class="max-w-6xl mx-auto">
-  <h1 class="text-2xl font-bold text-slate-900 mb-4">Dashboard</h1>
+  <h1 class="text-2xl font-bold text-slate-900 mb-4">Beranda</h1>
 
   {#if data.overview}
     {@const o = data.overview}

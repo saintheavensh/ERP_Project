@@ -155,7 +155,7 @@
                   {model.specs ? `${Object.keys(model.specs).length} spesifikasi` : 'Belum ada spesifikasi'}
                 </p>
               </div>
-              <button class="text-sm text-slate-500 hover:text-slate-800 font-medium" onclick={() => openEditModel(brand.id, model)}>Edit</button>
+              <button class="text-sm text-slate-500 hover:text-slate-800 font-medium" onclick={() => openEditModel(brand.id, model)}>Ubah</button>
             </div>
           {:else}
             <p class="p-4 text-sm text-slate-500">{deviceSearch.trim() ? 'Tidak ada model yang cocok di merk ini.' : 'Belum ada model untuk merk ini.'}</p>

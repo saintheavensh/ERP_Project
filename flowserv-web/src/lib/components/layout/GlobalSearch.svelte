@@ -114,7 +114,11 @@
   {:else}
     {#each grouped as group (group.type)}
       <div class="py-1">
-        <div class="px-4 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide">
+        <!-- Judul grup diberi testid karena namanya ("Pelanggan", "Supplier")
+             kini sama persis dengan label menu di sidebar sejak S2 — assertion
+             berbasis teks polos jadi ambigu. -->
+        <div class="px-4 py-1 text-xs font-semibold text-slate-400 uppercase tracking-wide"
+          data-testid="search-group-{group.type}">
           {TYPE_LABELS[group.type] ?? group.type}
         </div>
         {#each group.items as item (item.id)}

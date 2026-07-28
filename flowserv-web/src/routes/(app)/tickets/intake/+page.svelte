@@ -9,7 +9,7 @@
 </script>
 
 <svelte:head>
-  <title>New Intake | FlowServ</title>
+  <title>Terima Unit | FlowServ</title>
 </svelte:head>
 
 <div class="p-4 md:p-6 max-w-4xl mx-auto">
@@ -19,7 +19,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
       </svg>
     </a>
-    <h1 class="text-2xl font-bold text-slate-900">New Service Intake</h1>
+    <h1 class="text-2xl font-bold text-slate-900">Terima Unit</h1>
   </div>
 
   {#if state.errorMsg}
@@ -28,7 +28,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
       </svg>
       <div>
-        <h3 class="font-medium text-sm">Error creating intake</h3>
+        <h3 class="font-medium text-sm">Gagal menyimpan unit masuk</h3>
         <p class="text-sm mt-1">{state.errorMsg}</p>
       </div>
     </div>

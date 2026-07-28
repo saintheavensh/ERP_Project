@@ -47,7 +47,7 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Xiaomi');
     await page.fill('#model', 'Redmi Note 12');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.locator('h2', { hasText: 'Current Stage:' })).toContainText('Intake');
@@ -76,7 +76,7 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Samsung');
     await page.fill('#model', 'A05');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await transitionTo(page, 'Diagnosis');
@@ -96,16 +96,16 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#brand', 'Oppo');
     await page.fill('#model', 'A57');
     await page.fill('#passcode', '1234');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByText('1234', { exact: true })).toBeVisible();
 
     // Edit it — correcting a mis-keyed value. Scoped to the "Sandi / Pola" row
     // specifically: the Customer box's icon-only edit button's accessible name
-    // ("Edit Customer") would otherwise substring-match a bare { name: 'Edit' }.
+    // ("Edit Customer") would otherwise substring-match a bare { name: 'Ubah' }.
     const passcodeRow = page.getByText('Sandi / Pola').locator('..');
-    await passcodeRow.getByRole('button', { name: 'Edit' }).click();
+    await passcodeRow.getByRole('button', { name: 'Ubah' }).click();
     await page.locator('#passcode').fill('5678');
     await page.getByRole('button', { name: 'Simpan' }).click();
     await page.waitForLoadState('networkidle');
@@ -121,7 +121,7 @@ test.describe('desktop (1280x800)', () => {
     const uniqueName = `Tahap A No Passcode ${Date.now()}`;
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Tablet');
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByText('Sandi / Pola')).toBeVisible();
@@ -147,7 +147,7 @@ test.describe('desktop (1280x800)', () => {
     }
     await expect(pad.getByText('Urutan: 1-2-3-6-9')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // Detail shows the precise pattern (visual grid + textual sequence), not a
@@ -184,7 +184,7 @@ test.describe('desktop (1280x800)', () => {
     const pad = page.getByTestId('pattern-pad');
     await expect(pad.getByText('Urutan: 1-5-9')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Create Ticket' }).click();
+    await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     await expect(page.getByText('Pola 1-5-9', { exact: true })).toBeVisible();
   });

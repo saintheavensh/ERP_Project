@@ -24,7 +24,7 @@ test.describe('desktop (1280x800) — inline search', () => {
     await input.fill('budi');
 
     // Wait for the debounced fetch + dropdown to render a result group.
-    await expect(page.getByText('Pelanggan', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('search-group-customer')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('Tiket', { exact: true })).toBeVisible();
     await expect(page.getByText('Budi Santoso', { exact: true }).first()).toBeVisible();
 
@@ -60,12 +60,12 @@ test.describe('desktop (1280x800) — inline search', () => {
 
     const input = page.locator('input[placeholder^="Cari pelanggan"]');
     await input.fill('budi');
-    await expect(page.getByText('Pelanggan', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('search-group-customer')).toBeVisible({ timeout: 5_000 });
 
     // Click far outside both the dropdown and the sidebar (which sits above
     // the backdrop, z-index-wise, on the left edge of the page).
     await page.mouse.click(1250, 500);
-    await expect(page.getByText('Pelanggan', { exact: true })).not.toBeVisible();
+    await expect(page.getByTestId('search-group-customer')).not.toBeVisible();
   });
 });
 
@@ -87,7 +87,7 @@ test.describe('mobile (375x667) — overlay search', () => {
     expect(bodyWidth).toBeLessThanOrEqual(376);
 
     await overlayInput.fill('supplier a');
-    await expect(page.getByText('Supplier', { exact: true })).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByTestId('search-group-supplier')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('Supplier A (Tunai)').first()).toBeVisible();
 
     await page.getByText('Batal').click();

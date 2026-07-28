@@ -30,7 +30,7 @@
       class="space-y-6"
     >
       <div>
-        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Alamat Email</label>
         <input 
           id="email" 
           name="email" 

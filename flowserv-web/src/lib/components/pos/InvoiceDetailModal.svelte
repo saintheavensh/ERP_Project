@@ -92,7 +92,7 @@
               <thead class="bg-slate-100 border-b border-slate-200">
                 <tr>
                   <th class="p-3 font-medium text-slate-600">Item</th>
-                  <th class="p-3 font-medium text-slate-600 text-center">Qty</th>
+                  <th class="p-3 font-medium text-slate-600 text-center">Jumlah</th>
                   <th class="p-3 font-medium text-slate-600 text-right">Harga Satuan</th>
                   <th class="p-3 font-medium text-slate-600 text-right">Subtotal</th>
                 </tr>
@@ -151,7 +151,7 @@
               Void (Batal)
             </button>
             <button onclick={() => state.handleEdit(state.selectedInvoiceDetail)} class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded-lg transition-colors border border-amber-200">
-              Edit & Re-Cart
+              Ubah & Masukkan Keranjang
             </button>
           {/if}
         </div>

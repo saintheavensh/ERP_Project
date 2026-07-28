@@ -18,7 +18,7 @@
     <h3 class="font-bold text-slate-900 text-lg">Kompatibilitas Device</h3>
     {#if !state.isEditingCompat}
       <button onclick={() => state.startEdit()} class="text-blue-600 hover:text-blue-800 text-sm font-medium px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-        Edit Kompatibilitas
+        Ubah Kompatibilitas
       </button>
     {:else}
       <div class="flex gap-2">

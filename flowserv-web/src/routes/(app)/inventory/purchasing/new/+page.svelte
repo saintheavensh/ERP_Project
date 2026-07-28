@@ -18,7 +18,7 @@
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
     </a>
     <div>
-      <h1 class="text-2xl font-bold text-slate-900">Create Purchase Order</h1>
+      <h1 class="text-2xl font-bold text-slate-900">Buat Pesanan Pembelian</h1>
       <p class="text-slate-500 mt-1">Draft a new order to a supplier. Prices here are estimates.</p>
     </div>
   </div>
@@ -35,7 +35,7 @@
       <PurchaseFormItems {state} />
       
       <div class="pt-6 border-t border-slate-200 flex justify-end gap-3">
-        <a href="/inventory/purchasing" class="px-6 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors">Cancel</a>
+        <a href="/inventory/purchasing" class="px-6 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors">Batal</a>
         <button type="submit" disabled={state.loading} class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
           {state.loading ? 'Creating...' : 'Create Draft PO'}
         </button>

@@ -9,13 +9,13 @@
   <table class="w-full min-w-[900px] text-left border-collapse">
     <thead>
       <tr class="bg-slate-50 border-b border-slate-200 text-sm font-medium text-slate-500">
-        <th class="p-4">Name</th>
+        <th class="p-4">Nama</th>
         <th class="p-4">Contact Info</th>
-        <th class="p-4">Type</th>
+        <th class="p-4">Tipe</th>
         <th class="p-4">Payment</th>
         <th class="p-4">Return Policy</th>
         <th class="p-4">Warranty</th>
-        <th class="p-4 text-right">Actions</th>
+        <th class="p-4 text-right">Aksi</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-slate-100">
@@ -35,8 +35,8 @@
           <td class="p-4 text-slate-600">{supplier.warrantyPolicyDays ? `${supplier.warrantyPolicyDays} Days` : 'N/A'}</td>
           <td class="p-4 text-right">
             <div class="flex items-center justify-end gap-3">
-              <a href="/inventory/suppliers/{supplier.id}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">View & Edit</a>
-              <button type="button" class="text-red-500 hover:text-red-700 text-sm font-medium" onclick={() => state.deleteSupplier(supplier.id)}>Delete</button>
+              <a href="/inventory/suppliers/{supplier.id}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Lihat & Ubah</a>
+              <button type="button" class="text-red-500 hover:text-red-700 text-sm font-medium" onclick={() => state.deleteSupplier(supplier.id)}>Hapus</button>
             </div>
           </td>
         </tr>

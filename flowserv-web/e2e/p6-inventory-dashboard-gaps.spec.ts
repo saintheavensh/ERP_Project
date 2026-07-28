@@ -74,7 +74,7 @@ test('batch history shows supplier, branch, and received date', async ({ page })
   // the seeded "LCD Samsung A10" is known to have batches from prior sessions.
   await page.goto('/inventory');
   await page.getByPlaceholder('Cari nama atau SKU...').fill('LCD Samsung');
-  await page.getByRole('link', { name: 'View' }).first().click();
+  await page.getByRole('link', { name: 'Lihat', exact: true }).first().click();
   await page.waitForLoadState('networkidle');
 
   await expect(page.getByText('Batch Stok Aktif (FIFO)')).toBeVisible();

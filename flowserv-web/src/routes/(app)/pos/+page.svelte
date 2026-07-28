@@ -30,7 +30,7 @@
   <!-- Header / Controls -->
   <div class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 md:py-4 shrink-0 flex flex-wrap items-center gap-3 justify-between shadow-sm z-10">
     <div class="flex flex-wrap items-center gap-3 md:space-x-6">
-      <h1 class="text-xl font-bold text-slate-800">Point of Sales</h1>
+      <h1 class="text-xl font-bold text-slate-800">Kasir</h1>
 
       <div class="flex items-center space-x-2">
         <label for="branch" class="text-sm font-medium text-slate-600">Cabang:</label>

@@ -45,13 +45,13 @@
 </script>
 
 <svelte:head>
-  <title>Ticket Board | FlowServ</title>
+  <title>Papan Servis | FlowServ</title>
 </svelte:head>
 
 <div class="p-4 md:p-6 max-w-full">
   <div class="flex flex-wrap gap-3 justify-between items-center mb-4">
     <div class="flex items-center gap-3 flex-wrap">
-      <h1 class="text-2xl font-bold text-slate-900">Ticket Board</h1>
+      <h1 class="text-2xl font-bold text-slate-900">Papan Servis</h1>
       {#if board.templates.length > 1}
         <select
           class="text-sm border-slate-300 rounded-lg py-1.5"

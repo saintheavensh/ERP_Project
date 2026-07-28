@@ -20,7 +20,7 @@
   <div>
     {#if order?.status === 'draft'}
       <button disabled={loading} onclick={onDelete} class="text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
-        Delete PO
+        Hapus PO
       </button>
     {:else}
       <!-- F5 — goods have already moved for any non-draft PO; the server rejects
