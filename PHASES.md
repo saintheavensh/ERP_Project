@@ -15,6 +15,23 @@
 
 ## Current Phase: `Go-live Tahap B` — pilot readiness (see `plan/go-live-tahap-b-onward.md`)
 
+> **⚠️ Updated 2026-07-31 — cara kerja berubah, baca ini dulu.** Pekerjaan sekarang
+> berjalan **satu fase pada satu waktu, dengan uji manual pemilik sebagai gerbang di
+> antaranya**. Rencana aktifnya
+> **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R5), indeksnya
+> [`plan/README.md`](plan/README.md).
+>
+> **Aturan yang mengikat agent:** jangan pernah mengerjakan dua fase sekaligus, dan
+> **jangan mulai fase berikutnya sebelum membaca berkas `plan/uji-R*.md` yang sudah diisi
+> pemilik.** Alasannya sama dengan alasan Definition of Done di bawah ada: 262 unit test
+> hijau dan `tsc` bersih tetap tidak menangkap bahwa **kasir tidak bisa membuat tiket
+> servis** dan **teknisi tidak bisa mengambil pekerjaan yang belum ditugaskan** — dua bug
+> yang baru ketahuan saat pemilik memakai aplikasinya sendiri.
+>
+> `plan/` dirapikan 2026-07-31: 9 berkas rencana yang tugasnya sudah selesai dihapus
+> (buktinya ada di file ini + git history). Satu temuan yang belum dibangun dan nyaris
+> hilang — **retur ke supplier** — diselamatkan ke Fase R5.
+
 > **⚠️ Updated 2026-07-28 — track PENYEDERHANAAN dibuka, dan ini yang paling penting
 > di file ini sekarang.** Lihat **[`plan/go-live-penyederhanaan.md`](plan/go-live-penyederhanaan.md)**.
 >

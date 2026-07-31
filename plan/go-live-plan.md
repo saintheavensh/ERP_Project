@@ -97,7 +97,7 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
 1. **Pisah data per cabang** — kasir Cabang A tidak lihat data Cabang B. Sekarang semua lihat semua. (JWT belum bawa `branchId`; query hanya filter tenant.)
 2. ~~**Konfigurasi 2 flow template servis** (ditunggu/disimpan) + field intake
    **sandi/pola**.~~ ✅ **SELESAI 2026-07-24**
-   ([`plan/tahap-a-flow-templates.md`](tahap-a-flow-templates.md)). Struktur node
+   (`plan/tahap-a-flow-templates.md` *(berkas dihapus 2026-07-31 — bukti di PHASES.md + git history)*). Struktur node
    (dikonfirmasi ke pemilik): Ditunggu = Intake→Diagnosis→Menunggu Persetujuan→QC
    Awal→Pengerjaan→QC Akhir→Selesai (7 node); Disimpan = sama + node "Unit Disimpan"
    setelah Diagnosis (8 node); keduanya punya shortcut Menunggu Persetujuan→Selesai
@@ -108,7 +108,7 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
    dibutuhkan — murni seed data. 90 Playwright + 198 unit hijau.
 3. ~~**Pemicu cetak per-tahap**: tanda terima (alur disimpan, setelah diagnosa),
    nota selesai, label.~~ ✅ **SELESAI 2026-07-25**
-   ([`plan/tahap-a-print-triggers.md`](tahap-a-print-triggers.md)). Ternyata butuh
+   (`plan/tahap-a-print-triggers.md` *(berkas dihapus 2026-07-31 — bukti di PHASES.md + git history)*). Ternyata butuh
    jalur render baru sepenuhnya (bukan cuma "nyalakan yang ada") — label/tanda-terima
    dicetak dari TIKET, bukan invoice, sebelum invoice ada. Sekalian menutup lubang
    lama: field keluhan/kerusakan (SVC-001) tak pernah ada kolomnya sampai sekarang.
@@ -117,7 +117,7 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
    node Unit Disimpan (otomatis cuma alur Disimpan), Nota setelah invoice
    sungguhan ada. 94 Playwright + 198 unit hijau.
 4. ~~**CRUD metode pembayaran** (tambah e-wallet Dana/OVO/GoPay).~~ ✅ **SELESAI
-   2026-07-24** ([`plan/tahap-a-payment-methods.md`](tahap-a-payment-methods.md)). Ternyata
+   2026-07-24** (`plan/tahap-a-payment-methods.md` *(berkas dihapus 2026-07-31 — bukti di PHASES.md + git history)*). Ternyata
    bukan "kecil": tabel `payment_methods` dibaca POS tapi tak pernah di-seed, enum checkout
    backend hardcoded tanpa `ewallet`, dan radio POS bind ke `type` (rusak bila 2+ metode
    ber-type sama). Diperbaiki end-to-end: seed 7 metode (incl. Dana/OVO/GoPay), CRUD
@@ -126,7 +126,7 @@ nota sparepart thermal" cocok dengan arsitektur yang ada.
 5. **Change order** (konfirmasi ulang harga saat ada kerusakan tambahan di tengah pengerjaan).
 
 > **Di luar Tier-1, dikerjakan 2026-07-25 karena diminta langsung dari mockup
-> pemilik:** [`plan/tahap-a-device-catalog-invoice-mode.md`](tahap-a-device-catalog-invoice-mode.md)
+> pemilik:** `plan/tahap-a-device-catalog-invoice-mode.md` *(berkas dihapus 2026-07-31 — bukti di PHASES.md + git history)*
 > — katalog device (gambar/spesifikasi/saran servis, memperluas tabel
 > `device_models`/`device_brands` yang sudah ada untuk DEV-008 tapi sebelumnya tanpa
 > CRUD sama sekali) + mode tampilan invoice Detailed/Summary/Flexible

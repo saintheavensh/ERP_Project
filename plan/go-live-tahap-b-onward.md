@@ -254,7 +254,7 @@ paling aman:
       cukup untuk pilot; plafon per-peran menyusul bila pemilik butuh kasir boleh diskon kecil.*
 - [x] **D4 — Alur POS & alur servis dibetulkan (selesai 2026-07-27).** Bukan item D
       terencana; muncul dari pemilik menjalankan alur nyata dan menemukan lima hal yang
-      tidak cocok. Detail penuh + bukti: [`plan/tahap-b-alur-pos-servis.md`](tahap-b-alur-pos-servis.md).
+      tidak cocok. Detail penuh + bukti: `plan/tahap-b-alur-pos-servis.md` *(berkas dihapus 2026-07-31 — bukti di PHASES.md + git history)*.
       Ringkas: (1) kasir kini memasukkan uang diterima + kembalian (tercetak di struk);
       (2) struk otomatis terkirim ke printer setelah checkout, tak perlu lewat Riwayat;
       (3) alur servis dibangun ulang mengikuti urutan toko sebenarnya — **satu template
