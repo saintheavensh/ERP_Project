@@ -18,8 +18,14 @@ const financeRouter = new Hono();
 
 financeRouter.use('*', requireAuth);
 
+// R1.5A — every read below is gated on `finance.view_reports`. That permission
+// has existed in the seed catalog since H12 and is granted to Manager, but no
+// route ever called it: cashier and technician both got 200 with real revenue,
+// COGS, and profit. The gate was never breached — it was never installed.
+// Same defect shape as S5's unenforced stage capabilities.
+
 // GET /v1/finance/payables
-financeRouter.get('/payables', async (c) => {
+financeRouter.get('/payables', requirePermission('finance.view_reports'), async (c) => {
   const { tenantId } = getAuthContext(c);
   
   try {
@@ -42,7 +48,7 @@ financeRouter.get('/payables', async (c) => {
 });
 
 // GET /v1/finance/payables/:id — invoice detail with its full payment history
-financeRouter.get('/payables/:id', async (c) => {
+financeRouter.get('/payables/:id', requirePermission('finance.view_reports'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 
@@ -98,7 +104,14 @@ financeRouter.post('/payables/:id/payments', requirePermission('finance.record_p
 // GET /v1/finance/receivables — H14/FIN-003: outstanding customer debt,
 // mirroring /payables. Only possible because H8 gave pos_invoices a real
 // customerId FK.
-financeRouter.get('/receivables', async (c) => {
+// Receivables is deliberately gated on `pos.process_payment`, NOT
+// `finance.view_reports`. It is the cashier's collection worklist — "who still
+// owes us" is instrumental to "take their payment", and the owner's rule is
+// that the cashier is the one who bills and receives money. Gating it as a
+// management report would silently zero the Cashier dashboard's AR tile (P3),
+// since that load path swallows non-OK responses. Technician has neither
+// permission and is correctly refused.
+financeRouter.get('/receivables', requirePermission('pos.process_payment'), async (c) => {
   const { tenantId } = getAuthContext(c);
 
   try {
@@ -111,7 +124,7 @@ financeRouter.get('/receivables', async (c) => {
 
 // GET /v1/finance/ledger — H11 simple ledger view (DAS-004 Simple Mode).
 // No chart of accounts here on purpose — see PHASES.md Architecture Debt.
-financeRouter.get('/ledger', async (c) => {
+financeRouter.get('/ledger', requirePermission('finance.view_reports'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const branchId = c.req.query('branchId');
 
@@ -136,7 +149,7 @@ financeRouter.get('/ledger', async (c) => {
 // the Simple/Accountant dashboard. Computed in SQL over the full date range, not
 // by summing /ledger's capped 200-row list (which silently under-counts once a
 // branch has more than 200 lifetime entries).
-financeRouter.get('/ledger/summary', async (c) => {
+financeRouter.get('/ledger/summary', requirePermission('finance.view_reports'), async (c) => {
   const { tenantId } = getAuthContext(c);
   const branchId = c.req.query('branchId');
   const fromParam = c.req.query('from');
@@ -191,7 +204,7 @@ financeRouter.get('/ledger/summary', async (c) => {
 // GET /v1/finance/ledger/reconcile — H11: compares posted revenue against
 // pos_invoices totals per invoice and flags any gap. Also the recovery tool
 // for the commit-then-emit gap the ledger's design deliberately accepts.
-financeRouter.get('/ledger/reconcile', async (c) => {
+financeRouter.get('/ledger/reconcile', requirePermission('finance.view_reports'), async (c) => {
   const { tenantId } = getAuthContext(c);
 
   try {

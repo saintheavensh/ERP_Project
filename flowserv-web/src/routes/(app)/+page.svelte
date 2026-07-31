@@ -1,9 +1,14 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
+  import { page } from '$app/state';
   import { API_BASE } from '$lib/api/config';
   import StatCard from '$lib/components/dashboard/StatCard.svelte';
 
   let { data } = $props();
+
+  // R1.5A — set by the layout guard when a role opens a page it may not.
+  // Saying so out loud beats a silent bounce that looks like a broken link.
+  const ditolak = $derived(page.url.searchParams.get('ditolak'));
 
   function formatRp(amount: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
@@ -48,6 +53,17 @@
 
 <div class="max-w-6xl mx-auto">
   <h1 class="text-2xl font-bold text-slate-900 mb-4">Beranda</h1>
+
+  {#if ditolak}
+    <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="alert">
+      <p class="font-semibold">Halaman itu bukan untuk peran Anda</p>
+      <p class="mt-1">
+        <code class="rounded bg-amber-100 px-1 py-0.5">{ditolak}</code>
+        hanya bisa dibuka oleh peran yang berwenang. Bila Anda memang membutuhkannya,
+        minta pemilik atau admin mengubah peran akun Anda.
+      </p>
+    </div>
+  {/if}
 
   {#if data.overview}
     {@const o = data.overview}
