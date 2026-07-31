@@ -32,6 +32,40 @@
 > (buktinya ada di file ini + git history). Satu temuan yang belum dibangun dan nyaris
 > hilang — **retur ke supplier** — diselamatkan ke Fase R5.
 >
+> - [/] **R1.5 — Perbaikan hasil uji manual pemilik** (2026-08-01, berjalan).
+>       Pemilik menjalankan [`plan/uji-R1-peran-akses.md`](plan/uji-R1-peran-akses.md) dan
+>       menyimpulkan **"Ada yang harus diperbaiki dulu"**, bukan lanjut ke R2. Rencananya
+>       [`plan/R1.5-perbaikan-hasil-uji-R1.md`](plan/R1.5-perbaikan-hasil-uji-R1.md).
+>       - [x] **R1.5A — kebocoran data keuangan ditutup** (`fa58979`). Poin uji C7/C8
+>             ("kasir bisa akses halaman itu, tidak hanya kasir, teknisi juga") ternyata
+>             **bukan sekadar halaman kosong yang terbuka**: `GET /v1/finance/*` memberi
+>             kasir DAN teknisi **200 berisi omzet, modal, dan laba**
+>             (`revenue 220000, cogs 150000, estimatedProfit 70000`) — menabrak aturan
+>             pemilik sendiri *"teknisi hanya bisa melihat harga jual"*. Sebabnya bukan
+>             gerbang jebol: permission `finance.view_reports` **sudah ada di katalog sejak
+>             H12 dan diberikan ke Manager, tapi tidak satu route pun pernah memanggilnya** —
+>             bentuk cacat yang sama dengan S5 dan Track F. Ditutup di backend (gerbang
+>             sebenarnya) + `lib/auth/route-access.ts` di frontend, karena
+>             `(app)/+layout.server.ts` selama ini hanya memeriksa "sudah login", tak pernah
+>             "boleh di sini". `/receivables` sengaja digerbangi `pos.process_payment`, bukan
+>             `finance.view_reports`, supaya kartu AR di beranda Kasir tidak ikut mati.
+>       - [x] **R1.5B — teknisi tidak lagi membuat tiket servis** (`5bdf2fb`). Poin uji B1.
+>             R1 memberi izin itu ke kasir dengan alasan "kasir yang menerima unit di
+>             konter"; alasan yang sama berarti teknisi tak seharusnya punya. Tiga lapis:
+>             izin dicabut, tombol disembunyikan, rute dijaga. `ticket.diagnose` sengaja
+>             tetap ada — itu yang menggerbangi klaim pekerjaan (ada tes regresinya).
+>       - [ ] R1.5C — validasi sandi/pola minimal 4 (poin uji A5)
+>       - [ ] R1.5D — kasir tidak dilempar ke halaman detail, cukup toast (poin uji A9)
+>       - [ ] R1.5E — uji manual pemilik untuk R1.5
+>
+>       **Bukti:** 262 unit · `svelte-check` 731 berkas 0 error · **13 Playwright baru**
+>       (`e2e/r1-5-akses-peran.spec.ts`) · spec lama `r1-peran-akses` (10) +
+>       `p3-role-dashboards` (5) lulus tanpa diedit · matriks 403/200 empat peran terekam.
+>       **Satu tes merah dan bukan dari sini:** `f7-create-ticket-from-device` gagal hanya
+>       pada suite penuh (164/1) karena pelanggan seed Budi punya dua unit — lulus sendirian
+>       dan lulus tepat sesudah spec baru; cacat isolasi antar-spec yang sudah ada
+>       sebelumnya, dicatat ke Fase R4, sengaja tidak dilonggarkan diam-diam.
+>
 > - [x] **R1 — Peran & akses** (2026-07-31). Kasir dapat `ticket.create` + baris menu
 >       "Servis"; `GET /v1/tickets` menerima `?assignedTo=none`; daftar teknisi jadi dua
 >       kelompok ("Menunggu Diambil" / "Sedang Saya Kerjakan") dan beranda teknisi dapat
