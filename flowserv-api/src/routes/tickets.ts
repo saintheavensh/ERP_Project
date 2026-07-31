@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { checkPasscode } from '../lib/passcode';
 import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
@@ -178,6 +179,20 @@ ticketsRouter.get('/:id', async (c) => {
 // -> undefined first so the handler's "no id -> create it" path runs. (Found by
 // the H15-gap-(b) Playwright walk — exactly the UI dead end an API test misses.)
 const emptyToUndefined = (v: unknown) => (v === '' ? undefined : v);
+
+// R1.5C — satu definisi dipakai kedua jalur tulis (intake + PATCH
+// intake-details), supaya aturannya tak bisa berbeda di antara keduanya.
+// Boleh kosong; yang ditolak hanya yang diisi tapi terlalu pendek.
+const passcodeField = z.preprocess(
+  emptyToUndefined,
+  z.string().optional().superRefine((val, ctx) => {
+    const check = checkPasscode(val);
+    if (!check.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: check.message });
+    }
+  })
+);
+
 const intakeSchema = z.object({
   customerId: z.preprocess(emptyToUndefined, z.string().uuid().optional()), // if existing customer
   customerName: z.string().min(2).optional(), // if new customer
@@ -196,7 +211,10 @@ const intakeSchema = z.object({
 
   // Tahap A — go-live gap Tier-1 #2. Recorded at intake, given back at
   // handover (QC Akhir); editable later via PATCH /:id/intake-details.
-  devicePasscode: z.preprocess(emptyToUndefined, z.string().optional()),
+  // R1.5C — panjang minimumnya ditegakkan di sini (dan di PATCH), bukan hanya
+  // di form: mengunci form saja adalah kunci semu, satu panggilan API langsung
+  // menembusnya (pelajaran S5).
+  devicePasscode: passcodeField,
   // Tahap A — go-live gap Tier-1 #3. Feeds the label/tanda-terima print
   // documents ("kerusakan"); editable later via the same PATCH endpoint.
   reportedComplaint: z.preprocess(emptyToUndefined, z.string().optional()),

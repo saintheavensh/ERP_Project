@@ -185,7 +185,82 @@ test('teknisi tetap bisa mengambil pekerjaan (regresi R1 — jangan sampai ikut 
 });
 
 // ---------------------------------------------------------------------------
-// C. Super Admin tidak berubah sama sekali
+// C. Sandi/pola minimal 4 (uji-R1 A5)
+// ---------------------------------------------------------------------------
+
+test('API menolak sandi/PIN & pola yang terlalu pendek, di kedua jalur tulis', async ({ page }) => {
+  const token = await apiToken(page, 'cashier@demo.com');
+  const dasar = {
+    assetType: 'Handphone',
+    assetBrand: 'Samsung',
+    reportedComplaint: 'Layar mati total',
+    branchId: BRANCH_PUSAT,
+  };
+  const buat = (devicePasscode: string) =>
+    page.request.post(`${API_BASE}/tickets/intake`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: {
+        ...dasar,
+        customerName: 'Uji sandi ' + Date.now() + Math.random(),
+        customerPhone: '0812' + Math.floor(Math.random() * 1e8),
+        devicePasscode,
+      },
+    });
+
+  // Pendek ditolak. "pola:1-2" panjangnya 8 KARAKTER tapi cuma 2 titik — kalau
+  // ini lolos, berarti validasinya menghitung panjang string mentah.
+  expect((await buat('123')).status(), 'PIN 3 karakter').toBe(400);
+  expect((await buat('pola:1-2')).status(), 'pola 2 titik').toBe(400);
+
+  // Yang sah tetap lolos, termasuk kosong (tidak semua unit terkunci).
+  expect((await buat('1234')).status(), 'PIN 4 karakter').toBe(201);
+  expect((await buat('pola:1-2-3-6')).status(), 'pola 4 titik').toBe(201);
+  expect((await buat('')).status(), 'kosong tetap boleh').toBe(201);
+});
+
+test('mengosongkan sandi saat serah-terima tetap boleh (jangan ikut terjaring)', async ({ page }) => {
+  // PATCH dengan null adalah fitur nyata: sandi dihapus begitu unit
+  // dikembalikan ke pelanggan. Aturan panjang minimum tidak boleh mematikannya.
+  const token = await apiToken(page, 'cashier@demo.com');
+  const dibuat = await page.request.post(`${API_BASE}/tickets/intake`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      customerName: 'Uji hapus sandi ' + Date.now(),
+      customerPhone: '0812' + Math.floor(Math.random() * 1e8),
+      assetType: 'Handphone',
+      reportedComplaint: 'Layar mati total',
+      branchId: BRANCH_PUSAT,
+      devicePasscode: '1234',
+    },
+  });
+  expect(dibuat.status()).toBe(201);
+  const ticketId = (await dibuat.json()).data.id as string;
+
+  const patch = (devicePasscode: string | null) =>
+    page.request.patch(`${API_BASE}/tickets/${ticketId}/intake-details`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { devicePasscode },
+    });
+
+  expect((await patch(null)).status(), 'null = kosongkan, harus boleh').toBe(200);
+  expect((await patch('12')).status(), 'tetap menolak yang pendek').toBe(400);
+  expect((await patch('5678')).status(), 'ganti ke sandi sah').toBe(200);
+});
+
+test('kasir melihat peringatan panjang sambil mengetik, bukan setelah simpan', async ({ page }) => {
+  await login(page, 'cashier@demo.com');
+  await page.goto('/tickets/intake');
+  await page.waitForLoadState('networkidle');
+
+  await page.locator('#passcode').fill('12');
+  await expect(page.getByText(/Sandi\/PIN minimal 4 karakter/)).toBeVisible();
+
+  await page.locator('#passcode').fill('1234');
+  await expect(page.getByText(/Sandi\/PIN minimal 4 karakter/)).toHaveCount(0);
+});
+
+// ---------------------------------------------------------------------------
+// D. Super Admin tidak berubah sama sekali
 // ---------------------------------------------------------------------------
 
 test('super admin tetap bisa membuka semua halaman yang dibatasi', async ({ page }) => {

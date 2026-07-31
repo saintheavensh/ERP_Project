@@ -165,28 +165,33 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.getByRole('button', { name: 'Pola', exact: true }).click();
 
-    // Drag across the diagonal 1 -> 5 -> 9 without clicking each dot. viewBox is
-    // 0..180, the svg renders at ~160px, so scale screen px by width/180.
+    // Drag the diagonal 1 -> 5 -> 9 then across to 8, without clicking each dot.
+    // viewBox is 0..180, the svg renders at ~160px, so scale screen px by width/180.
+    //
+    // R1.5C — dulu pola ini 3 titik (1-5-9). Sejak sandi/pola wajib minimal 4,
+    // 3 titik ditolak backend, jadi datanya diperpanjang jadi 4. Yang diuji
+    // tidak berubah: MENYERET melewati titik, bukan menekan satu per satu.
     const svg = page.getByTestId('pattern-pad').locator('svg');
     const box = (await svg.boundingBox())!;
     const at = (vx: number, vy: number) => ({
       x: box.x + (vx / 180) * box.width,
       y: box.y + (vy / 180) * box.height,
     });
-    const p1 = at(30, 30), p5 = at(90, 90), p9 = at(150, 150);
+    const p1 = at(30, 30), p5 = at(90, 90), p9 = at(150, 150), p8 = at(90, 150);
 
     await page.mouse.move(p1.x, p1.y);
     await page.mouse.down();
     await page.mouse.move(p5.x, p5.y, { steps: 8 });
     await page.mouse.move(p9.x, p9.y, { steps: 8 });
+    await page.mouse.move(p8.x, p8.y, { steps: 8 });
     await page.mouse.up();
 
     const pad = page.getByTestId('pattern-pad');
-    await expect(pad.getByText('Urutan: 1-5-9')).toBeVisible();
+    await expect(pad.getByText('Urutan: 1-5-9-8')).toBeVisible();
 
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
-    await expect(page.getByText('Pola 1-5-9', { exact: true })).toBeVisible();
+    await expect(page.getByText('Pola 1-5-9-8', { exact: true })).toBeVisible();
   });
 });
 

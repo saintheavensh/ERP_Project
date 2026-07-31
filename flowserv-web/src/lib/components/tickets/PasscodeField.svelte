@@ -15,6 +15,20 @@
     userMode = m;
     onchange('');
   }
+
+  // R1.5C — peringatan panjang minimum, ditampilkan sambil mengetik.
+  // Backend tetap gerbangnya (400 PASSCODE_TOO_SHORT); ini supaya kasir tahu
+  // SEBELUM menekan simpan, bukan sesudah unitnya sudah di rak. Aturannya
+  // harus sama dengan flowserv-api/src/lib/passcode.ts.
+  const MIN = 4;
+  const terlaluPendek = $derived.by(() => {
+    if (!value) return false; // kosong sah — tidak semua unit terkunci
+    if (isPattern(value)) {
+      const titik = value.slice('pola:'.length);
+      return titik.length > 0 && titik.split('-').length < MIN;
+    }
+    return value.trim().length < MIN;
+  });
 </script>
 
 <div>
@@ -29,5 +43,11 @@
       class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. 1234" />
   {:else}
     <PatternPad {value} {onchange} />
+  {/if}
+
+  {#if terlaluPendek}
+    <p class="mt-1.5 text-sm text-amber-700" role="alert">
+      {mode === 'pola' ? `Pola minimal ${MIN} titik.` : `Sandi/PIN minimal ${MIN} karakter.`}
+    </p>
   {/if}
 </div>

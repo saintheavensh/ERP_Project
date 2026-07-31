@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { checkPasscode } from '../../lib/passcode';
 
 // A 'part' charge references real inventory. unitPrice defaults from the item's selling
 // price (looked up in the service) but stays editable — technicians negotiate — so it is
@@ -72,7 +73,15 @@ export type CancelTicketInput = z.infer<typeof cancelTicketInput>;
 // back at QC Akhir). `null` clears a field; an omitted key is a no-op, not a
 // clear — so a caller updating just one field never touches the other.
 export const updateIntakeDetailsInput = z.object({
-  devicePasscode: z.string().nullable().optional(),
+  // R1.5C — aturan panjang minimum yang sama dengan jalur intake. `null`
+  // (mengosongkan saat unit diserahkan) tetap sah dan tidak diperiksa.
+  devicePasscode: z.string().nullable().optional().superRefine((val, ctx) => {
+    if (val === null || val === undefined) return;
+    const check = checkPasscode(val);
+    if (!check.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: check.message });
+    }
+  }),
   reportedComplaint: z.string().nullable().optional(),
   // Tahap B — hasil diagnosis teknisi + lama pengerjaan yang dijanjikan ke
   // pelanggan. Ikut endpoint yang sama, bukan endpoint baru: pola "field kecil
