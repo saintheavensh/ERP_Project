@@ -4,7 +4,7 @@ import { zValidator } from '@hono/zod-validator';
 import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
 import { ticketStatusEnum } from '../db/schema/enums';
-import { eq, and, desc, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission, enforcePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
@@ -27,9 +27,20 @@ ticketsRouter.get('/', async (c) => {
   // To keep it simple, we join with customers and assets
 
   // H8 — "My Jobs" (?assignedTo=me) and manager filtering (?assignedTo=<userId>)
+  //
+  // R1 (2026-07-31) — `?assignedTo=none` ditambahkan: antrian tiket yang BELUM
+  // bertuan. Tanpa ini teknisi tak punya cara melihat pekerjaan yang menunggu —
+  // daftarnya selalu difilter `assignedTo=me`, jadi tiket tak bertuan tidak
+  // muncul di mana pun, halaman detailnya tak terjangkau, dan tombol "Ambil
+  // Pekerjaan" (yang sudah ada dan sudah benar) tak pernah bisa ditekan.
+  //
+  // Tetap permisif seperti filter lain di handler ini: nilai asing diabaikan,
+  // bukan 400 — endpoint ini juga dipakai papan Kanban dan beranda per peran.
   const assignedToParam = c.req.query('assignedTo');
   const filters = [eq(serviceTickets.tenantId, tenantId)];
-  if (assignedToParam) {
+  if (assignedToParam === 'none') {
+    filters.push(isNull(serviceTickets.assignedTechnicianId));
+  } else if (assignedToParam) {
     const assignedToId = assignedToParam === 'me' ? userId : assignedToParam;
     filters.push(eq(serviceTickets.assignedTechnicianId, assignedToId));
   }

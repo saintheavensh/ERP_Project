@@ -172,9 +172,11 @@ test.describe('desktop viewport (1280x800)', () => {
     await login(page, 'admin@demo.com');
     await page.goto('/tickets');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('link', { name: 'Board View' }).click();
+    // R1 — "Board View"/"List View" adalah sisa teks Inggris yang lolos dari S1
+    // ("satu bahasa toko"); ikut dirapikan saat halaman daftar ditulis ulang.
+    await page.getByRole('link', { name: 'Papan Tahap' }).click();
     await page.waitForURL(/\/tickets\/board$/);
-    await page.getByRole('link', { name: /List View/ }).click();
+    await page.getByRole('link', { name: /Daftar Servis/ }).click();
     await page.waitForURL(/\/tickets$/);
   });
 

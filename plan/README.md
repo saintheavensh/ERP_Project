@@ -46,7 +46,7 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 | [`go-live-tahap-b-onward.md`](go-live-tahap-b-onward.md) | Peta prioritas besar menuju pilot 1 cabang (Milestone 0 / B / C / D / E) | 🟢 Aktif |
 | [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R5: peran, halaman tiket per peran, QC, retur | 🟢 Aktif |
 | [`uji-00-kondisi-sekarang.md`](uji-00-kondisi-sekarang.md) | Uji aplikasi **apa adanya hari ini** — semua area, ~150 poin | 📋 Opsional, kapan saja |
-| [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md) | Uji khusus Fase R1 | ⏳ Menunggu R1 selesai |
+| [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md) | Uji khusus Fase R1 | 🔴 **SIAP DIJALANKAN** |
 
 **Checklist uji R2 dan R3 sengaja belum ditulis** — isinya akan menyesuaikan catatan pemilik
 dari fase sebelumnya. Menulisnya sekarang berarti menebak.
@@ -58,8 +58,8 @@ dari fase sebelumnya. Menulisnya sekarang berarti menebak.
 **Branch:** `go-live/tahap-b` · **Baseline:** 262 unit test backend hijau (dicek 2026-07-31)
 
 ```
-R1  Peran & akses                🔴 SIAP MULAI — kasir buat tiket, teknisi ambil kerja
-R2  Halaman tiket per peran      ⏳ menunggu catatan uji R1
+R1  Peran & akses                ✅ SELESAI 2026-07-31 — menunggu uji manual pemilik
+R2  Halaman tiket per peran      ⏳ menunggu catatan uji R1 (isi uji-R1-peran-akses.md)
 R3  QC jadi modul sendiri        ⏳ menunggu catatan uji R2
 R4  Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
 R5  Retur (pelanggan + supplier) ⏸️  menunggu bentuk retur nyata dari pilot

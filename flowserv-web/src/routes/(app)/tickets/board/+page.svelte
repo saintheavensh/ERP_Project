@@ -65,7 +65,7 @@
       {/if}
     </div>
     <a href="/tickets" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
-      &larr; List View
+      &larr; Daftar Servis
     </a>
   </div>
 

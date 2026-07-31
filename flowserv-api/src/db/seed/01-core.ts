@@ -101,6 +101,17 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
   [IDS.roleCashier]: [
     'pos.process_payment',
     'customer.manage', // walk-in registration at the till — matches CUST-001
+    // R1 (2026-07-31) — kasir MEMANG yang menerima unit servis di konter.
+    // `modules/flow/backbone.ts` sudah menulisnya sejak Tahap B ("Kasir mencatat
+    // nama, nomor telepon, dan keluhan pelanggan"), tapi izinnya tak pernah
+    // diberikan — jadi kode alur dan katalog izin saling bertentangan sejak awal
+    // dan kasir dapat 403 di POST /v1/tickets/intake.
+    //
+    // Sengaja HANYA ini. Kasir menerima unit; ia tidak mendiagnosis
+    // (`ticket.diagnose`) dan tidak memberi harga (`ticket.manage_charges`).
+    // Menambah lebih dari yang perlu justru mengaburkan batas peran yang
+    // sedang dipertegas.
+    'ticket.create',
   ],
 };
 

@@ -106,8 +106,18 @@
     </div>
   {:else if data.technician}
     {@const t = data.technician}
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
       <StatCard title="Tugas Saya" value={String(t.total)} subtitle="Tiket terbuka yang ditugaskan" href="/tickets/board" />
+      <!-- R1 — pekerjaan yang menunggu diambil. Ditautkan ke /tickets, tempat
+           kelompok "Menunggu Diambil" berada; tone amber saat ada isinya supaya
+           terbaca sebagai "ada yang perlu diambil", bukan sekadar angka. -->
+      <StatCard
+        title="Menunggu Diambil"
+        value={String(t.unassignedTotal ?? 0)}
+        subtitle="Tiket yang belum ada teknisinya"
+        tone={(t.unassignedTotal ?? 0) > 0 ? 'warning' : 'default'}
+        href="/tickets"
+      />
       <StatCard
         title="Tahap Terbanyak"
         value={t.byStage[0]?.name || '-'}

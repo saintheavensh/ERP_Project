@@ -86,13 +86,20 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
   if (!roleName) return { roleName: null, token };
 
   if (roleName === 'Technician') {
-    const tickets = await safeGet(fetch, '/tickets?assignedTo=me&status=open&limit=200', token);
+    // R1 — antrian tiket tak bertuan ikut diambil. Tanpa ini teknisi tak punya
+    // petunjuk apa pun bahwa ada pekerjaan menunggu; beranda hanya memantulkan
+    // apa yang sudah dipegangnya, jadi tiket baru bisa mengendap tanpa terlihat.
+    const [tickets, unassigned] = await Promise.all([
+      safeGet(fetch, '/tickets?assignedTo=me&status=open&limit=200', token),
+      safeGet(fetch, '/tickets?assignedTo=none&status=open&limit=200', token),
+    ]);
     const recent = await withQuickActions(fetch, tickets.slice(0, 6), token);
     return {
       roleName,
       token,
       technician: {
         total: tickets.length,
+        unassignedTotal: unassigned.length,
         byStage: groupByStage(tickets),
         recent,
       },

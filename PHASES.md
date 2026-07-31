@@ -31,6 +31,17 @@
 > `plan/` dirapikan 2026-07-31: 9 berkas rencana yang tugasnya sudah selesai dihapus
 > (buktinya ada di file ini + git history). Satu temuan yang belum dibangun dan nyaris
 > hilang — **retur ke supplier** — diselamatkan ke Fase R5.
+>
+> - [x] **R1 — Peran & akses** (2026-07-31). Kasir dapat `ticket.create` + baris menu
+>       "Servis"; `GET /v1/tickets` menerima `?assignedTo=none`; daftar teknisi jadi dua
+>       kelompok ("Menunggu Diambil" / "Sedang Saya Kerjakan") dan beranda teknisi dapat
+>       kartu antrian. Terverifikasi live: kasir intake **201** (dulu 403); klaim
+>       memindahkan tiket antar kelompok (3→2 antrian, 0→1 milik sendiri); kasir tetap
+>       **403** di 5 endpoint lain — bukti hanya satu izin ditambah. **27 Playwright**
+>       (10 baru) + **262 unit** lulus, `tsc` + `svelte-check` bersih. Bukti lengkap di
+>       [`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md) → "Bukti R1".
+>       **Menunggu uji manual pemilik** ([`plan/uji-R1-peran-akses.md`](plan/uji-R1-peran-akses.md))
+>       sebelum R2 dimulai.
 
 > **⚠️ Updated 2026-07-28 — track PENYEDERHANAAN dibuka, dan ini yang paling penting
 > di file ini sekarang.** Lihat **[`plan/go-live-penyederhanaan.md`](plan/go-live-penyederhanaan.md)**.

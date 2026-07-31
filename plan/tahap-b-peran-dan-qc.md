@@ -116,8 +116,8 @@ sebelumnya dijalankan pemilik dan hasilnya dicatat.
 ## 2. Urutan fase
 
 ```
-R1  Peran & akses                 🔴 kecil, membuka pemakaian harian     ← MULAI DI SINI
-R2  Halaman tiket per peran       🟠 sedang, murni frontend
+R1  Peran & akses                 ✅ SELESAI 2026-07-31 — menunggu uji manual pemilik
+R2  Halaman tiket per peran       ⏳ mulai setelah catatan uji R1 dibaca
 R3  QC jadi modul sendiri         🔴 besar, sentuh DB + BE + FE
 R4  Bersih-bersih hasil audit     🟢 kecil, bisa disisipkan kapan saja
 R5  Retur / tukar barang          ⏸️  tunggu pilot
@@ -137,8 +137,8 @@ merapikan setelahnya.
 
 ## Task R1.1 — Kasir dapat izin `ticket.create`
 
-- [ ] Tambahkan `'ticket.create'` ke `ROLE_PERMISSION_CODES[IDS.roleCashier]`
-- [ ] Jalankan `npm run db:reset` (di `flowserv-api/`) agar grant baru masuk
+- [x] Tambahkan `'ticket.create'` ke `ROLE_PERMISSION_CODES[IDS.roleCashier]`
+- [x] Jalankan `npm run db:reset` (di `flowserv-api/`) agar grant baru masuk
 
 **File terpengaruh:**
 - `flowserv-api/src/db/seed/01-core.ts` — **1 baris**
@@ -154,8 +154,8 @@ merapikan setelahnya.
 
 ## Task R1.2 — Menu Kasir dapat "Servis"
 
-- [ ] Tambahkan `{ label: 'Servis', path: '/tickets' }` pada menu Cashier
-- [ ] Putuskan: apakah kasir melihat **semua** tiket atau hanya yang perlu tindakannya
+- [x] Tambahkan `{ label: 'Servis', path: '/tickets' }` pada menu Cashier
+- [x] Putuskan: apakah kasir melihat **semua** tiket atau hanya yang perlu tindakannya
       → lihat **Keputusan K1** di bagian 6
 
 **File terpengaruh:**
@@ -168,9 +168,9 @@ merapikan setelahnya.
 
 ## Task R1.3 — Backend: filter tiket "belum bertuan"
 
-- [ ] Terima `?assignedTo=none` (atau `unassigned`) di `GET /v1/tickets` →
+- [x] Terima `?assignedTo=none` (atau `unassigned`) di `GET /v1/tickets` →
       `isNull(serviceTickets.assignedTechnicianId)`
-- [ ] Pertahankan perilaku `?assignedTo=me` dan `?assignedTo=<uuid>` apa adanya
+- [x] Pertahankan perilaku `?assignedTo=me` dan `?assignedTo=<uuid>` apa adanya
 
 **File terpengaruh:**
 - `flowserv-api/src/routes/tickets.ts` — blok filter baris ~27–34
@@ -184,10 +184,10 @@ merapikan setelahnya.
 
 ## Task R1.4 — Daftar tiket teknisi: dua kelompok
 
-- [ ] `+page.server.ts` untuk Technician mengambil **dua** daftar:
+- [x] `+page.server.ts` untuk Technician mengambil **dua** daftar:
       `?assignedTo=me` dan `?assignedTo=none&status=open`
-- [ ] Halaman menampilkan dua bagian: **"Pekerjaan Saya"** lalu **"Menunggu Diambil"**
-- [ ] Baris di "Menunggu Diambil" mengarah ke halaman detail tiket (tempat tombol
+- [x] Halaman menampilkan dua bagian: **"Pekerjaan Saya"** lalu **"Menunggu Diambil"**
+- [x] Baris di "Menunggu Diambil" mengarah ke halaman detail tiket (tempat tombol
       "Ambil Pekerjaan" sudah ada dan sudah benar)
 
 **File terpengaruh:**
@@ -205,8 +205,8 @@ merapikan setelahnya.
 
 ## Task R1.5 — Beranda teknisi: kartu "Menunggu Diambil"
 
-- [ ] Tambah satu kartu berisi jumlah + daftar pendek tiket tak bertuan
-- [ ] Tautkan ke `/tickets`
+- [x] Tambah satu kartu berisi jumlah + daftar pendek tiket tak bertuan
+- [x] Tautkan ke `/tickets`
 
 **File terpengaruh:**
 - `flowserv-web/src/routes/(app)/+page.server.ts` (baris ~89)
@@ -219,16 +219,57 @@ merapikan setelahnya.
 
 ## Task R1.6 — Tes
 
-- [ ] Playwright baru `tahap-b-peran-akses.spec.ts`:
+- [x] Playwright baru `tahap-b-peran-akses.spec.ts`:
   - kasir login → menu Servis ada → buat tiket → **201**, tiket muncul
   - teknisi login → daftar punya bagian "Menunggu Diambil" berisi tiket tak bertuan
   - teknisi buka tiket itu → "Ambil Pekerjaan" → tiket pindah ke "Pekerjaan Saya"
   - teknisi B tidak melihat tiket yang sudah diambil teknisi A di "Menunggu Diambil"
-- [ ] Jalankan ulang: `p3-role-dashboards`, `p2-ticket-kanban`, `intake-to-close`
+- [x] Jalankan ulang: `p3-role-dashboards`, `p2-ticket-kanban`, `intake-to-close`
 
 **Definition of Done R1:**
-`npx vitest run` hijau · `svelte-check` 0 error · spec baru + 3 spec lama lulus ·
-**checklist uji manual R1 (bagian 5) dijalankan pemilik dan hasilnya dicatat**
+`npx vitest run` hijau · `svelte-check` 0 error · spec baru + spec lama lulus ·
+**checklist uji manual R1 dijalankan pemilik dan hasilnya dicatat** ← *satu-satunya
+yang belum: [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md)*
+
+## Bukti R1 (2026-07-31)
+
+**Verifikasi live via curl** (`RBAC_MODE=enforce`, DB di-reset ke seed bersih):
+
+| Yang diuji | Hasil |
+|---|---|
+| Kasir `POST /v1/tickets/intake` | **201** (sebelumnya 403) |
+| Teknisi `?assignedTo=none&status=open` sebelum klaim | 3 tiket, **termasuk** tiket uji |
+| Teknisi `?assignedTo=me` sebelum klaim | 0 tiket |
+| `POST /tickets/:id/claim` | **200** |
+| `?assignedTo=none&status=open` sesudah klaim | 2 tiket, tiket uji **hilang** |
+| `?assignedTo=me` sesudah klaim | 1 tiket, tiket uji **muncul** |
+
+**Bukti hanya SATU izin ditambah** — kasir tetap **403** untuk: `POST /suppliers`,
+`POST /tickets/:id/charges`, `POST /tickets/:id/claim`, `GET /audit-logs`, `POST /branches`.
+
+**Tes:** 10 Playwright baru (`e2e/r1-peran-akses.spec.ts`) + 17 spec lama = **27 lulus**;
+backend **262 unit** lulus; `tsc` bersih; `svelte-check` 0 error.
+
+### Dua hal yang ditemukan dengan MENJALANKAN, bukan membaca kode
+
+1. **Percobaan pertama menguji aplikasi yang salah.** Port 5173 sudah dipakai aplikasi lain
+   milik pemilik ("New Majmu Service"), jadi Vite pindah ke **5174** sementara `baseURL`
+   Playwright tetap 5173 — 8 tes "gagal" padahal FlowServ-nya benar. Pelajaran: jalankan
+   spec dengan `PLAYWRIGHT_BASE_URL` eksplisit di mesin ini, jangan percaya port default.
+2. **Judul "Pekerjaan Saya" muncul dua kali di satu layar** (h1 halaman + h2 seksi). Ketahuan
+   dari strict-mode Playwright, tapi itu juga membingungkan pemakai. Seksi kedua diganti jadi
+   **"Sedang Saya Kerjakan"** — berpasangan lebih jelas dengan "Menunggu Diambil".
+
+Satu assertion sempat lolos secara **palsu**: `getByText('Teknisi Andi')` cocok dengan
+sidebar ("Masuk sebagai"), jadi tesnya hijau walau klaimnya gagal. Diganti jadi
+"tombol Ambil Pekerjaan hilang" — mengukur akibat, bukan teks yang kebetulan ada.
+
+### Di luar rencana, dicatat terbuka
+
+`Board View` → **Papan Tahap** dan `List View` → **Daftar Servis**. Ini sisa teks Inggris
+yang lolos dari S1 ("satu bahasa toko"), ikut dirapikan karena halaman daftarnya memang
+sedang ditulis ulang. Menabrak 1 tes Kanban; tesnya diperbarui, assertion-nya tidak
+dilonggarkan.
 
 ---
 

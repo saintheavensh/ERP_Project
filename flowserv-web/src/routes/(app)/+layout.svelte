@@ -88,8 +88,13 @@
     }
 
     if (user?.roleName === 'Cashier') {
+      // R1 — "Servis" ditambahkan: kasirlah yang menerima unit di konter, dan
+      // tanpa baris ini /tickets/intake tak terjangkau sama sekali (izinnya
+      // saja tidak cukup). Masih sejalan dengan prinsip S2 "atur sekali lalu
+      // menghilang" — menerima unit adalah pekerjaan HARIAN, bukan setelan.
       return [
         beranda,
+        { label: 'Servis', path: '/tickets' },
         { label: 'Kasir', path: '/pos' },
         { label: 'Katalog Produk', path: '/catalog' }
       ];
