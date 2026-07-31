@@ -32,7 +32,7 @@
 > (buktinya ada di file ini + git history). Satu temuan yang belum dibangun dan nyaris
 > hilang — **retur ke supplier** — diselamatkan ke Fase R5.
 >
-> - [/] **R1.5 — Perbaikan hasil uji manual pemilik** (2026-08-01, berjalan).
+> - [x] **R1.5 — Perbaikan hasil uji manual pemilik** (2026-08-01, kode selesai).
 >       Pemilik menjalankan [`plan/uji-R1-peran-akses.md`](plan/uji-R1-peran-akses.md) dan
 >       menyimpulkan **"Ada yang harus diperbaiki dulu"**, bukan lanjut ke R2. Rencananya
 >       [`plan/R1.5-perbaikan-hasil-uji-R1.md`](plan/R1.5-perbaikan-hasil-uji-R1.md).
@@ -54,17 +54,29 @@
 >             konter"; alasan yang sama berarti teknisi tak seharusnya punya. Tiga lapis:
 >             izin dicabut, tombol disembunyikan, rute dijaga. `ticket.diagnose` sengaja
 >             tetap ada — itu yang menggerbangi klaim pekerjaan (ada tes regresinya).
->       - [ ] R1.5C — validasi sandi/pola minimal 4 (poin uji A5)
->       - [ ] R1.5D — kasir tidak dilempar ke halaman detail, cukup toast (poin uji A9)
->       - [ ] R1.5E — uji manual pemilik untuk R1.5
+>       - [x] **R1.5C — sandi/pola minimal 4** (`1c57858`). Poin uji A5. Bukan
+>             `length >= 4`: satu field menyimpan dua bentuk, dan `"pola:1-2"` panjangnya
+>             8 karakter tapi hanya 2 titik. Ditegakkan di backend pada KEDUA jalur tulis
+>             lewat satu definisi bersama; form hanya memberi peringatan lebih awal.
+>             Kosong tetap sah — tidak semua unit terkunci.
+>       - [x] **R1.5D — kasir tetap di form, cetak label tetap jalan** (`1ab9fce`). Poin
+>             uji A9. **Ternyata tidak kecil:** lemparan ke halaman detail bukan sekadar
+>             navigasi — `?autoprint=intake` di URL-nya adalah YANG MEMICU cetak label.
+>             Menghapusnya begitu saja akan diam-diam mematikan cetak otomatis, tepat hal
+>             yang pemilik minta ada (A7, belum teruji karena printer belum ada).
+>             Ditanyakan dulu ke pemilik → pilihannya "tetap di form DAN cetak tetap
+>             jalan"; pemicunya dipindah ke form intake memakai helper `autoPrint()` yang
+>             sama. **18 tes di 9 spec** memakai lemparan itu sebagai langkah setup —
+>             semuanya diperbarui menempuh jalan kasir sungguhan, bukan dilonggarkan.
+>       - [ ] **R1.5E — uji manual pemilik**
+>             ([`plan/uji-R1.5-perbaikan.md`](plan/uji-R1.5-perbaikan.md)) ← **gerbang R2**
 >
->       **Bukti:** 262 unit · `svelte-check` 731 berkas 0 error · **13 Playwright baru**
->       (`e2e/r1-5-akses-peran.spec.ts`) · spec lama `r1-peran-akses` (10) +
->       `p3-role-dashboards` (5) lulus tanpa diedit · matriks 403/200 empat peran terekam.
->       **Satu tes merah dan bukan dari sini:** `f7-create-ticket-from-device` gagal hanya
->       pada suite penuh (164/1) karena pelanggan seed Budi punya dua unit — lulus sendirian
->       dan lulus tepat sesudah spec baru; cacat isolasi antar-spec yang sudah ada
->       sebelumnya, dicatat ke Fase R4, sengaja tidak dilonggarkan diam-diam.
+>       **Bukti akhir:** **278 unit** (dari 262) · `tsc` bersih · `svelte-check` 731 berkas
+>       0 error · **Playwright 170/170 lulus di DB bersih** (dari 168), termasuk **18 tes
+>       baru** di `e2e/r1-5-akses-peran.spec.ts` · matriks 403/200 empat peran terekam.
+>       **Satu hal yang belum bisa diuji di sini:** cetak label otomatis butuh printer
+>       fisik (sama seperti 6D.1) — masuk checklist uji pemilik poin D5, bukan diam-diam
+>       di-`[x]`.
 >
 > - [x] **R1 — Peran & akses** (2026-07-31). Kasir dapat `ticket.create` + baris menu
 >       "Servis"; `GET /v1/tickets` menerima `?assignedTo=none`; daftar teknisi jadi dua
