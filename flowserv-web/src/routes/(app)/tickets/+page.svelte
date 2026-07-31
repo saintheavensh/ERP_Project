@@ -81,13 +81,18 @@
         class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
         Papan Tahap
       </a>
-      <a href="/tickets/intake"
-        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-        Terima Unit
-      </a>
+      <!-- R1.5B — teknisi tidak lagi punya `ticket.create`, jadi tombol ini
+           akan menghasilkan 403 baginya. Tombol yang kelihatan hidup tapi mati
+           adalah anti-pattern yang Track F ada untuk membasminya. -->
+      {#if !isTechnician}
+        <a href="/tickets/intake"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+          </svg>
+          Terima Unit
+        </a>
+      {/if}
     </div>
   </div>
 

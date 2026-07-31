@@ -38,7 +38,29 @@ const RESTRICTED: { prefix: string; permission: string; roles: readonly string[]
     permission: 'flow.manage',
     roles: ['Super Admin'],
   },
+  {
+    // R1.5B — intake belongs to the counter, not the bench. Backend:
+    // requirePermission('ticket.create') on POST /v1/tickets/intake, which
+    // Technician no longer holds. The button is hidden on /tickets too; this
+    // covers someone typing the address, the same hole as C7/C8.
+    prefix: '/tickets/intake',
+    permission: 'ticket.create',
+    roles: ['Super Admin', 'Manager', 'Cashier'],
+  },
 ];
+
+/**
+ * The MOST SPECIFIC matching rule, not the first.
+ *
+ * Longest-prefix wins so that adding a broad `/tickets` rule later can never
+ * silently shadow the narrower `/tickets/intake` one and hand a technician
+ * back a page this file just took away.
+ */
+function ruleFor(pathname: string) {
+  return RESTRICTED
+    .filter((r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`))
+    .sort((a, b) => b.prefix.length - a.prefix.length)[0];
+}
 
 /**
  * True if `roleName` may open `pathname`.
@@ -47,9 +69,7 @@ const RESTRICTED: { prefix: string; permission: string; roles: readonly string[]
  * view rather than an error — same rule as R2.2's `ticketSectionsFor`.
  */
 export function canAccessRoute(roleName: string | null | undefined, pathname: string): boolean {
-  const rule = RESTRICTED.find(
-    (r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`)
-  );
+  const rule = ruleFor(pathname);
   if (!rule) return true;
   if (!roleName) return false;
   return rule.roles.includes(roleName);
@@ -57,8 +77,5 @@ export function canAccessRoute(roleName: string | null | undefined, pathname: st
 
 /** The permission a refusal is attributable to — for the redirect message. */
 export function requiredPermissionFor(pathname: string): string | null {
-  const rule = RESTRICTED.find(
-    (r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`)
-  );
-  return rule?.permission ?? null;
+  return ruleFor(pathname)?.permission ?? null;
 }

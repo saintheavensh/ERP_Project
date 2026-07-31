@@ -94,7 +94,18 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'ticket.qc', // QC akhir sering dikontrol atasan, bukan teknisi yang mengerjakan
   ],
   [IDS.roleTechnician]: [
-    'ticket.create', 'ticket.diagnose', 'inventory.reserve_part',
+    // R1.5B (2026-08-01) — `ticket.create` DICABUT dari teknisi setelah uji
+    // manual pemilik: "teknisi sebaiknya tidak bisa membuat tiket service
+    // sendiri, tiket service hanya bisa dilakukan oleh admin atau kasir".
+    //
+    // R1 memberi izin ini ke kasir dengan alasan "kasir yang menerima unit di
+    // konter" — dan alasan yang sama persis berarti teknisi tidak seharusnya
+    // memilikinya. R1 menambah tanpa mengurangi; ini melengkapinya.
+    //
+    // ⚠️ `ticket.diagnose` WAJIB tetap ada: itu yang menggerbangi
+    // POST /v1/tickets/:id/claim, jadi mencabutnya akan membuat teknisi tak
+    // bisa mengambil pekerjaan lagi — tepat bug yang R1 baru saja perbaiki.
+    'ticket.diagnose', 'inventory.reserve_part',
     'ticket.manage_charges', // adds/consumes parts on a ticket during repair
     'ticket.qc',
   ],
