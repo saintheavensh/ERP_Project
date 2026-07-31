@@ -260,7 +260,57 @@ test('kasir melihat peringatan panjang sambil mengetik, bukan setelah simpan', a
 });
 
 // ---------------------------------------------------------------------------
-// D. Super Admin tidak berubah sama sekali
+// D. Kasir tidak dilempar ke halaman detail (uji-R1 A9)
+// ---------------------------------------------------------------------------
+
+test('kasir tetap di form setelah simpan, dapat toast bernomor, form kosong lagi', async ({ page }) => {
+  await login(page, 'cashier@demo.com');
+  await page.goto('/tickets/intake');
+  await page.waitForLoadState('networkidle');
+
+  const nama = `Uji toast ${Date.now()}`;
+  await page.fill('#name', nama);
+  await page.selectOption('#type', 'Smartphone');
+  await page.fill('#brand', 'Samsung');
+  await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+
+  // Inti R1.5D: kasir TIDAK berpindah halaman.
+  await expect(page.getByText(/berhasil dibuat/)).toBeVisible();
+  expect(page.url()).toContain('/tickets/intake');
+
+  // Nomor tiket wajib ada — itu satu-satunya pegangan kasir untuk ditempel di
+  // unit. Toast tanpa nomor akan memaksa kasir membuka tiketnya, yang justru
+  // mengembalikan kerepotan yang task ini hapus.
+  await expect(page.getByRole('status')).toContainText(/TCK|[0-9a-f]{8}/);
+
+  // Form sudah kosong, siap pelanggan berikutnya — ini yang bikin antrean jalan.
+  await expect(page.locator('#name')).toHaveValue('');
+  await expect(page.locator('#brand')).toHaveValue('');
+
+  // Tiketnya benar-benar tersimpan, bukan cuma toast yang muncul.
+  await page.getByRole('link', { name: 'Lihat tiket' }).click();
+  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
+  await expect(page.getByText(nama).first()).toBeVisible();
+});
+
+test('cetak otomatis tetap terpicu dari form intake, tidak ikut hilang', async ({ page }) => {
+  // Ini yang paling mudah rusak diam-diam: lemparan ke halaman detail dulu
+  // yang MEMICU cetak label (`?autoprint=intake`). Menghapusnya tanpa
+  // memindahkan pemicunya akan mematikan label tanpa satu tes pun merah.
+  await login(page, 'cashier@demo.com');
+  await page.goto('/tickets/intake');
+  await page.waitForLoadState('networkidle');
+
+  await page.fill('#name', `Uji cetak intake ${Date.now()}`);
+  await page.selectOption('#type', 'Smartphone');
+  await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+
+  // Tanpa printer ter-assign, statusnya melaporkan itu — bukti pemicunya jalan.
+  await expect(page.getByTestId('intake-print-status')).toBeVisible({ timeout: 15_000 });
+});
+
+// ---------------------------------------------------------------------------
+// E. Super Admin tidak berubah sama sekali
 // ---------------------------------------------------------------------------
 
 test('super admin tetap bisa membuka semua halaman yang dibatasi', async ({ page }) => {

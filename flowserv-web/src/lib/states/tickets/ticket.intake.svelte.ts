@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
+import { autoPrint, summarizeAutoPrint, DOCUMENT_LABELS, type AutoPrintDocumentType } from '$lib/api/auto-print';
 
 export class TicketIntakeState {
   data: any;
@@ -31,6 +32,14 @@ export class TicketIntakeState {
 
   loading = $state(false);
   errorMsg = $state('');
+
+  // R1.5D — kasir TIDAK lagi dilempar ke halaman detail setelah simpan.
+  // Pemilik (uji-R1 A9): "jangan langsung ke halaman detail, buat saja toast
+  // notifikasi tiket baru berhasil dibuat". Alasannya operasional — saat toko
+  // ramai, unit diterima berturut-turut, dan tiap lemparan ke detail memaksa
+  // kasir menekan "kembali" sebelum bisa melayani orang berikutnya.
+  sukses = $state<{ id: string; ticketNumber: string } | null>(null);
+  printMessage = $state('');
 
   showDropdown = $state(false);
 
@@ -189,10 +198,18 @@ export class TicketIntakeState {
       
       const result = await res.json();
       if (res.ok) {
-        // Tahap B — `autoprint=intake` memberi tahu halaman tiket untuk
-        // langsung mencetak Label + Tanda Terima. Ditandai lewat URL, bukan
-        // state global, supaya hanya kedatangan dari form ini yang mencetak.
-        goto(`/tickets/${result.data.id}?autoprint=intake`);
+        // R1.5D — tetap di form. Cetak otomatis TIDAK hilang: dulu ia dipicu
+        // oleh `?autoprint=intake` di halaman detail, jadi menghapus lemparan
+        // itu tanpa memindahkan pemicunya akan diam-diam mematikan label —
+        // tepat hal yang pemilik minta ada (uji-R1 A7). Sekarang dipicu dari
+        // sini, lewat helper `autoPrint()` yang SAMA, jadi tak ada jalur cetak
+        // kedua yang bisa berbeda perilaku.
+        this.sukses = {
+          id: result.data.id,
+          ticketNumber: result.data.ticketNumber ?? result.data.id.slice(0, 8),
+        };
+        this.resetForNextCustomer();
+        void this.autoPrintIntakeDocuments(result.data.id);
       } else {
         this.errorMsg = result.error?.message || 'Failed to create intake';
       }
@@ -200,6 +217,68 @@ export class TicketIntakeState {
       this.errorMsg = 'Network error';
     } finally {
       this.loading = false;
+    }
+  }
+
+  /**
+   * Kosongkan form untuk pelanggan berikutnya.
+   *
+   * `branchId` dan `flowTemplateId` sengaja TIDAK direset: keduanya properti
+   * konter tempat kasir berdiri, bukan properti pelanggan. Mengosongkannya
+   * akan memaksa kasir memilih ulang cabang yang sama tiap unit — persis
+   * kerepotan yang task ini ada untuk menghapus.
+   */
+  resetForNextCustomer() {
+    this.form.customerId = '';
+    this.form.customerName = '';
+    this.form.customerPhone = '';
+    this.form.customerEmail = '';
+    this.form.assetId = '';
+    this.form.assetType = '';
+    this.form.assetBrand = '';
+    this.form.assetModel = '';
+    this.form.assetSn = '';
+    this.form.devicePasscode = '';
+    this.form.reportedComplaint = '';
+    this.form.deviceModelId = '';
+    this.selectedDeviceModel = null;
+    this.selectedBrandId = '';
+    this.showDropdown = false;
+    this.showDeviceDropdown = false;
+    this.showBrandDropdown = false;
+    this.errorMsg = '';
+  }
+
+  /**
+   * Cetak dokumen yang dikonfigurasi pada tahap awal tiket yang baru dibuat.
+   *
+   * Dokumen mana yang keluar tetap dibaca dari `flow_nodes.autoPrintDocuments`
+   * (bukan daftar tertanam di sini), sama seperti halaman detail — toko yang
+   * mengubah templatenya langsung berubah juga di sini.
+   */
+  async autoPrintIntakeDocuments(ticketId: string) {
+    this.printMessage = '';
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        headers: { Authorization: `Bearer ${this.token}` },
+      });
+      if (!res.ok) return;
+      const docs = (await res.json()).data?.node?.autoPrintDocuments;
+      if (!Array.isArray(docs) || docs.length === 0) return;
+
+      // Berurutan, bukan paralel: satu printer thermal memproses satu job pada
+      // satu waktu, dan urutan konfigurasi menentukan urutan kertas keluar.
+      const results = [];
+      for (const doc of docs) {
+        results.push({
+          label: DOCUMENT_LABELS[doc] ?? doc,
+          result: await autoPrint(this.token, doc as AutoPrintDocumentType, ticketId),
+        });
+      }
+      this.printMessage = summarizeAutoPrint(results) ?? '';
+    } catch {
+      // Cetak gagal tidak boleh menghapus bukti bahwa tiketnya BERHASIL dibuat.
+      this.printMessage = 'Tiket tersimpan, tapi cetak label gagal. Cetak manual dari halaman tiket.';
     }
   }
 }

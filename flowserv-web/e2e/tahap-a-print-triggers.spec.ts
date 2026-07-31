@@ -42,18 +42,23 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#complaint', 'LCD retak parah');
     await page.fill('#passcode', '1234'); // sandi -> harus muncul di label QC
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+
+    // R1.5D — kasir kini TETAP di form setelah simpan (uji-R1 A9), jadi
+    // auto-cetak dipicu DARI SINI, bukan lagi dari halaman tiket lewat
+    // `?autoprint=intake`. Yang diuji tidak berubah: bahwa auto-cetak
+    // BENAR-BENAR berjalan — tanpa printer ter-assign untuk 'label' di cabang
+    // ini, statusnya melaporkan itu alih-alih diam saja. Buktinya sekarang
+    // muncul di toast intake, mengikuti ke mana perilakunya pindah.
+    await expect(page.getByTestId('intake-print-status')).toContainText(/belum tercetak/i);
+
+    // Kasir memang tidak dipindahkan — itu inti R1.5D.
+    expect(page.url()).toContain('/tickets/intake');
+
+    await page.getByRole('link', { name: 'Lihat tiket' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // Tahap B — langsung bisa dicetak di Intake, tanpa transisi apa pun.
     await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();
-
-    // Auto-cetak benar-benar berjalan: tanpa printer ter-assign untuk 'label'
-    // di cabang ini, statusnya melaporkan itu alih-alih diam saja. Ini bukti
-    // autoPrintIntakeDocuments() terpicu, bukan sekadar tombolnya muncul.
-    await expect(page.getByTestId('ticket-print-status')).toContainText(/belum tercetak/i);
-
-    // Param autoprint dibersihkan dari URL, supaya refresh tak mencetak ulang.
-    expect(page.url()).not.toContain('autoprint');
 
     await page.getByRole('button', { name: 'Cetak Label' }).click();
 
@@ -82,6 +87,10 @@ test.describe('desktop (1280x800)', () => {
       await page.fill('#brand', 'Asus');
       await page.fill('#complaint', complaint);
       await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+      // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+      // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+      // menempuh jalan yang sama seperti kasir sungguhan.
+      await page.getByRole('link', { name: 'Lihat tiket' }).click();
       await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
     }
 
@@ -126,6 +135,10 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#complaint', 'Keyboard rusak');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+    // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+    // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+    // menempuh jalan yang sama seperti kasir sungguhan.
+    await page.getByRole('link', { name: 'Lihat tiket' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     const moveTo = async (stage: string) => {
@@ -212,6 +225,10 @@ test.describe('mobile (375x667)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#complaint', 'Baterai boros');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+    // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+    // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+    // menempuh jalan yang sama seperti kasir sungguhan.
+    await page.getByRole('link', { name: 'Lihat tiket' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     await expect(page.getByRole('button', { name: 'Cetak Label' })).toBeVisible();

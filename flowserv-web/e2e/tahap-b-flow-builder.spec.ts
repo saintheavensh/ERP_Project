@@ -197,6 +197,10 @@ test.describe('desktop (1280x800)', () => {
     await page.fill('#name', `Uji Keterangan ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+    // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+    // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+    // menempuh jalan yang sama seperti kasir sungguhan.
+    await page.getByRole('link', { name: 'Lihat tiket' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     await expect(page.getByText(marker)).toBeVisible();
@@ -234,6 +238,10 @@ test.describe('desktop (1280x800)', () => {
       await page.fill('#name', `Uji Gerbang ${Date.now()}`);
       await page.selectOption('#type', 'Smartphone');
       await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+      // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+      // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+      // menempuh jalan yang sama seperti kasir sungguhan.
+      await page.getByRole('link', { name: 'Lihat tiket' }).click();
       await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
       const diagnosisValue = await page.locator('#next option', { hasText: 'Diagnosis' }).first().getAttribute('value');

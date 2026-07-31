@@ -28,6 +28,10 @@ async function intakeTicket(page: Page, name: string) {
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+  // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+  // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+  // menempuh jalan yang sama seperti kasir sungguhan.
+  await page.getByRole('link', { name: 'Lihat tiket' }).click();
   await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
   const diagnosisValue = await page.locator('#next option', { hasText: 'Diagnosis' }).first().getAttribute('value');

@@ -36,6 +36,17 @@ export interface AutoPrintResult {
 
 export type AutoPrintDocumentType = 'receipt' | 'invoice_a4' | 'label' | 'tanda_terima';
 
+// Nama dokumen untuk pesan ke pengguna. Kuncinya = documentType modul printer.
+// R1.5D — dipindah ke sini dari ticket.detail.svelte.ts saat halaman intake
+// ikut mencetak: dua peta label yang bisa berbeda bunyi untuk dokumen yang sama
+// adalah bentuk "dua sumber kebenaran" yang proyek ini berulang kali bereskan.
+export const DOCUMENT_LABELS: Record<string, string> = {
+  label: 'Label',
+  tanda_terima: 'Tanda terima',
+  receipt: 'Nota',
+  invoice_a4: 'Invoice A4',
+};
+
 export async function autoPrint(
   token: string,
   documentType: AutoPrintDocumentType,

@@ -59,6 +59,10 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   // ("Servis", satu template bercabang).
   await shot(page, '02-intake-filled');
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+  // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+  // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+  // menempuh jalan yang sama seperti kasir sungguhan.
+  await page.getByRole('link', { name: 'Lihat tiket' }).click();
 
   // 3. Lands on the ticket detail (intake goto's /tickets/:id).
   await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });

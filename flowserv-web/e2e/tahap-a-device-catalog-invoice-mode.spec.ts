@@ -121,6 +121,10 @@ test.describe('desktop (1280x800)', () => {
 
     // Tahap B — form intake tak lagi meminta alur; tiket memakai alur default toko.
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+    // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+    // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+    // menempuh jalan yang sama seperti kasir sungguhan.
+    await page.getByRole('link', { name: 'Lihat tiket' }).click();
     await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
 
     // The linked catalog entry should now surface on the ticket detail page too.

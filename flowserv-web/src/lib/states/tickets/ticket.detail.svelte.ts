@@ -1,15 +1,7 @@
 import { untrack } from 'svelte';
 import { invalidateAll } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
-import { autoPrint, summarizeAutoPrint } from '$lib/api/auto-print';
-
-// Nama dokumen untuk pesan ke pengguna. Kuncinya = documentType modul printer.
-const DOCUMENT_LABELS: Record<string, string> = {
-  label: 'Label',
-  tanda_terima: 'Tanda terima',
-  receipt: 'Nota',
-  invoice_a4: 'Invoice A4',
-};
+import { autoPrint, summarizeAutoPrint, DOCUMENT_LABELS } from '$lib/api/auto-print';
 
 export class TicketDetailState {
   // $state so every getter that reads `this.data` (ticket, currentNode, charges…)

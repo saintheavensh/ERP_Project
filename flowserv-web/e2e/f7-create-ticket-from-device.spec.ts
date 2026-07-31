@@ -52,6 +52,10 @@ test('creates a ticket from a customer device via the previously-dead button', a
   // 5. Submit — the device section has no inputs to fill (locked), and since
   // Tahap B the form no longer asks for a flow (tiket memakai alur default toko).
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
+  // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
+  // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
+  // menempuh jalan yang sama seperti kasir sungguhan.
+  await page.getByRole('link', { name: 'Lihat tiket' }).click();
 
   // 6. Lands on the new ticket, linked to the right customer + device.
   await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/, { timeout: 20_000 });
