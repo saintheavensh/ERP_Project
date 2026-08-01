@@ -45,6 +45,21 @@ export class TicketDetailState {
   // F1 — technician assignment (wires H8's previously-orphaned POST /:id/assign)
   get assignedTechnician() { return this.data.data?.assignedTechnician; }
   get technicians() { return this.data.technicians || []; }
+
+  /**
+   * R1.7 — hanya peran yang benar-benar memegang `ticket.assign_technician`
+   * yang melihat pemilih teknisi.
+   *
+   * Ini BUKAN gerbang keamanan (backend sudah menolak teknisi dengan 403,
+   * lihat `requirePermission('ticket.assign_technician')` di routes/tickets.ts);
+   * yang diperbaiki adalah kontrol yang tampak hidup padahal pasti gagal —
+   * anti-pattern yang Track F ada untuk membasminya. Pemilik menemukannya
+   * sebagai kebingungan, bukan sebagai error: "teknisi tidak bisa memilih
+   * teknisi lainnya soalnya itu membingungkan" (uji-R1.6 B3).
+   */
+  get canAssignOthers() {
+    return this.data.roleName === 'Super Admin' || this.data.roleName === 'Manager';
+  }
   assignLoading = $state(false);
 
   /**

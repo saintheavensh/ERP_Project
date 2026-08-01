@@ -54,7 +54,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       const technicians = techniciansRes.ok ? (await techniciansRes.json()).data : [];
       const invoiceDisplayMode = salesRes.ok ? (await salesRes.json()).data?.invoiceDisplayMode ?? null : null;
 
-      return { token, data: ticketData, template: templateData, charges: chargesData, inventoryItems, technicians, invoiceDisplayMode };
+      // R1.7 — peran dipakai untuk memutuskan siapa yang boleh melihat pemilih
+      // teknisi. Pemilik (uji-R1.6 B3): "di halaman detail service sebaiknya
+      // teknisi tidak bisa memilih teknisi lainnya soalnya itu membingungkan".
+      return { token, roleName: locals.user?.roleName ?? null, data: ticketData, template: templateData, charges: chargesData, inventoryItems, technicians, invoiceDisplayMode };
     }
   } catch (err) {
     console.error('Failed to load ticket details', err);

@@ -236,8 +236,14 @@
     {#if state.ticket?.queueNumber}
       <p class="text-xs text-slate-400 mb-2">Nomor antrian {state.ticket.queueNumber}</p>
     {/if}
-    {#if state.ticket?.status === 'closed' || state.ticket?.status === 'cancelled'}
-      <p class="font-bold text-lg text-slate-900">{state.assignedTechnician?.name || 'Belum ditugaskan'}</p>
+    {#if state.ticket?.status === 'closed' || state.ticket?.status === 'cancelled' || !state.canAssignOthers}
+      <!-- R1.7 — teknisi hanya MEMBACA siapa pemegang tiket. Menugaskan orang
+           lain adalah wewenang manajer, dan backend memang sudah menolaknya;
+           dropdown-nya hanya membingungkan. Tombol "Ambil Pekerjaan" di atas
+           tidak ikut hilang — itu menugaskan DIRI SENDIRI, izinnya beda. -->
+      <p class="font-bold text-lg text-slate-900" data-testid="assigned-technician-name">
+        {state.assignedTechnician?.name || 'Belum ditugaskan'}
+      </p>
     {:else}
       <div class="flex items-center gap-3">
         <select
