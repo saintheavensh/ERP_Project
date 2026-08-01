@@ -11,17 +11,55 @@
 // point at a real backend permission. If a rule here has no backend
 // counterpart, the design is wrong — fix the backend, not this table.
 
+/**
+ * R1.7 — nama cookie "pesan sekali pakai" untuk pentalan akses.
+ *
+ * Kenapa cookie dan bukan `?ditolak=` di alamat: parameter itu harus
+ * dibersihkan dari sisi klien, dan SETIAP cara membersihkannya bergantung pada
+ * waktu. `replaceState()` SvelteKit melempar bila router belum siap (pentalan
+ * ini redirect dari server, jadi halamannya dimuat penuh); `$effect` dan
+ * `afterNavigate` sama-sama terlalu awal; `onMount` + `await tick()` sempat
+ * jalan lalu **mulai gagal** begitu beranda kebagian isi lebih banyak — tebakan
+ * waktu yang kebetulan benar, bukan jaminan. Ketahuan dari tes e2e yang tadinya
+ * hijau lalu merah tanpa kode terkaitnya disentuh sama sekali.
+ *
+ * Cookie sekali pakai menghapus seluruh kelas masalah itu: alamatnya tak pernah
+ * kotor, jadi tak ada yang perlu dibersihkan, dan "hilang setelah refresh"
+ * dijamin server — bukan diusahakan browser.
+ *
+ * Ditaruh di sini, bukan di `(app)/+layout.server.ts`, karena SvelteKit hanya
+ * mengenali ekspor standarnya (`load`, `actions`) dari berkas `+*.server.ts`.
+ */
+export const DITOLAK_COOKIE = 'flowserv_ditolak';
+
 /** Route prefix → the backend permission that actually guards its data. */
 const RESTRICTED: { prefix: string; permission: string; roles: readonly string[] }[] = [
   {
     // /finance landing shows revenue, COGS and estimated profit; the ledger and
     // payables pages under it show the whole book and supplier debt.
     // Backend: requirePermission('finance.view_reports') on every GET in
-    // routes/finance.ts. Cashier keeps the AR tile on their own dashboard,
-    // which reads /finance/receivables (gated on pos.process_payment instead).
+    // routes/finance.ts.
     prefix: '/finance',
     permission: 'finance.view_reports',
     roles: ['Super Admin', 'Manager'],
+  },
+  {
+    // ⚠️ PENGECUALIAN yang harus ada, dan sempat TIDAK ada (uji-R1.6 poin C2).
+    //
+    // Piutang adalah daftar kerja penagihan KASIR, bukan laporan keuangan.
+    // Backend memang menggerbanginya dengan `pos.process_payment`, bukan
+    // `finance.view_reports` — jadi API-nya membalas 200 untuk kasir. Tapi
+    // aturan `/finance` di atas menutup seluruh anak jalurnya, termasuk yang
+    // ini, sehingga kartu "Piutang (AR)" di beranda kasir menautkan ke halaman
+    // yang memantulkannya sendiri.
+    //
+    // Catatan di aturan `/finance` bahkan MENYEBUT pengecualian ini sejak R1.5,
+    // tapi barisnya tak pernah ditulis — komentar yang benar di atas kode yang
+    // salah. Ketahuan hanya karena pemilik MENGKLIK kartunya; tes R1.6 memeriksa
+    // API-nya 200 dan kartunya tampil, tak satu pun mengikuti tautannya.
+    prefix: '/finance/receivables',
+    permission: 'pos.process_payment',
+    roles: ['Super Admin', 'Manager', 'Cashier'],
   },
   {
     // Company profile, branches, users & roles, printers, payment methods.
