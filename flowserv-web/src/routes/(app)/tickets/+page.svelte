@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
   import { claimTicket } from '$lib/api/tickets';
+  import AntrianDetailDialog from '$lib/components/tickets/AntrianDetailDialog.svelte';
 
   let { data } = $props();
   let tickets = $derived(data.tickets);
@@ -14,6 +15,11 @@
   let claimingId = $state('');
   let claimError = $state('');
 
+  // R1.7 — popup rincian antrian, komponen yang sama dengan yang dipakai
+  // beranda teknisi. Satu komponen supaya isinya tak pernah berbeda di dua
+  // tempat yang menjanjikan hal yang sama.
+  let antrianTerpilih = $state('');
+
   async function ambil(ticketId: string) {
     claimingId = ticketId;
     claimError = '';
@@ -21,6 +27,11 @@
     if (result.ok) await invalidateAll();
     else claimError = result.message;
     claimingId = '';
+  }
+
+  async function antrianDiambil() {
+    antrianTerpilih = '';
+    await invalidateAll();
   }
 </script>
 
@@ -83,9 +94,24 @@
                     {claimingId === ticket.id ? 'Mengambil...' : 'Ambil'}
                   </button>
                 {/if}
-                <a href={`/tickets/${ticket.id}`} class="text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
-                  Buka &rarr;
-                </a>
+                {#if claimable}
+                  <!-- R1.7 — di antrian, "lihat" berarti popup, bukan pindah
+                       halaman: teknisi sedang MEMUTUSKAN mau mengambil atau
+                       tidak, dan halaman kerja penuh terlalu berat untuk itu
+                       (uji-R1.6 B1). Tiket yang sudah dipegang tetap "Buka". -->
+                  <button
+                    type="button"
+                    onclick={() => (antrianTerpilih = ticket.id)}
+                    class="text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap px-2 min-h-[40px]"
+                    data-testid="lihat-antrian"
+                  >
+                    Lihat
+                  </button>
+                {:else}
+                  <a href={`/tickets/${ticket.id}`} class="text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
+                    Buka &rarr;
+                  </a>
+                {/if}
               </div>
             </td>
           </tr>
@@ -187,3 +213,12 @@
     )}
   {/if}
 </div>
+
+{#if antrianTerpilih}
+  <AntrianDetailDialog
+    ticketId={antrianTerpilih}
+    token={data.token}
+    onclose={() => (antrianTerpilih = '')}
+    onclaimed={antrianDiambil}
+  />
+{/if}
