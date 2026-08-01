@@ -15,10 +15,17 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    // Vite naik ke 5174+ bila 5173 sudah dipakai proses lain di mesin ini.
-    // Tanpa override, Playwright akan menguji aplikasi yang salah dan gagal
-    // dengan pesan menyesatkan ("locator #email tidak ditemukan").
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
+    // Default = 5188, port yang dipakai `start-flowserv.ps1` (`--strictPort`),
+    // BUKAN 5173 bawaan Vite.
+    //
+    // R1.6 — sebelumnya default-nya 5173 dan itu memakan waktu nyata: di mesin
+    // ini port 5173 dipegang proyek lain (`pos_sederhana`), jadi seluruh suite
+    // menguji APLIKASI YANG SALAH dan gagal dengan pesan yang menyesatkan
+    // ("locator #email tidak ditemukan") — bukan karena kodenya rusak.
+    // Peringatan soal ini sudah tertulis di sini sejak dulu; yang salah adalah
+    // default-nya sendiri, karena peluncur resmi proyek ini tidak pernah
+    // memakai 5173. Override tetap bisa lewat PLAYWRIGHT_BASE_URL.
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5188',
     headless: true,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',

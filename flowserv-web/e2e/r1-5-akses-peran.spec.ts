@@ -52,7 +52,13 @@ for (const peran of [
     await page.goto('/finance');
 
     // Dipentalkan ke beranda, bukan diberi halaman kosong yang menyesatkan.
-    await expect(page).toHaveURL(/\/\?ditolak=/);
+    //
+    // R1.6-T4 — yang diperiksa sekarang PESANNYA, bukan `?ditolak=` di alamat.
+    // Parameter itu kini dihapus sendiri begitu kotaknya tampil (permintaan
+    // pemilik, uji-R1.5 A3), jadi memeriksa alamat berarti memeriksa mekanisme
+    // yang sengaja dibuat sementara. Yang benar-benar dijanjikan ke pemakai
+    // adalah "ditolak, dan diberi tahu" — itu yang diuji.
+    await expect(page).toHaveURL(/\/(\?.*)?$/);
     await expect(page.getByText('Halaman itu bukan untuk peran Anda')).toBeVisible();
 
     // Yang sebenarnya dijaga: istilah laporan keuangan tidak ada di DOM sama sekali.
@@ -67,7 +73,10 @@ for (const peran of [
 
     for (const path of ['/settings', '/flows']) {
       await page.goto(path);
-      await expect(page, `${path} harus menolak ${peran.nama}`).toHaveURL(/\/\?ditolak=/);
+      // R1.6-T4 — lihat catatan di tes sebelumnya: pesannya yang diperiksa,
+      // bukan `?ditolak=` yang kini dibersihkan sendiri.
+      await expect(page.getByText('Halaman itu bukan untuk peran Anda'), `${path} harus menolak ${peran.nama}`).toBeVisible();
+      await expect(page, `${path} harus memantulkan ${peran.nama} ke beranda`).toHaveURL(/\/(\?.*)?$/);
     }
   });
 
@@ -129,7 +138,10 @@ test('teknisi tidak melihat tombol Terima Unit', async ({ page }) => {
 test('teknisi yang mengetik /tickets/intake langsung tetap ditolak', async ({ page }) => {
   await login(page, 'technician@demo.com');
   await page.goto('/tickets/intake');
-  await expect(page).toHaveURL(/\/\?ditolak=/);
+  // R1.6-T4 — `?ditolak=` dibersihkan sendiri; yang dijanjikan ke pemakai
+  // adalah pesannya, bukan parameternya.
+  await expect(page.getByText('Halaman itu bukan untuk peran Anda')).toBeVisible();
+  await expect(page).toHaveURL(/\/(\?.*)?$/);
 });
 
 test('API menolak teknisi membuat tiket, dan tetap mengizinkan kasir', async ({ page }) => {
