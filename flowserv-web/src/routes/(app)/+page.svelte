@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { invalidateAll, replaceState } from '$app/navigation';
+  import { onMount, tick } from 'svelte';
   import { page } from '$app/state';
   import { API_BASE } from '$lib/api/config';
   import StatCard from '$lib/components/dashboard/StatCard.svelte';
@@ -8,7 +9,43 @@
 
   // R1.5A — set by the layout guard when a role opens a page it may not.
   // Saying so out loud beats a silent bounce that looks like a broken link.
-  const ditolak = $derived(page.url.searchParams.get('ditolak'));
+  //
+  // R1.6 — nilainya disalin ke state lalu alamatnya dibersihkan. Pemilik
+  // (uji-R1.5 A3): "apakah tidak apa apa di url jadi seperti ini
+  // /?ditolak=%2Fflows". Tidak berbahaya, tapi alamat itu ikut tersimpan kalau
+  // halamannya di-bookmark dan pesannya muncul lagi tiap kali di-refresh,
+  // seolah baru ditolak. Nilai awal dibaca langsung (bukan di dalam $effect)
+  // supaya kotaknya sudah ada di render pertama dari server, tidak berkedip.
+  let ditolak = $state(page.url.searchParams.get('ditolak') ?? '');
+
+  // Dibersihkan dengan History API bawaan browser, BUKAN `replaceState()`
+  // milik SvelteKit.
+  //
+  // Dua percobaan sebelumnya gagal dengan pesan yang sama — "Cannot call
+  // replaceState(...) before router is initialized" — baik dari `$effect`
+  // maupun dari `afterNavigate`. Sebabnya: pentalan ini adalah redirect dari
+  // SERVER (`(app)/+layout.server.ts`), jadi halamannya dimuat penuh dan
+  // keduanya berjalan saat hidrasi, sebelum router SvelteKit siap. Ketahuan
+  // dari tes e2e yang gagal, bukan dari membaca ulang kode.
+  //
+  // Aman memakai API bawaan di sini justru karena yang dibuang cuma parameter
+  // yang SUDAH disalin ke `ditolak` di atas: tak ada satu pun bagian halaman
+  // ini yang membaca `page.url` untuk hal lain (dicek), jadi `page.url` yang
+  // jadi basi tidak berakibat apa-apa, dan navigasi berikutnya lewat router
+  // akan menyegarkannya sendiri.
+  onMount(async () => {
+    if (!ditolak) return;
+    // Menunggu satu siklus setelah hidrasi. Router SvelteKit baru selesai
+    // diinisialisasi sesudah itu; memanggilnya lebih awal — dari `$effect`
+    // maupun `afterNavigate`, keduanya sudah dicoba — melempar "Cannot call
+    // replaceState(...) before router is initialized", karena pentalan ini
+    // adalah redirect dari SERVER sehingga halamannya dimuat penuh.
+    await tick();
+    const bersih = new URL(window.location.href);
+    if (!bersih.searchParams.has('ditolak')) return;
+    bersih.searchParams.delete('ditolak');
+    replaceState(bersih, page.state);
+  });
 
   function formatRp(amount: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
