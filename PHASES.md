@@ -32,10 +32,82 @@
 > (buktinya ada di file ini + git history). Satu temuan yang belum dibangun dan nyaris
 > hilang — **retur ke supplier** — diselamatkan ke Fase R5.
 >
+> **Dirapikan lagi 2026-08-01** atas permintaan pemilik ("agar tidak terlalu menumpuk
+> tetapi riwayatnya jangan sampai hilang"): 5 berkas R1/R1.5/R1.6 (rencana + checklist uji
+> yang sudah diisi) diganti **satu** berkas naratif
+> [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md) — apa yang
+> direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya,
+> lengkap dengan kalimat asli pemilik. Setiap catatan uji di-commit lebih dulu sebelum
+> berkasnya dihapus, jadi teks aslinya tetap utuh di git history.
+>
+> - [x] **R1.7 — Perbaikan hasil uji manual R1.6** (2026-08-01, kode selesai).
+>       Kesimpulan pemilik: **"Ada yang harus diperbaiki dulu"**.
+>       - [x] **R1.7-T1 🔴 — kartu Piutang kasir menautkan ke halaman yang menolak kasir.**
+>             Poin uji C2: *"Tidak bisa di klik ketika login kasir karena akses di tolak —
+>             `/?ditolak=%2Ffinance%2Freceivables`"*. Aturan `/finance` di
+>             `lib/auth/route-access.ts` menutup **seluruh anak jalurnya**, padahal backend
+>             menggerbangi piutang dengan `pos.process_payment` (bukan
+>             `finance.view_reports`) dan memang membalas 200 untuk kasir.
+>             **Yang membuat ini pahit: komentar di aturan itu SUDAH menyebut pengecualian
+>             ini sejak R1.5** — *"Cashier keeps the AR tile... which reads
+>             /finance/receivables (gated on pos.process_payment instead)"* — tapi barisnya
+>             tak pernah ditulis. Komentar yang benar di atas kode yang salah; logika
+>             "prefix terpanjang menang" bahkan sudah ada justru supaya pengecualian ini
+>             mungkin. **Dan tes R1.6 memeriksa dua hal yang salah:** API-nya 200, dan
+>             kartunya tampil — tak satu pun **mengikuti tautannya**. Tes R1.7 sekarang
+>             mengklik kartunya.
+>       - [x] **R1.7-T2 — antrian di Beranda + popup rincian.** Poin uji B1: *"daftar
+>             antrian service... di sertakan di bagian dashboard jadi tinggal ambil saja"*
+>             dan *"jangan buka halaman baru... munculkan popup saja"*. Beranda teknisi kini
+>             menampilkan barisnya (maks. 8), dan `AntrianDetailDialog.svelte` menampilkan
+>             semua catatan kasir — keluhan, sandi/pola, telepon, no. antrian — dengan
+>             tombol Ambil di dalamnya. Isinya diambil dari `GET /v1/tickets/:id` **saat
+>             popup dibuka**, bukan dari baris daftar: menambahkannya ke daftar berarti
+>             mengirim **sandi setiap unit ke setiap layar yang memuat daftar** (Kanban,
+>             daftar kasir), padahal yang butuh cuma popup. Popup sengaja hanya untuk
+>             antrian; tiket yang sudah dipegang tetap membuka halaman kerja penuh.
+>       - [x] **R1.7-T3 — teknisi tidak lagi memilih teknisi lain.** Poin uji B3.
+>             Backend **sudah** menolaknya (`ticket.assign_technician` tak diberikan ke
+>             Technician), jadi dropdown itu kontrol yang tampak hidup padahal pasti gagal —
+>             anti-pattern Track F. Pemilik menemukannya sebagai **kebingungan**, bukan
+>             error. Tombol "Ambil Pekerjaan" tidak ikut hilang: itu menugaskan diri sendiri.
+>       - [x] **R1.7-T4 — riwayat unit masuk di halaman Terima Unit.** Poin uji E1.
+>             Dimuat dari server (bertahan setelah refresh) **dan** ditambah dari klien tiap
+>             tiket baru dibuat. Dicatat **sebelum** `resetForNextCustomer()` mengosongkan
+>             form. Dinyatakan apa adanya ke pemilik: ini "unit masuk terbaru se-toko",
+>             bukan "yang saya input" — `service_tickets` tidak menyimpan pembuatnya.
+>       - [x] **R1.7-T5 — `?ditolak=` dibuang seluruhnya.** Tidak diminta pemilik;
+>             muncul karena perbaikan T4 di R1.6 (`onMount` + `await tick()`) **lulus tes
+>             waktu itu lalu mulai gagal di R1.7 tanpa satu baris pun kode terkaitnya
+>             disentuh** — beranda kebagian isi lebih banyak (kartu antrian + popup), jadi
+>             hidrasi sedikit lebih lama dan satu `tick()` tak lagi cukup. Itu membuktikan
+>             keempat cara pembersihan dari sisi klien memang bergantung pada waktu; yang
+>             "berhasil" hanya menang balapan. Sekarang alamatnya **tidak pernah kotor**:
+>             penjaga layout menaruh jalur yang ditolak di cookie sekali pakai
+>             (`flowserv_ditolak`, 30 detik) lalu memantulkan ke `/`; `+page.server.ts`
+>             membacanya dan **langsung menghapusnya di server**. Nol kode waktu di browser.
+>             Tes T4 dari R1.6 sengaja **tidak** diganti isinya — janji ke pemakai tetap
+>             sama, dan tes yang bertahan melewati penggantian mekanisme justru itu gunanya.
+>       - [ ] **R1.7-T6 — uji manual pemilik**
+>             ([`plan/uji-R1.7-perbaikan.md`](plan/uji-R1.7-perbaikan.md)) ← **gerbang R2**
+>
+>       **Bukti R1.7:** **288 unit** (backend tak disentuh) · **Playwright 188/191**
+>       (11 baru di `e2e/r1-7-perbaikan.spec.ts`) · `tsc` bersih · `svelte-check` 733 berkas
+>       0 error. **3 Playwright yang gagal sama persis dengan R1.6 dan bukan regresi:**
+>       `p6b-print:71`, `printer-scan:36`, `pos-service-flow:80` semuanya menguji perilaku
+>       **saat agen printer MATI**, sedangkan di mesin ini agennya menyala.
+>
+>       **⛔ R2 terkunci, bukan sekadar menunggu.** Isinya sudah lengkap (form per tahap,
+>       alur "setelah diagnosis kembali ke kasir", minta pindah teknisi, laporan bulanan
+>       teknisi), tapi satu butir — *"tiket tidak boleh maju sebelum data tahapnya lengkap"* —
+>       menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**. Pertanyaannya
+>       sudah diajukan dua kali dan belum dijawab. Menebaknya lalu menegakkan tebakan itu
+>       persis kesalahan yang S5 sudah pernah buat dan cabut.
+>
 > - [x] **R1.6 — Perbaikan hasil uji manual R1.5** (2026-08-01, kode selesai).
->       Pemilik menjalankan [`plan/uji-R1.5-perbaikan.md`](plan/uji-R1.5-perbaikan.md) dan
+>       Pemilik menjalankan [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md) dan
 >       menyimpulkan **"Sepertinya masih ada yang perlu di perbaiki"**. Rencana + bukti:
->       [`plan/R1.6-perbaikan-hasil-uji-R1.5.md`](plan/R1.6-perbaikan-hasil-uji-R1.5.md).
+>       [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md).
 >       **Tiga dari enam catatan pemilik ternyata bukan bug** — diperiksa ke database
 >       lebih dulu, bukan langsung ditambal: kartu Piutang 0 karena seed **tidak pernah
 >       membuat satu pun faktur POS** (jadi 0 untuk semua peran, termasuk Super Admin —
@@ -84,8 +156,9 @@
 >             bawaan jalan tapi meninggalkan peringatan permanen di konsol. Yang dipakai:
 >             `onMount` + `await tick()` lalu `replaceState()` resmi. Ditemukan oleh tes
 >             e2e yang gagal + skrip Playwright kecil yang mencetak `pageerror`.
->       - [ ] **R1.6-T5 — uji manual pemilik**
->             ([`plan/uji-R1.6-perbaikan.md`](plan/uji-R1.6-perbaikan.md)) ← **gerbang R2**
+>       - [x] **R1.6-T5 — uji manual pemilik** (2026-08-01). Kesimpulan: **"Ada yang harus
+>             diperbaiki dulu"**. A1–A3, B4, C1, C3, D1–D3, E1–E4 semuanya terbukti jalan;
+>             **C2 gagal** dan jadi pemicu R1.7 di bawah.
 >
 >       **Bukti tambahan yang uji A1–A3 pemilik belum bisa berikan:** pentalan yang beliau
 >       lihat datang dari `lib/auth/route-access.ts`, tabel di frontend yang **tidak
@@ -124,9 +197,9 @@
 >       sudah pernah buat dan cabut.
 >
 > - [x] **R1.5 — Perbaikan hasil uji manual pemilik** (2026-08-01, kode selesai).
->       Pemilik menjalankan [`plan/uji-R1-peran-akses.md`](plan/uji-R1-peran-akses.md) dan
+>       Pemilik menjalankan [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md) dan
 >       menyimpulkan **"Ada yang harus diperbaiki dulu"**, bukan lanjut ke R2. Rencananya
->       [`plan/R1.5-perbaikan-hasil-uji-R1.md`](plan/R1.5-perbaikan-hasil-uji-R1.md).
+>       [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md).
 >       - [x] **R1.5A — kebocoran data keuangan ditutup** (`fa58979`). Poin uji C7/C8
 >             ("kasir bisa akses halaman itu, tidak hanya kasir, teknisi juga") ternyata
 >             **bukan sekadar halaman kosong yang terbuka**: `GET /v1/finance/*` memberi
@@ -160,7 +233,7 @@
 >             sama. **18 tes di 9 spec** memakai lemparan itu sebagai langkah setup —
 >             semuanya diperbarui menempuh jalan kasir sungguhan, bukan dilonggarkan.
 >       - [ ] **R1.5E — uji manual pemilik**
->             ([`plan/uji-R1.5-perbaikan.md`](plan/uji-R1.5-perbaikan.md)) ← **gerbang R2**
+>             ([`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md)) ← **gerbang R2**
 >
 >       **Bukti akhir:** **278 unit** (dari 262) · `tsc` bersih · `svelte-check` 731 berkas
 >       0 error · **Playwright 170/170 lulus di DB bersih** (dari 168), termasuk **18 tes
@@ -177,7 +250,7 @@
 >       **403** di 5 endpoint lain — bukti hanya satu izin ditambah. **27 Playwright**
 >       (10 baru) + **262 unit** lulus, `tsc` + `svelte-check` bersih. Bukti lengkap di
 >       [`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md) → "Bukti R1".
->       **Menunggu uji manual pemilik** ([`plan/uji-R1-peran-akses.md`](plan/uji-R1-peran-akses.md))
+>       **Menunggu uji manual pemilik** ([`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md))
 >       sebelum R2 dimulai.
 
 > **⚠️ Updated 2026-07-28 — track PENYEDERHANAAN dibuka, dan ini yang paling penting
