@@ -1,51 +1,30 @@
 <script lang="ts">
-  import { invalidateAll, replaceState } from '$app/navigation';
-  import { onMount, tick } from 'svelte';
-  import { page } from '$app/state';
+  import { invalidateAll } from '$app/navigation';
   import { API_BASE } from '$lib/api/config';
   import StatCard from '$lib/components/dashboard/StatCard.svelte';
+  import AntrianDetailDialog from '$lib/components/tickets/AntrianDetailDialog.svelte';
 
   let { data } = $props();
 
-  // R1.5A — set by the layout guard when a role opens a page it may not.
-  // Saying so out loud beats a silent bounce that looks like a broken link.
+  // R1.5A — diisi penjaga layout saat sebuah peran membuka halaman yang bukan
+  // haknya. Mengatakannya terus terang lebih baik daripada pentalan diam yang
+  // terlihat seperti tautan rusak.
   //
-  // R1.6 — nilainya disalin ke state lalu alamatnya dibersihkan. Pemilik
-  // (uji-R1.5 A3): "apakah tidak apa apa di url jadi seperti ini
-  // /?ditolak=%2Fflows". Tidak berbahaya, tapi alamat itu ikut tersimpan kalau
-  // halamannya di-bookmark dan pesannya muncul lagi tiap kali di-refresh,
-  // seolah baru ditolak. Nilai awal dibaca langsung (bukan di dalam $effect)
-  // supaya kotaknya sudah ada di render pertama dari server, tidak berkedip.
-  let ditolak = $state(page.url.searchParams.get('ditolak') ?? '');
+  // R1.7 — datang dari cookie sekali pakai yang sudah dihapus server saat
+  // dibaca, bukan dari `?ditolak=` di alamat. Alamatnya tak pernah kotor, jadi
+  // tak ada yang perlu dibersihkan di browser — dan "hilang setelah refresh"
+  // dijamin, bukan diusahakan. Lihat DITOLAK_COOKIE di `(app)/+layout.server.ts`
+  // untuk kenapa tiga percobaan pembersihan dari sisi klien semuanya rapuh.
+  const ditolak = $derived(data.ditolak ?? '');
 
-  // Dibersihkan dengan History API bawaan browser, BUKAN `replaceState()`
-  // milik SvelteKit.
-  //
-  // Dua percobaan sebelumnya gagal dengan pesan yang sama — "Cannot call
-  // replaceState(...) before router is initialized" — baik dari `$effect`
-  // maupun dari `afterNavigate`. Sebabnya: pentalan ini adalah redirect dari
-  // SERVER (`(app)/+layout.server.ts`), jadi halamannya dimuat penuh dan
-  // keduanya berjalan saat hidrasi, sebelum router SvelteKit siap. Ketahuan
-  // dari tes e2e yang gagal, bukan dari membaca ulang kode.
-  //
-  // Aman memakai API bawaan di sini justru karena yang dibuang cuma parameter
-  // yang SUDAH disalin ke `ditolak` di atas: tak ada satu pun bagian halaman
-  // ini yang membaca `page.url` untuk hal lain (dicek), jadi `page.url` yang
-  // jadi basi tidak berakibat apa-apa, dan navigasi berikutnya lewat router
-  // akan menyegarkannya sendiri.
-  onMount(async () => {
-    if (!ditolak) return;
-    // Menunggu satu siklus setelah hidrasi. Router SvelteKit baru selesai
-    // diinisialisasi sesudah itu; memanggilnya lebih awal — dari `$effect`
-    // maupun `afterNavigate`, keduanya sudah dicoba — melempar "Cannot call
-    // replaceState(...) before router is initialized", karena pentalan ini
-    // adalah redirect dari SERVER sehingga halamannya dimuat penuh.
-    await tick();
-    const bersih = new URL(window.location.href);
-    if (!bersih.searchParams.has('ditolak')) return;
-    bersih.searchParams.delete('ditolak');
-    replaceState(bersih, page.state);
-  });
+  // R1.7 — antrian tak bertuan bisa dilihat isinya lewat popup sebelum diambil,
+  // tanpa berpindah halaman (uji-R1.6 B1).
+  let antrianTerpilih = $state('');
+
+  async function antrianDiambil() {
+    antrianTerpilih = '';
+    await invalidateAll();
+  }
 
   function formatRp(amount: number) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
@@ -178,6 +157,49 @@
       />
     </div>
 
+    <!-- R1.7 — antrian pindah ke beranda, lengkap dengan barisnya. Ditaruh DI
+         ATAS "Tiket Terbaru Saya" karena pekerjaan yang menunggu diambil adalah
+         hal pertama yang perlu dilihat teknisi saat membuka aplikasi — urutan
+         yang sama dengan halaman /tickets. -->
+    {#if (t.unassignedRecent?.length ?? 0) > 0}
+      <div class="bg-white rounded-xl border border-amber-200 shadow-sm p-4 mb-6" data-testid="beranda-antrian">
+        <div class="flex flex-wrap items-center gap-2 mb-1">
+          <h2 class="font-semibold text-slate-800">Menunggu Diambil</h2>
+          <span class="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 bg-amber-100 text-amber-800 border border-amber-200 rounded-full text-xs font-semibold">
+            {t.unassignedTotal}
+          </span>
+        </div>
+        <p class="text-sm text-slate-500 mb-3">
+          Ketuk salah satu untuk melihat catatan kasir, lalu putuskan mau mengambilnya.
+        </p>
+
+        <div class="divide-y divide-slate-100">
+          {#each t.unassignedRecent as ticket}
+            <button
+              type="button"
+              onclick={() => (antrianTerpilih = ticket.id)}
+              class="w-full text-left py-3 flex items-center justify-between gap-3 hover:bg-amber-50/50 -mx-2 px-2 rounded transition-colors"
+              data-testid="beranda-antrian-row"
+            >
+              <div class="min-w-0">
+                <div class="text-sm font-medium text-slate-800 truncate">{ticket.customerName}</div>
+                <div class="text-xs text-slate-500 truncate">
+                  {ticket.assetType} - {ticket.brand || ''} {ticket.model || ''}
+                </div>
+              </div>
+              <span class="shrink-0 text-xs font-medium text-blue-700">Lihat &amp; Ambil &rarr;</span>
+            </button>
+          {/each}
+        </div>
+
+        {#if t.unassignedTotal > t.unassignedRecent.length}
+          <a href="/tickets" class="inline-block mt-3 text-sm font-medium text-blue-600 hover:text-blue-800">
+            Lihat semua {t.unassignedTotal} antrian &rarr;
+          </a>
+        {/if}
+      </div>
+    {/if}
+
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       <h2 class="font-semibold text-slate-800 mb-3">Tiket Terbaru Saya</h2>
 
@@ -232,3 +254,12 @@
     </div>
   {/if}
 </div>
+
+{#if antrianTerpilih}
+  <AntrianDetailDialog
+    ticketId={antrianTerpilih}
+    token={data.token}
+    onclose={() => (antrianTerpilih = '')}
+    onclaimed={antrianDiambil}
+  />
+{/if}

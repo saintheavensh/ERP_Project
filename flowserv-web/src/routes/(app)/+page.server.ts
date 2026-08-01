@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { DITOLAK_COOKIE } from '$lib/auth/route-access';
 
 // P3 — per-role dashboards. Everything here is derived from existing endpoints
 // via server-side aggregation (no new backend route) — see
@@ -79,11 +80,19 @@ function startOfToday(): Date {
   return d;
 }
 
-export const load: PageServerLoad = async ({ locals, fetch }) => {
+export const load: PageServerLoad = async ({ locals, fetch, cookies }) => {
   const token = locals.token;
   const roleName = locals.user?.roleName;
   if (!token) throw redirect(302, '/login');
-  if (!roleName) return { roleName: null, token };
+
+  // R1.7 — pesan pentalan akses, dibaca lalu LANGSUNG dihapus. Karena
+  // penghapusannya terjadi di sini (server), refresh berikutnya tidak lagi
+  // membawa pesannya — tanpa satu baris pun kode waktu di browser.
+  // Lihat DITOLAK_COOKIE di $lib/auth/route-access.ts.
+  const ditolak = cookies.get(DITOLAK_COOKIE) ?? null;
+  if (ditolak) cookies.delete(DITOLAK_COOKIE, { path: '/' });
+
+  if (!roleName) return { roleName: null, token, ditolak };
 
   if (roleName === 'Technician') {
     // R1 — antrian tiket tak bertuan ikut diambil. Tanpa ini teknisi tak punya
@@ -97,11 +106,17 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     return {
       roleName,
       token,
+      ditolak,
       technician: {
         total: tickets.length,
         unassignedTotal: unassigned.length,
         byStage: groupByStage(tickets),
         recent,
+        // R1.7 — barisnya, bukan cuma jumlahnya. Pemilik (uji-R1.6 B1):
+        // "daftar antrian service ... di sertakan di bagian dashboard jadi
+        // tinggal ambil saja". Dibatasi 8: beranda adalah ringkasan, dan
+        // daftar penuhnya tetap ada di /tickets.
+        unassignedRecent: unassigned.slice(0, 8),
       },
     };
   }
@@ -120,6 +135,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
     );
     return {
       roleName,
+      token,
+      ditolak,
       cashier: {
         todaySalesTotal,
         todaySalesCount: todaysInvoices.length,
@@ -158,6 +175,8 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
   return {
     roleName,
+    token,
+    ditolak,
     overview: {
       openTicketsTotal: tickets.length,
       byStage: groupByStage(tickets),
