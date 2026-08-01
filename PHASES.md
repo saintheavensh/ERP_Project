@@ -32,6 +32,97 @@
 > (buktinya ada di file ini + git history). Satu temuan yang belum dibangun dan nyaris
 > hilang — **retur ke supplier** — diselamatkan ke Fase R5.
 >
+> - [x] **R1.6 — Perbaikan hasil uji manual R1.5** (2026-08-01, kode selesai).
+>       Pemilik menjalankan [`plan/uji-R1.5-perbaikan.md`](plan/uji-R1.5-perbaikan.md) dan
+>       menyimpulkan **"Sepertinya masih ada yang perlu di perbaiki"**. Rencana + bukti:
+>       [`plan/R1.6-perbaikan-hasil-uji-R1.5.md`](plan/R1.6-perbaikan-hasil-uji-R1.5.md).
+>       **Tiga dari enam catatan pemilik ternyata bukan bug** — diperiksa ke database
+>       lebih dulu, bukan langsung ditambal: kartu Piutang 0 karena seed **tidak pernah
+>       membuat satu pun faktur POS** (jadi 0 untuk semua peran, termasuk Super Admin —
+>       bukan gerbang R1.5A yang kesempitan); URL `?ditolak=` tidak membocorkan apa pun;
+>       penjualan tunai "hilang" karena pemilik menjalankan `db:reset` lagi setelah uji.
+>       - [x] **R1.6-T1 — pesan validasi berhenti berupa JSON mentah.** Poin uji C1/C3
+>             ("error masih berupa array object"). **Sebabnya bukan di halaman intake dan
+>             bukan di aturan sandi:** `zValidator` bawaan Hono membalas dengan bentuknya
+>             sendiri, bukan amplop `{data, meta, error}` yang coding-guidelines §3.2 sebut
+>             *"no exceptions"* — dan `ZodError.message` isinya JSON daftar issue, jadi
+>             frontend yang membaca `error.message` (benar!) menampilkan blok JSON.
+>             **Berlaku di 78 pemakaian pada 24 berkas route, bukan cuma intake.** Ditutup
+>             dengan satu pembungkus `lib/validator.ts`; impor langsung ke
+>             `@hono/zod-validator` kini hanya ada di pembungkus itu. Terverifikasi live:
+>             pola 3 titik → `"Pola minimal 4 titik."`, sandi "12" → `"Sandi/PIN minimal 4
+>             karakter."`, pola 4 titik → **201**. 7 tes unit baru menjaga tidak ada `[`,
+>             `"code"`, atau `"path"` yang bocor ke pesan.
+>             **Kesalahan yang dibuat dan diperbaiki:** versi pertama menulis ulang tanda
+>             tangan tipe pembungkusnya, dan itu meruntuhkan inferensi Hono —
+>             `c.req.valid('json')` jadi `unknown` di semua route sekaligus (ratusan
+>             `TS18046` di berkas yang tak disentuh). Bentuk cacat yang sama persis dengan
+>             H12 (4.5B.1). Ditangkap `tsc`, bukan review; diperbaiki dengan
+>             `as typeof honoZValidator` — bungkus perilakunya, jangan tulis ulang tipenya.
+>       - [x] **R1.6-T2 — tombol "Ambil" langsung di baris antrian.** Poin uji B3
+>             ("harus ke halaman pekerjaan saya kemudian lihat detail terus ambil
+>             pekerjaan… kurang simpel"). Panggilannya **tidak disalin**: dipindah ke
+>             `lib/api/tickets.ts` dan halaman detail memakai fungsi yang sama, supaya
+>             `Idempotency-Key` tak bisa hilang di salah satu jalur.
+>       - [x] **R1.6-T3 — seed: teknisi kedua + dua faktur piutang.** Poin uji E5 & A6.
+>             Teknisi Rina (`technician2@demo.com`) membuat poin B6 uji R1 bisa diuji sama
+>             sekali; dua faktur POS belum lunas (450rb belum dibayar, 800rb DP 300rb)
+>             mengisi kartu Piutang. Keduanya **sengaja hanya jasa, tanpa suku cadang** —
+>             baris `part` akan menuntut batch FIFO, `stock_movements`, dan cache
+>             `stock_levels` yang cocok, dan data contoh tidak boleh mengotori
+>             `GET /v1/inventory/reconciliation`, alat yang justru dipakai mendeteksi bug
+>             stok (keputusan H4). Terverifikasi: rekonsiliasi **0 selisih**.
+>             **Ditangkap tes, bukan review:** baris buku kas pertama memakai
+>             `referenceType: 'pos_invoice'` padahal `ledger/reconcile` hanya menghitung
+>             `'pos_sale'` — kedua faktur tampak belum dibukukan dan e2e H15 gagal
+>             (`isClean: false`). Diperbaiki; 21/21 hijau.
+>       - [x] **R1.6-T4 — alamat `?ditolak=` bersih sendiri.** Poin uji A3. **Butuh tiga
+>             percobaan, semua kegagalannya hanya muncul saat dijalankan:** pentalan ini
+>             `redirect()` dari server, jadi halamannya dimuat penuh dan `replaceState()`
+>             SvelteKit dipanggil sebelum router-nya siap — gagal dari `$effect` **dan**
+>             dari `afterNavigate` dengan galat yang sama; `window.history.replaceState`
+>             bawaan jalan tapi meninggalkan peringatan permanen di konsol. Yang dipakai:
+>             `onMount` + `await tick()` lalu `replaceState()` resmi. Ditemukan oleh tes
+>             e2e yang gagal + skrip Playwright kecil yang mencetak `pageerror`.
+>       - [ ] **R1.6-T5 — uji manual pemilik**
+>             ([`plan/uji-R1.6-perbaikan.md`](plan/uji-R1.6-perbaikan.md)) ← **gerbang R2**
+>
+>       **Bukti tambahan yang uji A1–A3 pemilik belum bisa berikan:** pentalan yang beliau
+>       lihat datang dari `lib/auth/route-access.ts`, tabel di frontend yang **tidak
+>       melihat `RBAC_MODE` sama sekali** — ia memantulkan kasir di mode `report` maupun
+>       `enforce`. Gerbang sesungguhnya diuji langsung ke API di sini: `/finance/ledger`,
+>       `/finance/payables`, `/finance/ledger/summary` semuanya **403 untuk kasir DAN
+>       teknisi, 200 untuk Super Admin**. Klaim + dua teknisi juga terekam:
+>       antrian 2→1 untuk **keduanya**, milik-Andi 0→1, milik-Rina tetap 0.
+>
+>       **Bukti akhir:** **288 unit** (dari 278, 10 baru di `lib/__tests__/validator.test.ts`)
+>       · **21 e2e API** · **Playwright 177/180** (10 baru di `e2e/r1-6-perbaikan.spec.ts`)
+>       · `tsc` bersih · `svelte-check` 732 berkas 0 error.
+>
+>       **3 Playwright yang gagal BUKAN regresi, dan disebut di sini supaya tidak dikira
+>       begitu:** `p6b-print:71`, `printer-scan:36`, dan `pos-service-flow:80` semuanya
+>       menguji perilaku **saat agen printer MATI** (judulnya menyebut itu sendiri), tapi
+>       di mesin ini agennya **menyala** (`127.0.0.1:9100/health` → ok, POS-80 terkonfigurasi
+>       sejak 6C.5) — jadi struknya benar-benar tercetak dan pesan "tidak terdeteksi" yang
+>       ditunggu tes tak pernah muncul. Tak satu pun menyentuh berkas yang R1.6 ubah.
+>       **Ini kelemahan rancangan tesnya**, dan sengaja tidak ditambal di sini: tes yang
+>       gagal justru ketika pengembang punya printer menyala akan cepat diabaikan, dan
+>       memperbaikinya (mock agen, atau menerima dua hasil) adalah tugasnya sendiri.
+>
+>       **Jebakan yang ditutup sekalian:** `playwright.config.ts` default-nya
+>       `localhost:5173`, padahal peluncur resmi proyek ini menyalakan web di **5188**
+>       (`--strictPort`). Di mesin ini 5173 dipegang proyek lain (`pos_sederhana`), jadi
+>       seluruh suite menguji **aplikasi yang salah** dan gagal dengan pesan menyesatkan
+>       ("locator `#email` tidak ditemukan"). Default diperbaiki ke 5188.
+>
+>       **Dipindahkan ke R2, bukan dilupakan:** E1 (form per tahap — *"teknisi jadi bingung
+>       harus mengisi yang mana"*), E3 (**tiket bisa maju walau data belum diisi** —
+>       dikonfirmasi langsung ke pemilik), alur baru *"setelah diagnosis tiket kembali ke
+>       kasir, nota servis juga dari kasir"*, dan laporan bulanan teknisi (unit berhasil /
+>       gagal / garansi / sisa pekerjaan). Ketiganya butuh pemilik menentukan **aturan per
+>       tahap** dulu — menebaknya lalu menegakkan tebakan itu persis kesalahan yang S5
+>       sudah pernah buat dan cabut.
+>
 > - [x] **R1.5 — Perbaikan hasil uji manual pemilik** (2026-08-01, kode selesai).
 >       Pemilik menjalankan [`plan/uji-R1-peran-akses.md`](plan/uji-R1-peran-akses.md) dan
 >       menyimpulkan **"Ada yang harus diperbaiki dulu"**, bukan lanjut ke R2. Rencananya

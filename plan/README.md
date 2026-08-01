@@ -45,8 +45,12 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 | [`go-live-plan.md`](go-live-plan.md) | **Konteks toko** dari wawancara pemilik 2026-07-24 — jenis usaha, jumlah cabang, cara bayar, cara gaji teknisi, kenapa pindah dari `pos_sederhana` | 📖 Rujukan, jangan dihapus |
 | [`go-live-tahap-b-onward.md`](go-live-tahap-b-onward.md) | Peta prioritas besar menuju pilot 1 cabang (Milestone 0 / B / C / D / E) | 🟢 Aktif |
 | [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R5: peran, halaman tiket per peran, QC, retur | 🟢 Aktif |
+| [`R1.5-perbaikan-hasil-uji-R1.md`](R1.5-perbaikan-hasil-uji-R1.md) | Rencana + bukti perbaikan dari catatan uji R1 | ✅ Selesai, menunggu ditutup |
+| [`R1.6-perbaikan-hasil-uji-R1.5.md`](R1.6-perbaikan-hasil-uji-R1.5.md) | **Rencana + bukti perbaikan dari catatan uji R1.5** | 🟢 Kode selesai |
 | [`uji-00-kondisi-sekarang.md`](uji-00-kondisi-sekarang.md) | Uji aplikasi **apa adanya hari ini** — semua area, ~150 poin | 📋 Opsional, kapan saja |
-| [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md) | Uji khusus Fase R1 | 🔴 **SIAP DIJALANKAN** |
+| [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md) | Uji khusus Fase R1 | ✅ Sudah diisi pemilik |
+| [`uji-R1.5-perbaikan.md`](uji-R1.5-perbaikan.md) | Uji khusus Fase R1.5 | ✅ Sudah diisi pemilik |
+| [`uji-R1.6-perbaikan.md`](uji-R1.6-perbaikan.md) | Uji khusus Fase R1.6 | 🔴 **SIAP DIJALANKAN** |
 
 **Checklist uji R2 dan R3 sengaja belum ditulis** — isinya akan menyesuaikan catatan pemilik
 dari fase sebelumnya. Menulisnya sekarang berarti menebak.
@@ -55,15 +59,26 @@ dari fase sebelumnya. Menulisnya sekarang berarti menebak.
 
 ## Status sekarang
 
-**Branch:** `go-live/tahap-b` · **Baseline:** 262 unit test backend hijau (dicek 2026-07-31)
+**Branch:** `go-live/tahap-b` · **Baseline:** 285 unit + 21 e2e API backend hijau (dicek 2026-08-01)
 
 ```
-R1  Peran & akses                ✅ SELESAI 2026-07-31 — menunggu uji manual pemilik
-R2  Halaman tiket per peran      ⏳ menunggu catatan uji R1 (isi uji-R1-peran-akses.md)
-R3  QC jadi modul sendiri        ⏳ menunggu catatan uji R2
-R4  Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
-R5  Retur (pelanggan + supplier) ⏸️  menunggu bentuk retur nyata dari pilot
+R1   Peran & akses                ✅ SELESAI 2026-07-31 — sudah diuji pemilik
+R1.5 Perbaikan hasil uji R1       ✅ SELESAI 2026-08-01 — sudah diuji pemilik
+R1.6 Perbaikan hasil uji R1.5     ✅ SELESAI 2026-08-01 — menunggu uji manual pemilik
+R2   Halaman tiket per peran      ⏳ menunggu catatan uji R1.6 (isi uji-R1.6-perbaikan.md)
+R3   QC jadi modul sendiri        ⏳ menunggu catatan uji R2
+R4   Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
+R5   Retur (pelanggan + supplier) ⏸️  menunggu bentuk retur nyata dari pilot
 ```
+
+**Yang sudah masuk antrian R2 dari catatan pemilik** (jangan hilang saat R2 ditulis):
+form **per tahap** alih-alih semua di halaman detail (uji-R1.5 E1); **tiket tidak boleh maju
+sebelum data tahapnya lengkap** (E3 — dikonfirmasi langsung ke pemilik); alur baru *"setelah
+diagnosis tiket kembali ke kasir; kasir memilih alurnya dan nota servis keluar dari kasir,
+bukan teknisi"*; tombol **"minta pindah teknisi"** (boleh di-assign manajer **atau** diambil
+teknisi lain); laporan bulanan teknisi berisi **unit berhasil / unit gagal / unit garansi /
+sisa pekerjaan**. Semuanya menunggu satu masukan pemilik: **apa yang wajib terisi di tiap
+tahap** — pertanyaannya sudah disiapkan di akhir `uji-R1.6-perbaikan.md`.
 
 ### Dikerjakan pemilik, tanpa kode
 
