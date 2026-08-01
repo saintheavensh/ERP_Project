@@ -224,8 +224,15 @@ test.describe('R1.6-T3 — kartu Piutang kasir tidak lagi selalu nol', () => {
 // D. T4 — alamat ?ditolak= bersih sendiri (uji-R1.5 A3)
 // ---------------------------------------------------------------------------
 
-test.describe('R1.6-T4 — alamat ?ditolak= dibersihkan setelah kotaknya tampil', () => {
-  test('kotak kuning tetap muncul, tapi parameternya hilang dari alamat', async ({ page }) => {
+/**
+ * R1.7 mengganti mekanismenya: pesan pentalan tak lagi lewat `?ditolak=` di
+ * alamat, melainkan cookie sekali pakai yang server hapus saat dibaca. Tesnya
+ * SENGAJA tidak ikut diganti isinya — yang dijanjikan ke pemakai tetap sama
+ * persis ("ditolak, diberi tahu, alamat bersih, hilang setelah refresh"), dan
+ * tes yang bertahan melewati penggantian mekanisme justru itu gunanya.
+ */
+test.describe('R1.6-T4 — pentalan diberi tahu, alamat tetap bersih', () => {
+  test('kotak kuning muncul dan alamat tidak pernah membawa parameter ditolak', async ({ page }) => {
     await login(page, 'cashier@demo.com');
     await page.goto('/flows');
 
