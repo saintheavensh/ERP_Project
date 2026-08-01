@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { checkPasscode } from '../lib/passcode';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
 import { ticketStatusEnum } from '../db/schema/enums';

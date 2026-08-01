@@ -7,7 +7,7 @@ import { requirePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 import { validateTargetMargin, DEFAULT_MARGIN_STRATEGY, MARGIN_STRATEGIES, type MarginStrategy } from '../lib/margin';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import { z } from 'zod';
 
 const categoriesRouter = new Hono();

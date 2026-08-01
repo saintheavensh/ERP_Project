@@ -3,7 +3,7 @@ import { db } from '../../db/connection';
 import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts } from '../../db/schema/index';
 import { eq, and, sql, asc, gt, desc } from 'drizzle-orm';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../../lib/validator';
 import { successResponse, errorResponse } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';

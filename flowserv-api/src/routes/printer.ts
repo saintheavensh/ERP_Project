@@ -1,5 +1,5 @@
 import { Hono, type Context } from 'hono';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import * as bcrypt from 'bcryptjs';
 import { db } from '../db/connection';
 import { users, roles, userRoleAssignments, branches } from '../db/schema';

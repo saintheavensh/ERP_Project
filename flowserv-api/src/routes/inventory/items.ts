@@ -10,7 +10,7 @@ import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } f
 import { validateTargetMargin, DEFAULT_MARGIN_STRATEGY, MARGIN_STRATEGIES, resolveMarginConfig, evaluatePriceAgainstMargin, type MarginStrategy } from '../../lib/margin';
 import { assertPriceAllowed } from '../../modules/inventory/service';
 import { BusinessError } from '../../lib/errors';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../../lib/validator';
 import { z } from 'zod';
 
 const router = new Hono();

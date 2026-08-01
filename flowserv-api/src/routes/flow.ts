@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../db/connection';
 import { flowTemplates, flowNodes, flowTransitions } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';

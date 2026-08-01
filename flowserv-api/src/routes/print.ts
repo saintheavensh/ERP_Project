@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { successResponse, errorResponse } from '../lib/response';
 import { BusinessError } from '../lib/errors';

@@ -8,7 +8,7 @@ import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
 import { assertPriceAllowed } from '../../modules/inventory/service';
 import { BusinessError } from '../../lib/errors';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../../lib/validator';
 import { z } from 'zod';
 
 const router = new Hono();

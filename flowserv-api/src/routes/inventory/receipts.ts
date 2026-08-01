@@ -6,7 +6,7 @@ import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission } from '../../middleware/rbac';
 import { auditMiddleware } from '../../middleware/audit';
 import { successResponse, errorResponse } from '../../lib/response';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../../lib/validator';
 import { z } from 'zod';
 import { calculateWac } from '../../lib/wac';
 

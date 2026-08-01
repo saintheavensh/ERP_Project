@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { db } from '../../db/connection';
 import { posInvoices, posInvoiceLines, stockBatches, stockMovements, stockLevels, inventoryItems, posDrafts, invoiceSequences, customers, customerPayments } from '../../db/schema/index';
 import { eq, and, desc, inArray } from 'drizzle-orm';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../../lib/validator';
 import { successResponse, errorResponse, getRequestId, buildSuccessEnvelope } from '../../lib/response';
 import { requireAuth, getAuthContext } from '../../middleware/auth';
 import { requirePermission, enforcePermission } from '../../middleware/rbac';

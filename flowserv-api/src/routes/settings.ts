@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
+import { zValidator } from '../lib/validator';
 import { db } from '../db/connection.js';
 import { paymentMethods, tenants } from '../db/schema/index.js';
 import { eq, and } from 'drizzle-orm';
