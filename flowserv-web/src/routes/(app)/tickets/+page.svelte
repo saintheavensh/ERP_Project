@@ -1,8 +1,27 @@
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
+  import { claimTicket } from '$lib/api/tickets';
+
   let { data } = $props();
   let tickets = $derived(data.tickets);
   let unassigned = $derived(data.unassigned ?? []);
   let isTechnician = $derived(data.isTechnician === true);
+
+  // R1.6 — pemilik (uji-R1.5 B3): "harus ke halaman pekerjaan saya kemudian
+  // lihat detail terus ambil pekerjaan menurut saya kurang simpel". Tombolnya
+  // sekarang ada di barisnya langsung; halaman detail tetap punya tombol yang
+  // sama untuk yang sudah terlanjur membukanya.
+  let claimingId = $state('');
+  let claimError = $state('');
+
+  async function ambil(ticketId: string) {
+    claimingId = ticketId;
+    claimError = '';
+    const result = await claimTicket(data.token, ticketId);
+    if (result.ok) await invalidateAll();
+    else claimError = result.message;
+    claimingId = '';
+  }
 </script>
 
 <svelte:head>
@@ -11,7 +30,7 @@
 
 <!-- R1 — satu tabel, dipakai dua kali. Dibuat snippet supaya kelompok
      "Menunggu Diambil" tak pernah bisa berbeda bentuk dari "Pekerjaan Saya". -->
-{#snippet ticketTable(rows: any[], emptyTitle: string, emptyHint: string)}
+{#snippet ticketTable(rows: any[], emptyTitle: string, emptyHint: string, claimable = false)}
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
    <div class="overflow-x-auto">
     <table class="w-full min-w-[720px] text-left text-sm">
@@ -50,10 +69,24 @@
             <td class="px-6 py-4 text-slate-500">
               {new Date(ticket.createdAt).toLocaleDateString()}
             </td>
-            <td class="px-6 py-4 text-right">
-              <a href={`/tickets/${ticket.id}`} class="text-blue-600 hover:text-blue-800 font-medium">
-                Buka &rarr;
-              </a>
+            <td class="px-6 py-4">
+              <div class="flex items-center justify-end gap-2">
+                {#if claimable}
+                  <!-- min-h-[40px]: ukuran sentuh yang sama dengan yang P12
+                       tetapkan untuk tombol POS — teknisi memakai tablet. -->
+                  <button
+                    onclick={() => ambil(ticket.id)}
+                    disabled={claimingId !== ''}
+                    class="px-3 min-h-[40px] bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                    data-testid="claim-from-list"
+                  >
+                    {claimingId === ticket.id ? 'Mengambil...' : 'Ambil'}
+                  </button>
+                {/if}
+                <a href={`/tickets/${ticket.id}`} class="text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
+                  Buka &rarr;
+                </a>
+              </div>
             </td>
           </tr>
         {:else}
@@ -113,14 +146,20 @@
         {/if}
       </div>
       <p class="text-sm text-slate-500 mb-3">
-        Tiket yang belum dipegang teknisi mana pun. Buka salah satu, lalu klik
-        <b>Ambil Pekerjaan</b>.
+        Tiket yang belum dipegang teknisi mana pun. Klik <b>Ambil</b> di barisnya
+        untuk mulai mengerjakan.
       </p>
+      {#if claimError}
+        <p class="mb-3 px-3 py-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg" data-testid="claim-error">
+          {claimError}
+        </p>
+      {/if}
       <div data-testid="unassigned-list">
         {@render ticketTable(
           unassigned,
           'Tidak ada pekerjaan yang menunggu.',
-          'Semua tiket yang terbuka sudah ada teknisinya.'
+          'Semua tiket yang terbuka sudah ada teknisinya.',
+          true
         )}
       </div>
     </section>

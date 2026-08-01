@@ -2,6 +2,7 @@ import { untrack } from 'svelte';
 import { invalidateAll } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
 import { autoPrint, summarizeAutoPrint, DOCUMENT_LABELS } from '$lib/api/auto-print';
+import { claimTicket } from '$lib/api/tickets';
 
 export class TicketDetailState {
   // $state so every getter that reads `this.data` (ticket, currentNode, charges…)
@@ -55,16 +56,12 @@ export class TicketDetailState {
   async claim() {
     this.assignLoading = true;
     this.errorMsg = '';
-    try {
-      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/claim`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}`, 'Idempotency-Key': crypto.randomUUID() },
-      });
-      const result = await res.json();
-      if (res.ok) await invalidateAll();
-      else this.errorMsg = result.error?.message || 'Gagal mengambil pekerjaan';
-    } catch { this.errorMsg = 'Network error'; }
-    finally { this.assignLoading = false; }
+    // R1.6 — panggilannya pindah ke lib/api/tickets.ts supaya tombol Ambil di
+    // baris antrian (/tickets) memakai jalur yang sama persis, bukan salinan.
+    const result = await claimTicket(this.token, this.ticket.id);
+    if (result.ok) await invalidateAll();
+    else this.errorMsg = result.message;
+    this.assignLoading = false;
   }
 
   async assign(technicianId: string) {
