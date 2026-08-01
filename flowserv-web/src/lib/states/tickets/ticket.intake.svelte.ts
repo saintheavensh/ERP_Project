@@ -41,6 +41,17 @@ export class TicketIntakeState {
   sukses = $state<{ id: string; ticketNumber: string } | null>(null);
   printMessage = $state('');
 
+  /**
+   * R1.7 — daftar unit masuk terbaru, supaya kasir bisa memastikan apa yang
+   * baru saja ia catat tanpa meninggalkan form (uji-R1.6 E1).
+   *
+   * Diisi dari server saat halaman dimuat, lalu ditambah dari sisi klien tiap
+   * kali tiket baru berhasil dibuat. Ditambah di klien, bukan dengan memuat
+   * ulang daftar dari server: memuat ulang berarti satu permintaan lagi tepat
+   * saat kasir sedang melayani antrean, demi data yang sudah ada di tangan.
+   */
+  riwayat = $state<{ id: string; ticketNumber: string; customerName: string; unit: string }[]>([]);
+
   showDropdown = $state(false);
 
   // Tahap A — device catalog autocomplete (brand/model → image/specs/saran
@@ -134,6 +145,13 @@ export class TicketIntakeState {
     this.data = data;
     this.token = token;
 
+    this.riwayat = (data.recentTickets ?? []).slice(0, 5).map((t: any) => ({
+      id: t.id,
+      ticketNumber: t.ticketNumber ?? String(t.id).slice(0, 8),
+      customerName: t.customerName ?? '-',
+      unit: [t.assetType, t.brand, t.model].filter(Boolean).join(' '),
+    }));
+
     // F7 — arrived via "Create Ticket" on a customer's device: pre-fill and
     // lock the customer + device fields (IntakeForm.svelte reads assetId to
     // decide whether to show the read-only device summary or the create-new form).
@@ -208,6 +226,17 @@ export class TicketIntakeState {
           id: result.data.id,
           ticketNumber: result.data.ticketNumber ?? result.data.id.slice(0, 8),
         };
+        // Dicatat SEBELUM `resetForNextCustomer()` mengosongkan form —
+        // sesudahnya nama pelanggan dan unitnya sudah hilang.
+        this.riwayat = [
+          {
+            id: this.sukses.id,
+            ticketNumber: this.sukses.ticketNumber,
+            customerName: this.form.customerName,
+            unit: [this.form.assetType, this.form.assetBrand, this.form.assetModel].filter(Boolean).join(' '),
+          },
+          ...this.riwayat,
+        ].slice(0, 5);
         this.resetForNextCustomer();
         void this.autoPrintIntakeDocuments(result.data.id);
       } else {

@@ -67,4 +67,30 @@
   {/if}
 
   <IntakeForm {state} />
+
+  <!-- R1.7 — pemilik (uji-R1.6 E1): "tinggal tambahkan riwayat input tiket
+       service di bagian kasir untuk memastikannya". Di bawah form, bukan di
+       atasnya: yang dikerjakan kasir adalah mengisi form, dan riwayat ini
+       untuk memeriksa, bukan untuk dilihat lebih dulu. -->
+  {#if state.riwayat.length > 0}
+    <div class="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm p-4" data-testid="intake-riwayat">
+      <h2 class="font-semibold text-slate-800 mb-1">Unit Masuk Terbaru</h2>
+      <p class="text-sm text-slate-500 mb-3">Untuk memastikan unit yang barusan Anda catat sudah tersimpan.</p>
+      <div class="divide-y divide-slate-100">
+        {#each state.riwayat as item}
+          <a
+            href={`/tickets/${item.id}`}
+            class="flex items-center justify-between gap-3 py-2.5 hover:bg-slate-50 -mx-2 px-2 rounded transition-colors"
+            data-testid="intake-riwayat-row"
+          >
+            <div class="min-w-0">
+              <div class="text-sm font-medium text-slate-800 truncate">{item.customerName}</div>
+              <div class="text-xs text-slate-500 truncate">{item.unit || 'Unit tidak dicatat'}</div>
+            </div>
+            <span class="shrink-0 font-mono text-xs text-slate-500">{item.ticketNumber}</span>
+          </a>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>

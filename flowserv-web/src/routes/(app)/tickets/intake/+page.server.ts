@@ -75,7 +75,26 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     console.error('Failed to load data for intake', err);
   }
 
+  // R1.7 — pemilik (uji-R1.6 E1): "tinggal tambahkan riwayat input tiket
+  // service di bagian kasir untuk memastikannya". Diambil dari server supaya
+  // riwayatnya tetap ada setelah halaman di-refresh; daftar di layar juga
+  // ditambah dari sisi klien tiap kali tiket baru dibuat, jadi tidak perlu
+  // memuat ulang halaman untuk melihatnya.
+  //
+  // Ini "unit masuk terbaru se-toko", bukan "yang saya input" — `service_tickets`
+  // tidak menyimpan siapa pembuatnya, dan menambah kolom itu adalah perubahan
+  // skema yang tak dibutuhkan untuk tujuan aslinya: memastikan unit tercatat.
+  let recentTickets = [];
+  try {
+    const recentRes = await fetch('http://localhost:3001/v1/tickets?limit=5', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (recentRes.ok) recentTickets = (await recentRes.json()).data || [];
+  } catch (err) {
+    console.error('Failed to load recent tickets for intake', err);
+  }
+
   const prefill = await resolvePrefill(token, url.searchParams.get('customerId'), url.searchParams.get('assetId'));
 
-  return { token, templates, customers, prefill };
+  return { token, templates, customers, prefill, recentTickets };
 };
