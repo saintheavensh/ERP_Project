@@ -6,6 +6,10 @@ import {
   ticketStageHistory,
   stockBatches,
   stockMovements,
+  posInvoices,
+  posInvoiceLines,
+  customerPayments,
+  financeLedgerEntries,
 } from '../schema';
 import { IDS } from './ids';
 import type { SeedTx } from './types';
@@ -137,5 +141,124 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
   await tx.insert(ticketStageHistory).values([
     { id: IDS.ticketStageIntake, ticketId: IDS.ticketInProgress, nodeId: IDS.nodeIntake, actorId: IDS.userTechnician, notes: 'Tiket masuk dari seed', enteredAt: twoDaysAgo },
     { id: IDS.ticketStageDiagnosis, ticketId: IDS.ticketInProgress, nodeId: IDS.nodeDiagnosis, actorId: IDS.userTechnician, notes: 'Mulai diagnosis', enteredAt: yesterday },
+  ]).onConflictDoNothing();
+
+  // -------------------------------------------------------------------------
+  // R1.6 — dua faktur POS yang BELUM lunas, supaya kartu "Piutang (AR)" di
+  // Beranda punya isi.
+  //
+  // Kenapa keduanya hanya berisi JASA, tanpa suku cadang: baris 'part' akan
+  // menuntut batch FIFO yang ikut berkurang, `stock_movements`, dan cache
+  // `stock_levels` yang cocok. Salah sedikit, `GET /v1/inventory/reconciliation`
+  // langsung melaporkan selisih — dan itu justru laporan yang dipakai untuk
+  // memastikan tidak ada bug stok (PHASES.md, keputusan H4). Data contoh tidak
+  // boleh mengotori alat pendeteksi bug.
+  // -------------------------------------------------------------------------
+  await tx.insert(posInvoices).values([
+    {
+      id: IDS.posInvoiceTempoUnpaid,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      invoiceNumber: 'INV-SEED-0001',
+      customerName: 'Budi Santoso',
+      customerId: IDS.customerBudi, // 'tempo' WAJIB punya pelanggan asli (check constraint di schema)
+      subtotal: '450000',
+      grandTotal: '450000',
+      status: 'active',
+      paymentStatus: 'unpaid',
+      amountPaid: '0',
+      paymentMethod: 'tempo',
+      createdAt: twoDaysAgo,
+      createdBy: IDS.userCashier,
+    },
+    {
+      id: IDS.posInvoicePartial,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      invoiceNumber: 'INV-SEED-0002',
+      customerName: 'Siti Rahayu',
+      customerId: IDS.customerSiti,
+      subtotal: '800000',
+      grandTotal: '800000',
+      status: 'active',
+      paymentStatus: 'partial',
+      amountPaid: '300000', // DP 300rb, sisa 500rb — menguji tampilan "sebagian"
+      paymentMethod: 'tempo',
+      createdAt: yesterday,
+      createdBy: IDS.userCashier,
+    },
+  ]).onConflictDoNothing();
+
+  await tx.insert(posInvoiceLines).values([
+    {
+      id: IDS.posInvoiceTempoUnpaidLine,
+      tenantId: IDS.tenantMain,
+      posInvoiceId: IDS.posInvoiceTempoUnpaid,
+      sourceType: 'labor',
+      description: 'Jasa servis — ganti konektor pengisian',
+      quantity: 1,
+      unitPrice: '450000',
+      subtotal: '450000',
+    },
+    {
+      id: IDS.posInvoicePartialLine,
+      tenantId: IDS.tenantMain,
+      posInvoiceId: IDS.posInvoicePartial,
+      sourceType: 'labor',
+      description: 'Jasa servis — perbaikan mainboard',
+      quantity: 1,
+      unitPrice: '800000',
+      subtotal: '800000',
+    },
+  ]).onConflictDoNothing();
+
+  // Cicilan yang sudah masuk untuk faktur kedua. Tanpa baris ini, `amountPaid`
+  // 300rb di atas tidak punya asal-usul, dan halaman riwayat pembayaran (H14)
+  // akan tampak kosong padahal fakturnya bilang sudah dibayar sebagian.
+  await tx.insert(customerPayments).values({
+    id: IDS.posInvoicePartialPayment,
+    tenantId: IDS.tenantMain,
+    posInvoiceId: IDS.posInvoicePartial,
+    amount: '300000',
+    method: 'cash',
+    paidAt: yesterday,
+    createdBy: IDS.userCashier,
+  }).onConflictDoNothing();
+
+  // Pendapatan dicatat ke buku kas seperti yang dilakukan checkout sungguhan
+  // (H11). Tanpa ini, Buku Kas dan Beranda akan saling bertentangan: satu
+  // bilang ada penjualan, satunya bilang tidak ada pendapatan. Tidak ada baris
+  // COGS karena tidak ada barang yang keluar — keduanya murni jasa.
+  await tx.insert(financeLedgerEntries).values([
+    {
+      id: IDS.ledgerRevenueTempoUnpaid,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      entryType: 'revenue',
+      amount: '450000',
+      // 'pos_sale', BUKAN 'pos_invoice'. Keduanya dipakai di ledger.ts untuk
+      // hal yang berbeda, dan hanya 'pos_sale' yang dihitung oleh
+      // GET /v1/finance/ledger/reconcile. Percobaan pertama memakai
+      // 'pos_invoice' dan membuat kedua faktur ini tampak belum dibukukan —
+      // ketahuan dari tes e2e, bukan dari membaca ulang kode.
+      referenceType: 'pos_sale',
+      referenceId: IDS.posInvoiceTempoUnpaid,
+      postedAt: twoDaysAgo,
+    },
+    {
+      id: IDS.ledgerRevenuePartial,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      entryType: 'revenue',
+      amount: '800000',
+      // 'pos_sale', BUKAN 'pos_invoice'. Keduanya dipakai di ledger.ts untuk
+      // hal yang berbeda, dan hanya 'pos_sale' yang dihitung oleh
+      // GET /v1/finance/ledger/reconcile. Percobaan pertama memakai
+      // 'pos_invoice' dan membuat kedua faktur ini tampak belum dibukukan —
+      // ketahuan dari tes e2e, bukan dari membaca ulang kode.
+      referenceType: 'pos_sale',
+      referenceId: IDS.posInvoicePartial,
+      postedAt: yesterday,
+    },
   ]).onConflictDoNothing();
 }

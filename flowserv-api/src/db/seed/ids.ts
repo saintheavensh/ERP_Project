@@ -92,12 +92,18 @@ export const IDS = {
   userTechnician: 'e0000000-0000-4000-8000-000000000003',
   userCashier: 'e0000000-0000-4000-8000-000000000004',
   userSecondAdmin: 'e0000000-0000-4000-8000-000000000005',
+  // R1.6 — teknisi kedua. Pemilik (uji-R1.5 E5): "buatlah seednya jadi
+  // teknisinya ada dua sehingga saya tidak perlu tambah tambah lagi di bagian
+  // settings". Diperlukan untuk menguji bahwa tiket yang sudah diambil teknisi
+  // A tidak lagi muncul di antrian teknisi B (poin B6 uji R1).
+  userTechnician2: 'e0000000-0000-4000-8000-000000000006',
 
   assignSuperAdmin: 'f0000000-0000-4000-8000-000000000001',
   assignManager: 'f0000000-0000-4000-8000-000000000002',
   assignTechnician: 'f0000000-0000-4000-8000-000000000003',
   assignCashier: 'f0000000-0000-4000-8000-000000000004',
   assignSecondAdmin: 'f0000000-0000-4000-8000-000000000005',
+  assignTechnician2: 'f0000000-0000-4000-8000-000000000006',
 
   deviceBrandSamsung: '10000000-0000-4000-8000-000000000001',
   deviceModelA10: '10000000-0000-4000-8000-000000000002',
@@ -182,6 +188,18 @@ export const IDS = {
   poCompleted: 'a1000000-0000-4000-8000-000000000003',
   poCompletedLine: 'a1000000-0000-4000-8000-000000000004',
   supplierInvoiceUnpaid: 'a1000000-0000-4000-8000-000000000005',
+
+  // R1.6 — piutang pelanggan (AR). Pemilik menguji kartu "Piutang" di Beranda
+  // kasir dan mendapat 0 (uji-R1.5 A6); ternyata seed tidak pernah membuat SATU
+  // PUN faktur POS, jadi kartu itu memang selalu 0 untuk semua peran — bukan
+  // gerbang izinnya yang salah. Dua faktur di bawah membuatnya bisa diuji.
+  posInvoiceTempoUnpaid: 'a2000000-0000-4000-8000-000000000001',
+  posInvoiceTempoUnpaidLine: 'a2000000-0000-4000-8000-000000000002',
+  posInvoicePartial: 'a2000000-0000-4000-8000-000000000003',
+  posInvoicePartialLine: 'a2000000-0000-4000-8000-000000000004',
+  posInvoicePartialPayment: 'a2000000-0000-4000-8000-000000000005',
+  ledgerRevenueTempoUnpaid: 'a2000000-0000-4000-8000-000000000006',
+  ledgerRevenuePartial: 'a2000000-0000-4000-8000-000000000007',
   ticketInProgress: 'a1000000-0000-4000-8000-000000000006',
   ticketStageIntake: 'a1000000-0000-4000-8000-000000000007',
   ticketStageDiagnosis: 'a1000000-0000-4000-8000-000000000008',

@@ -181,6 +181,10 @@ export async function seedCore(tx: SeedTx): Promise<void> {
     { id: IDS.userSuperAdmin, tenantId: IDS.tenantMain, name: 'Super Admin', email: 'admin@demo.com', passwordHash, status: 'active' },
     { id: IDS.userManager, tenantId: IDS.tenantMain, name: 'Budi Manager', email: 'manager@demo.com', passwordHash, status: 'active' },
     { id: IDS.userTechnician, tenantId: IDS.tenantMain, name: 'Teknisi Andi', email: 'technician@demo.com', passwordHash, status: 'active' },
+    // R1.6 — teknisi kedua, supaya "tiket yang sudah diambil teknisi A hilang
+    // dari antrian teknisi B" bisa diuji tanpa membuat pengguna lewat Setelan
+    // lebih dulu (permintaan pemilik, uji-R1.5 E5).
+    { id: IDS.userTechnician2, tenantId: IDS.tenantMain, name: 'Teknisi Rina', email: 'technician2@demo.com', passwordHash, status: 'active' },
     { id: IDS.userCashier, tenantId: IDS.tenantMain, name: 'Kasir Sari', email: 'cashier@demo.com', passwordHash, status: 'active' },
     { id: IDS.userSecondAdmin, tenantId: IDS.tenantSecond, name: 'Admin Bengkel Sebelah', email: 'admin@bengkelsebelah.com', passwordHash, status: 'active' },
   ]).onConflictDoNothing();
@@ -191,6 +195,7 @@ export async function seedCore(tx: SeedTx): Promise<void> {
     { id: IDS.assignSuperAdmin, userId: IDS.userSuperAdmin, roleId: IDS.roleSuperAdmin, branchId: null },
     { id: IDS.assignManager, userId: IDS.userManager, roleId: IDS.roleManager, branchId: null },
     { id: IDS.assignTechnician, userId: IDS.userTechnician, roleId: IDS.roleTechnician, branchId: IDS.branchPusat },
+    { id: IDS.assignTechnician2, userId: IDS.userTechnician2, roleId: IDS.roleTechnician, branchId: IDS.branchPusat },
     { id: IDS.assignCashier, userId: IDS.userCashier, roleId: IDS.roleCashier, branchId: IDS.branchPusat },
     { id: IDS.assignSecondAdmin, userId: IDS.userSecondAdmin, roleId: IDS.roleSecondAdmin, branchId: null },
   ]).onConflictDoNothing();
