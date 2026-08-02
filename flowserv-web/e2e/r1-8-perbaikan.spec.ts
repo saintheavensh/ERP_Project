@@ -232,3 +232,191 @@ test.describe('R1.8-T1 — form Terima Unit memberi tahu sebelum menyimpan', () 
     expect(page.url()).toContain('/tickets/intake');
   });
 });
+
+// ---------------------------------------------------------------------------
+// E. T2 — kasir bisa melihat rincian tagihan piutang (uji-R1.7 A1)
+// ---------------------------------------------------------------------------
+
+test.describe('R1.8-T2 — rincian tagihan piutang untuk kasir', () => {
+  // Bukan memeriksa tombolnya ADA — menekannya sampai isinya terbaca. Itu
+  // langkah yang absen di R1.6 dan membuat bug C2 lolos ke tangan pemilik.
+  test('kasir menekan Rincian dan benar-benar membaca isi tagihannya', async ({ page }) => {
+    await login(page, 'cashier@demo.com');
+    await page.goto('/finance/receivables');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('ar-rincian').first().click();
+
+    const modal = page.getByTestId('ar-detail-modal');
+    await expect(modal).toBeVisible();
+    await expect(page.getByTestId('ar-detail-lines')).toBeVisible({ timeout: 15_000 });
+    await expect(modal.getByText('Isi Tagihan')).toBeVisible();
+    // Nama pelanggan dan sisa piutang adalah dua hal yang dipakai kasir saat
+    // menagih; keduanya harus terisi, bukan sekadar kerangka modalnya muncul.
+    await expect(page.getByTestId('ar-detail-customer')).not.toBeEmpty();
+    await expect(page.getByTestId('ar-detail-sisa')).toContainText('Rp');
+  });
+
+  // Kontrol yang pasti gagal saat ditekan adalah anti-pattern yang Track F ada
+  // untuk membasminya, dan R1.7-T3 baru saja bereskan pada pemilih teknisi.
+  test('rincian untuk kasir tidak menawarkan Void maupun Ubah', async ({ page }) => {
+    await login(page, 'cashier@demo.com');
+    await page.goto('/finance/receivables');
+    await page.waitForLoadState('networkidle');
+    await page.getByTestId('ar-rincian').first().click();
+
+    const modal = page.getByTestId('ar-detail-modal');
+    await expect(modal).toBeVisible();
+    await expect(modal.getByRole('button', { name: /Void/i })).toHaveCount(0);
+    await expect(modal.getByRole('button', { name: /Ubah/i })).toHaveCount(0);
+  });
+
+  // T2 tidak boleh melonggarkan apa pun: kartu piutang boleh dibuka kasir,
+  // buku kas dan laba toko tetap tidak.
+  test('kasir tetap ditolak di /finance, /finance/ledger, /finance/payables', async ({ page }) => {
+    await login(page, 'cashier@demo.com');
+    for (const path of ['/finance', '/finance/ledger', '/finance/payables']) {
+      await page.goto(path);
+      await expect(page.getByText('Halaman itu bukan untuk peran Anda')).toBeVisible();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// F. T5 — katalog device tahu ada unit yang belum berkatalog
+// ---------------------------------------------------------------------------
+
+test.describe('R1.8-T5 — panel "Belum ada di katalog"', () => {
+  test('unit di luar katalog muncul; unit yang cocok katalog TIDAK muncul', async ({ page }) => {
+    const merekAsing = 'Advan';
+    const modelAsing = 'G30-' + Date.now();
+    await intake(page, {
+      ...unitLengkap,
+      customerName: 'Uji Katalog ' + Date.now(),
+      assetBrand: merekAsing,
+      assetModel: modelAsing,
+    });
+    // Unit yang mereknya PERSIS ada di katalog seed — tidak boleh ikut muncul.
+    await intake(page, {
+      ...unitLengkap,
+      customerName: 'Uji Katalog Cocok ' + Date.now(),
+      assetBrand: 'Samsung',
+      assetModel: 'Galaxy A10',
+    });
+
+    await login(page, 'admin@demo.com');
+    await page.goto('/devices');
+    await page.waitForLoadState('networkidle');
+
+    const panel = page.getByTestId('uncatalogued-panel');
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText(`${merekAsing} ${modelAsing}`)).toBeVisible();
+    // Inti tes ini: `device_model_id` NULL saja tidak cukup untuk berkata
+    // "belum ada di katalog" — teksnya harus ikut diperiksa, kalau tidak
+    // panelnya menyuruh admin menambahkan yang sudah ada.
+    await expect(panel.getByText('Samsung Galaxy A10')).toHaveCount(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// G. T6 & T7 — teknisi opsional + perkiraan biaya di intake
+// ---------------------------------------------------------------------------
+
+test.describe('R1.8-T6 — kasir boleh menunjuk teknisi, opsional', () => {
+  test('tanpa teknisi: tiket masuk antrian "Menunggu Diambil"', async ({ page }) => {
+    const nama = 'Uji Antrian ' + Date.now();
+    const res = await intake(page, { ...unitLengkap, customerName: nama });
+    expect(res.status()).toBe(201);
+    expect((await res.json()).data.assignedTechnicianId).toBeFalsy();
+  });
+
+  test('dengan teknisi: tiket langsung bertuan dan TIDAK muncul di antrian', async ({ page }) => {
+    const token = await apiToken(page, 'cashier@demo.com');
+    const tekRes = await page.request.get(`${API_BASE}/users?role=Technician`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const teknisi = (await tekRes.json()).data[0];
+
+    const res = await intake(page, {
+      ...unitLengkap,
+      customerName: 'Uji Ditunjuk ' + Date.now(),
+      assignedTechnicianId: teknisi.id,
+    });
+    expect(res.status()).toBe(201);
+    const ticketId = (await res.json()).data.id as string;
+
+    const antrian = await page.request.get(`${API_BASE}/tickets?assignedTo=none`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const ids = ((await antrian.json()).data as any[]).map((t) => t.id);
+    expect(ids).not.toContain(ticketId);
+  });
+
+  // Tanpa ini kasir bisa "menugaskan" pemilik toko atau kasir lain, dan
+  // tiketnya hilang dari antrian tanpa ada yang mengerjakannya.
+  test('menunjuk orang yang bukan teknisi ditolak', async ({ page }) => {
+    const loginRes = await page.request.post(`${API_BASE}/auth/login`, {
+      data: { email: 'admin@demo.com', password: 'admin123' },
+    });
+    const adminId = (await loginRes.json()).data.user.id as string;
+
+    const res = await intake(page, {
+      ...unitLengkap,
+      customerName: 'Uji Salah Tunjuk ' + Date.now(),
+      assignedTechnicianId: adminId,
+    });
+    expect(res.status()).toBe(404);
+    expect((await res.json()).error.code).toBe('TECHNICIAN_NOT_FOUND');
+  });
+});
+
+test.describe('R1.8-T7 — perkiraan biaya di intake, bukan biaya sungguhan', () => {
+  test('perkiraan tersimpan dan terlihat teknisi di halaman tiket', async ({ page }) => {
+    const res = await intake(page, {
+      ...unitLengkap,
+      customerName: 'Uji Perkiraan ' + Date.now(),
+      intakeEstimatedCost: 450000,
+    });
+    expect(res.status()).toBe(201);
+    const ticketId = (await res.json()).data.id as string;
+
+    await login(page, 'admin@demo.com');
+    await page.goto(`/tickets/${ticketId}`);
+    await page.waitForLoadState('networkidle');
+
+    const estimate = page.getByTestId('intake-estimate');
+    await expect(estimate).toBeVisible();
+    await expect(estimate).toContainText('450.000');
+  });
+
+  // Inti T7: aturan tahap Penerimaan dari S5 TIDAK ikut dicabut. Kalau tes ini
+  // hijau padahal biaya sungguhan lolos di Intake, T7 sudah membongkar gerbang
+  // yang justru dipasang supaya tiket tak punya tagihan sebelum diperiksa.
+  test('biaya SUNGGUHAN tetap ditolak di tahap Intake (422)', async ({ page }) => {
+    const token = await apiToken(page, 'admin@demo.com');
+    const res = await intake(page, {
+      ...unitLengkap,
+      customerName: 'Uji Gerbang Biaya ' + Date.now(),
+      intakeEstimatedCost: 450000,
+    });
+    const ticketId = (await res.json()).data.id as string;
+
+    const charge = await page.request.post(`${API_BASE}/tickets/${ticketId}/charges`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { sourceType: 'labor', description: 'Jasa ganti LCD', quantity: 1, unitPrice: 150000 },
+    });
+    expect(charge.status()).toBe(422);
+    expect((await charge.json()).error.code).toBe('CHARGES_NOT_ALLOWED_AT_STAGE');
+  });
+
+  test('tanpa perkiraan: tak ada baris perkiraan di halaman tiket', async ({ page }) => {
+    const res = await intake(page, { ...unitLengkap, customerName: 'Uji Tanpa Perkiraan ' + Date.now() });
+    const ticketId = (await res.json()).data.id as string;
+
+    await login(page, 'admin@demo.com');
+    await page.goto(`/tickets/${ticketId}`);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('intake-estimate')).toHaveCount(0);
+  });
+});

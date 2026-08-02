@@ -90,6 +90,18 @@ export const serviceTickets = pgTable('service_tickets', {
   // durasi ("2 jam", "3 hari"), dan durasi tak ikut bergeser bila pengerjaan
   // baru mulai besok. Tampilan mengubahnya jadi "2 jam" / "1 hari".
   estimatedDurationMinutes: integer('estimated_duration_minutes'),
+  // R1.8-T7 — perkiraan biaya yang DISEBUT KASIR DI KONTER saat menerima unit.
+  //
+  // Kolom sendiri, bukan menumpang estimasi teknisi, dan itu disengaja: estimasi
+  // teknisi hidup sebagai baris `ticket_charges` (lihat catatan `diagnosis` di
+  // atas), sementara tahap Penerimaan justru MELARANG baris biaya (S5). Jadi
+  // angka kasir memang tidak punya tempat tinggal sampai sekarang.
+  //
+  // Dipisah juga karena keduanya berbeda arti: "tadi dijanjikan berapa di
+  // konter" tidak boleh hilang ketika teknisi memasukkan angka sebenarnya
+  // setelah memeriksa. Selisih keduanya itulah yang jadi percakapan dengan
+  // pelanggan.
+  intakeEstimatedCost: money('intake_estimated_cost'),
   // Nomor antrian harian per cabang, dicetak di label supaya pelanggan bisa
   // dipanggil. Direset tiap hari lewat queue_date di bawah.
   queueNumber: integer('queue_number'),

@@ -135,6 +135,20 @@
           <p class="text-sm text-slate-900 mt-1">{state.ticket?.reportedComplaint || '-'}</p>
         {/if}
       </div>
+
+      <!-- R1.8-T7 — perkiraan biaya yang DISEBUT KASIR di konter. Teknisi perlu
+           melihatnya sebelum menyebut angkanya sendiri: pelanggan sudah terlanjur
+           mendengar yang ini. Hanya tampil bila memang disebutkan; tidak semua
+           unit dikutip harga di depan. -->
+      {#if state.ticket?.intakeEstimatedCost !== null && state.ticket?.intakeEstimatedCost !== undefined}
+        <div class="mt-3 pt-3 border-t border-slate-100" data-testid="intake-estimate">
+          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perkiraan Biaya (Konter)</span>
+          <p class="text-sm text-slate-900 mt-1 font-medium">
+            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(state.ticket.intakeEstimatedCost))}
+          </p>
+          <p class="text-xs text-slate-500">Disebutkan kasir saat unit diterima, belum melewati pemeriksaan.</p>
+        </div>
+      {/if}
     </div>
   </div>
 

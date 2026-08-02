@@ -26,6 +26,13 @@ export class TicketIntakeState {
     // Tahap A — go-live gap Tier-1 #3. Feeds the label/tanda-terima print
     // documents ("kerusakan").
     reportedComplaint: '',
+    // R1.8-T6 — penunjukan teknisi OPSIONAL. Kosong = tiket masuk antrian
+    // "Menunggu Diambil" seperti sebelumnya; diisi = langsung bertuan.
+    assignedTechnicianId: '',
+    // R1.8-T7 — perkiraan biaya yang disebut di konter. Bukan biaya sungguhan:
+    // tidak menagih, tidak menyentuh stok, dan tidak melanggar aturan tahap
+    // Penerimaan (S5) yang melarang baris biaya di Intake.
+    intakeEstimatedCost: '',
     flowTemplateId: '',
     branchId: '00000000-0000-0000-0000-000000000000'
   });
@@ -172,6 +179,10 @@ export class TicketIntakeState {
 
   get templates() { return this.data.templates; }
   get customersList() { return this.data.customers || []; }
+  // R1.8-T6 — daftar teknisi untuk penunjukan opsional. Kosong bila endpointnya
+  // gagal dimuat; form tetap jalan dan tiketnya masuk antrian, persis perilaku
+  // sebelum T6 ada.
+  get technicians() { return this.data.technicians || []; }
 
   get filteredCustomers() {
     return this.form.customerName && !this.form.customerId 
@@ -315,6 +326,12 @@ export class TicketIntakeState {
     this.form.devicePasscode = '';
     this.form.reportedComplaint = '';
     this.form.deviceModelId = '';
+    // R1.8-T6/T7 — keduanya properti PELANGGAN INI, bukan properti konter:
+    // unit berikutnya belum tentu ditangani teknisi yang sama, apalagi seharga
+    // yang sama. Membiarkannya terbawa akan diam-diam menugaskan orang dan
+    // menempelkan harga ke unit yang salah.
+    this.form.assignedTechnicianId = '';
+    this.form.intakeEstimatedCost = '';
     this.selectedDeviceModel = null;
     this.selectedBrandId = '';
     this.showDropdown = false;

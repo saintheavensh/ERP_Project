@@ -65,4 +65,33 @@ describe('buildTandaTerimaBlocks — customer proof of receipt', () => {
     expect(out).not.toContain('Sandi:');
     expect(out).not.toContain('1-2-3-6-9');
   });
+
+  // R1.8-T7 — perkiraan biaya kasir.
+  it('mencetak perkiraan biaya beserta kata "Perkiraan", bukan angka telanjang', () => {
+    const out = text(buildTandaTerimaBlocks(layout, bundle({ intakeEstimatedCostText: 'Rp 450.000' }), 32));
+    expect(out).toContain('Perkiraan biaya: Rp 450.000');
+    // Pelanggan memegang kertas ini. Angka tanpa penjelasan akan dibaca sebagai
+    // harga pasti, lalu jadi perselisihan saat harga sebenarnya diketahui.
+    expect(out).toContain('belum final');
+  });
+
+  it('tidak mencetak baris perkiraan bila kasir tidak menyebut harga', () => {
+    const out = text(buildTandaTerimaBlocks(layout, bundle({ intakeEstimatedCostText: undefined }), 32));
+    expect(out).not.toContain('Perkiraan biaya');
+  });
+
+  // Tanda terima BUKAN nota: tidak boleh ada baris TOTAL, karena angkanya
+  // belum pernah melewati diagnosis apalagi disetujui pelanggan.
+  it('tetap bukan nota — tak ada baris TOTAL walau perkiraan biaya diisi', () => {
+    const blocks = buildTandaTerimaBlocks(layout, bundle({ intakeEstimatedCostText: 'Rp 450.000' }), 32);
+    expect(blocks.some((b) => b.type === 'total')).toBe(false);
+    expect(text(blocks)).not.toContain('TOTAL');
+  });
+
+  it('muat di kertas 58mm — tak ada baris yang melebihi 32 karakter', () => {
+    const blocks = buildTandaTerimaBlocks(layout, bundle({ intakeEstimatedCostText: 'Rp 12.345.678' }), 32);
+    for (const b of blocks) {
+      if (b.type === 'text') expect((b.value ?? '').length).toBeLessThanOrEqual(32);
+    }
+  });
 });

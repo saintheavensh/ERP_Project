@@ -3,7 +3,7 @@ import { serviceTickets, customers, customerAssets, branches, tenants } from '..
 import { eq, and } from 'drizzle-orm';
 import { BusinessError } from '../../lib/errors';
 import { passcodePrintLabel } from '../../lib/passcode';
-import { buildDocumentData, truncate } from './render';
+import { buildDocumentData, truncate, formatMoney } from './render';
 import { resolveTemplateAndAssignment, type RenderedDocument } from './document';
 import type { DocumentType, PaperSize, LayoutConfig, ThermalBlock } from './types';
 
@@ -34,6 +34,10 @@ export interface TicketDocumentBundle {
   queueNumber?: number;
   // Tahap B — lama pengerjaan yang dijanjikan teknisi, mis. "2 jam".
   estimatedDurationText?: string;
+  // R1.8-T7 — perkiraan biaya yang disebut kasir di konter. Dicetak sebagai
+  // PERKIRAAN, bukan tagihan: tanda terima bukan nota, dan angka ini belum
+  // pernah melewati diagnosis.
+  intakeEstimatedCostText?: string;
 }
 
 /** Tahap B — "150" -> "2 jam 30 menit". Kembali undefined bila belum diestimasi. */
@@ -105,8 +109,20 @@ export function buildTandaTerimaBlocks(layoutConfig: LayoutConfig, bundle: Ticke
   if (bundle.estimatedDurationText) {
     blocks.push({ type: 'text', value: truncate(`Estimasi: ${bundle.estimatedDurationText}`, width), align: 'left' });
   }
+  // R1.8-T7 — kata "Perkiraan" ditulis di kertasnya, bukan cuma dipahami staf:
+  // pelanggan memegang kertas ini, dan angka tanpa kata itu akan dibaca sebagai
+  // harga pasti.
+  if (bundle.intakeEstimatedCostText) {
+    blocks.push({ type: 'text', value: truncate(`Perkiraan biaya: ${bundle.intakeEstimatedCostText}`, width), align: 'left' });
+    blocks.push({ type: 'text', value: truncate('(belum final, menunggu pemeriksaan)', width), align: 'left' });
+  }
   blocks.push({ type: 'line' });
-  blocks.push({ type: 'text', value: 'Barang diambil dengan menunjukkan', align: 'center' });
+  // R1.8-T7 — kalimatnya diperpendek dari "Barang diambil dengan menunjukkan"
+  // (33 karakter) jadi 31: kertas 58mm cuma 32 kolom, jadi versi lama meluber
+  // satu karakter dan huruf terakhirnya terpotong di printer sungguhan. Cacat
+  // lama, ketahuan oleh tes lebar baris yang ditambahkan bersama perkiraan
+  // biaya — bukan oleh membaca ulang kodenya.
+  blocks.push({ type: 'text', value: 'Ambil barang dengan menunjukkan', align: 'center' });
   blocks.push({ type: 'text', value: 'bukti tanda terima ini.', align: 'center' });
   if (layoutConfig.footer.note) blocks.push({ type: 'text', value: truncate(layoutConfig.footer.note, width), align: 'center' });
   blocks.push({ type: 'cut' });
@@ -166,6 +182,13 @@ export async function renderTicketDocument(
     passcode: row.ticket.devicePasscode ?? undefined,
     queueNumber: row.ticket.queueNumber ?? undefined,
     estimatedDurationText: formatDuration(row.ticket.estimatedDurationMinutes),
+    // R1.8-T7 — `money` kolomnya numeric, jadi terbaca sebagai string; 0 pun
+    // tetap dicetak (kasir yang menulis "gratis" memang bermaksud begitu),
+    // yang tidak dicetak hanya yang tak pernah diisi.
+    intakeEstimatedCostText:
+      row.ticket.intakeEstimatedCost !== null && row.ticket.intakeEstimatedCost !== undefined
+        ? `Rp ${formatMoney(Number(row.ticket.intakeEstimatedCost))}`
+        : undefined,
   };
 
   const width = THERMAL_CHAR_WIDTH[paperSize];

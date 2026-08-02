@@ -94,7 +94,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     console.error('Failed to load recent tickets for intake', err);
   }
 
+  // R1.8-T6 — daftar teknisi untuk penunjukan OPSIONAL di intake. Endpoint
+  // yang sama yang dipakai pemilih teknisi di halaman tiket (F1); auth-only,
+  // jadi kasir boleh memanggilnya. Gagal memuat bukan alasan menggagalkan
+  // halaman: kalau daftarnya kosong, form tetap jalan dan tiket masuk antrian —
+  // persis perilaku sebelum T6 ada.
+  let technicians = [];
+  try {
+    const techRes = await fetch('http://localhost:3001/v1/users?role=Technician', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (techRes.ok) technicians = (await techRes.json()).data || [];
+  } catch (err) {
+    console.error('Failed to load technicians for intake', err);
+  }
+
   const prefill = await resolvePrefill(token, url.searchParams.get('customerId'), url.searchParams.get('assetId'));
 
-  return { token, templates, customers, prefill, recentTickets };
+  return { token, templates, customers, prefill, recentTickets, technicians };
 };

@@ -4,7 +4,7 @@ import { checkPasscode } from '../lib/passcode';
 import { checkComplaint, checkUnitIdentity, checkCustomerName } from '../lib/intake-fields';
 import { zValidator } from '../lib/validator';
 import { db } from '../db/connection';
-import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
+import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands, userRoleAssignments, roles } from '../db/schema';
 import { ticketStatusEnum } from '../db/schema/enums';
 import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
@@ -228,6 +228,30 @@ const intakeSchema = z.object({
   // default tenant (satu template bercabang). Tetap diterima bila dikirim
   // eksplisit — fixture e2e & tiket yang sengaja memakai template lain.
   flowTemplateId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+
+  // R1.8-T6 — kasir boleh menunjuk teknisi di intake, OPSIONAL (keputusan
+  // pemilik 2026-08-02). Dikosongkan -> tiket masuk antrian "Menunggu Diambil"
+  // seperti sekarang; diisi -> langsung bertuan, untuk unit yang sudah jelas
+  // siapa penanganannya. Dua jalan hidup berdampingan; model antrian yang
+  // R1/R1.6/R1.7 bangun tidak dibongkar.
+  //
+  // Digerbangi `ticket.create` (izin yang kasir memang sudah punya), BUKAN
+  // `ticket.assign_technician`. Menugaskan SAAT MEMBUAT tiket bukan hal yang
+  // sama dengan MEMINDAHKAN pekerjaan yang sudah berjalan — yang kedua tetap
+  // wewenang manajer, dan dropdown di halaman detail tetap tertutup untuk kasir
+  // (R1.7-T3).
+  assignedTechnicianId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+
+  // R1.8-T7 — perkiraan biaya yang disebut kasir di konter. BUKAN baris biaya:
+  // tidak bisa ditagih, tidak menyentuh stok, tidak menerbitkan nota. Aturan
+  // tahap Penerimaan dari S5 ("belum boleh mencatat biaya, unitnya memang belum
+  // diperiksa") tetap berdiri — `CHARGES_NOT_ALLOWED_AT_STAGE` masih menolak
+  // biaya sungguhan di Intake. Yang ini cuma angka yang sudah terlanjur
+  // disebutkan ke pelanggan, supaya teknisi tahu apa yang dijanjikan.
+  intakeEstimatedCost: z.preprocess(
+    (v) => (v === '' || v === null ? undefined : v),
+    z.coerce.number().min(0).optional()
+  ),
   branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
 })
   // R1.8-T1 — kolom wajib saat menerima unit (uji-R1.7 D1). Di sini, bukan per
@@ -342,6 +366,34 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
         finalFlowTemplateId = defaultTemplate.id;
       }
 
+      // 4b. R1.8-T6 — teknisi yang ditunjuk kasir (opsional) diverifikasi di
+      // sini, bukan dipercaya dari payload. Dua hal diperiksa: dia milik tenant
+      // ini, DAN dia benar-benar berperan Teknisi. Tanpa pemeriksaan kedua,
+      // kasir bisa "menugaskan" siapa saja — termasuk pemilik toko atau kasir
+      // lain — dan tiketnya hilang dari antrian tanpa ada yang mengerjakannya.
+      //
+      // Lebih ketat daripada `assignTechnician` (H8) yang hanya memeriksa
+      // tenant. Disengaja: izin yang baru diberikan sebaiknya sempit dulu, dan
+      // daftar yang ditawarkan form memang hanya teknisi.
+      let finalTechnicianId: string | null = null;
+      if (data.assignedTechnicianId) {
+        const [technician] = await tx
+          .selectDistinct({ id: users.id })
+          .from(users)
+          .innerJoin(userRoleAssignments, eq(userRoleAssignments.userId, users.id))
+          .innerJoin(roles, eq(roles.id, userRoleAssignments.roleId))
+          .where(and(
+            eq(users.id, data.assignedTechnicianId),
+            eq(users.tenantId, tenantId),
+            eq(roles.tenantId, tenantId),
+            eq(roles.name, 'Technician'),
+          ));
+        if (!technician) {
+          throw new BusinessError('TECHNICIAN_NOT_FOUND', 'Teknisi yang dipilih tidak ditemukan.', 404);
+        }
+        finalTechnicianId = technician.id;
+      }
+
       // 5. Find first node of the selected flow template. Structural, not by
       // name: the intake node is the one nothing transitions INTO.
       const nodes = await tx.select().from(flowNodes)
@@ -383,6 +435,10 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
         reportedComplaint: data.reportedComplaint || null,
         queueNumber: (maxQueue ?? 0) + 1,
         queueDate: today,
+        // R1.8-T6/T7 — keduanya opsional; null berarti "tidak disebut di konter".
+        assignedTechnicianId: finalTechnicianId,
+        assignedAt: finalTechnicianId ? new Date() : null,
+        intakeEstimatedCost: data.intakeEstimatedCost !== undefined ? String(data.intakeEstimatedCost) : null,
       }).returning();
       
       // 5. Create History Entry
@@ -398,6 +454,14 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
     
     return successResponse(c, result, undefined, 201);
   } catch (err: any) {
+    // R1.8-T6 — `BusinessError` membawa kode dan status HTTP-nya sendiri;
+    // menelannya jadi 400 INTAKE_FAILED membuat "teknisi tidak ditemukan"
+    // (404) tak bisa dibedakan dari "payload salah bentuk" oleh pemanggil mana
+    // pun. Pola ini sudah dipakai handler lain di berkas ini; intake tertinggal
+    // karena ia lebih tua dari `BusinessError` itu sendiri.
+    if (err instanceof BusinessError) {
+      return errorResponse(c, err.code, err.message, err.details, err.statusCode);
+    }
     return errorResponse(c, 'INTAKE_FAILED', err.message, [], 400);
   }
 });

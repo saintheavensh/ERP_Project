@@ -205,6 +205,42 @@
         {/each}
       </div>
     </div>
+    <!-- R1.8-T6/T7 — dua kolom OPSIONAL, keduanya permintaan pemilik di uji
+         R1.7 D1. Ditaruh berdampingan dan diberi keterangan "opsional" secara
+         eksplisit: menambah kolom ke layar yang paling sering dipakai adalah
+         hal yang track PENYEDERHANAAN ada untuk mencegahnya, jadi keduanya
+         harus jelas boleh dilewati. -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="assignedTechnician">
+          Teknisi <span class="text-slate-400 font-normal">(opsional)</span>
+        </label>
+        <select id="assignedTechnician" bind:value={state.form.assignedTechnicianId}
+          class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="">Biarkan masuk antrian</option>
+          {#each state.technicians as t}
+            <option value={t.id}>{t.name}</option>
+          {/each}
+        </select>
+        <p class="text-xs text-slate-500 mt-1">
+          Dikosongkan → teknisi mana pun bisa mengambilnya dari antrian.
+        </p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="intakeEstimatedCost">
+          Perkiraan Biaya <span class="text-slate-400 font-normal">(opsional)</span>
+        </label>
+        <input id="intakeEstimatedCost" type="number" min="0" step="1000"
+          bind:value={state.form.intakeEstimatedCost}
+          placeholder="mis. 450000"
+          class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" />
+        <p class="text-xs text-slate-500 mt-1">
+          Harga yang Anda sebutkan di konter. Tercetak di tanda terima sebagai
+          perkiraan, bukan tagihan.
+        </p>
+      </div>
+    </div>
+
     <!-- Tahap B — pemilih alur DIHAPUS dari intake (keputusan pemilik
          2026-07-27). Di toko, "ditunggu atau ditinggal" baru bisa diputuskan
          setelah teknisi mendiagnosis dan menyebut harga + lama pengerjaan —
