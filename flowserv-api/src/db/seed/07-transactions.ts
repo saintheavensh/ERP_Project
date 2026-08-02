@@ -136,6 +136,19 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
     currentNodeId: IDS.nodeDiagnosis,
     status: 'open',
     createdAt: twoDaysAgo,
+    // R1.8-T3 — nomor antrian ikut diisi. Endpoint intake SELALU mengisinya
+    // (routes/tickets.ts), tapi seed menulis langsung ke tabel dan melewatinya,
+    // jadi tiket contoh muncul dengan "-" di popup antrian. Pemilik sempat
+    // mengira fiturnya belum ada (uji-R1.7 B2) — data contoh yang tidak
+    // menyerupai data asli membuat orang menguji hal yang salah. Ini kedua
+    // kalinya: di R1.5 kartu Piutang bernilai 0 karena seed tak pernah membuat
+    // faktur POS.
+    //
+    // queueDate sengaja tanggal tiket ini dibuat (dua hari lalu), bukan hari
+    // ini: penomorannya per hari, jadi tiket lama tidak boleh ikut menggeser
+    // nomor antrian pelanggan yang datang hari ini.
+    queueNumber: 1,
+    queueDate: twoDaysAgo.toISOString().slice(0, 10),
   }).onConflictDoNothing();
 
   await tx.insert(ticketStageHistory).values([
