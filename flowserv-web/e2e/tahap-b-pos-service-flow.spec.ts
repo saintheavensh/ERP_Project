@@ -105,6 +105,9 @@ test.describe('Servis — sparepart & pembayaran digerbangi tahap (keluhan #3 & 
 
     await page.fill('#name', `Gerbang Sparepart ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
+    // R1.8-T1 — merek & model kini wajib di form intake.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'A10');
     await page.fill('#complaint', 'Tidak bisa charge');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
@@ -143,6 +146,8 @@ test.describe('Servis — sparepart & pembayaran digerbangi tahap (keluhan #3 & 
         customerName: `Gerbang Faktur ${Date.now()}`,
         assetType: 'Smartphone',
         assetBrand: 'Xiaomi',
+        assetModel: 'Redmi 12',
+        reportedComplaint: 'Layar mati total',
         branchId: '00000000-0000-0000-0000-000000000000',
       },
     });

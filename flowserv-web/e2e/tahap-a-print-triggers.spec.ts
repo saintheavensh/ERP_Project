@@ -85,6 +85,7 @@ test.describe('desktop (1280x800)', () => {
       await page.fill('#name', name);
       await page.selectOption('#type', 'Laptop');
       await page.fill('#brand', 'Asus');
+      await page.fill('#model', 'X441'); // R1.8-T1 — model kini wajib
       await page.fill('#complaint', complaint);
       await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
       // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
@@ -133,6 +134,9 @@ test.describe('desktop (1280x800)', () => {
     await page.waitForLoadState('networkidle');
     await page.fill('#name', `Print Ditunggu ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
+    // R1.8-T1 — merek & model kini wajib.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'A10');
     await page.fill('#complaint', 'Keyboard rusak');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
@@ -175,6 +179,8 @@ test.describe('desktop (1280x800)', () => {
         customerName: `Print Nota ${Date.now()}`,
         assetType: 'Smartphone',
         assetBrand: 'Xiaomi',
+        assetModel: 'Redmi 12',
+        reportedComplaint: 'Layar mati total',
         flowTemplateId: DITUNGGU_FLOW_ID,
         branchId: '00000000-0000-0000-0000-000000000000',
       },
@@ -223,6 +229,9 @@ test.describe('mobile (375x667)', () => {
     const uniqueName = `Print Mobile ${Date.now()}`;
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Smartphone');
+    // R1.8-T1 — merek & model kini wajib.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'A10');
     await page.fill('#complaint', 'Baterai boros');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan

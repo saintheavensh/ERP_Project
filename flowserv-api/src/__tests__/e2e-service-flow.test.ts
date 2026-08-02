@@ -108,6 +108,9 @@ describe('H15 — end-to-end service flow: intake to close', () => {
         assetId: IDS.assetBudiHp,
         flowTemplateId: IDS.flowTemplate,
         branchId: IDS.branchPusat,
+        // R1.8-T1 — keluhan wajib. Pelanggan lama + unit lama pun tetap datang
+        // karena SESUATU; itulah yang dibaca teknisi di antrian.
+        reportedComplaint: 'LCD blank setelah jatuh',
       },
     });
     expect(res.status).toBe(201);
@@ -505,6 +508,7 @@ describe('H15 — end-to-end service flow: intake to close', () => {
         assetBrand: 'Xiaomi',
         assetModel: 'Redmi 12',
         assetSn: '',
+        reportedComplaint: 'Baterai cepat habis',
         flowTemplateId: IDS.flowTemplate,
         branchId: IDS.branchPusat,
       },

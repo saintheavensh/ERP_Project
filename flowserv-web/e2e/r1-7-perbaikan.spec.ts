@@ -212,6 +212,10 @@ test.describe('R1.7-T4 — kasir bisa memastikan unit yang barusan dicatat', () 
     const nama = 'Riwayat Intake ' + Date.now();
     await page.locator('#name').fill(nama);
     await page.locator('#type').selectOption('Smartphone');
+    // R1.8-T1 — merek, model & keluhan kini wajib.
+    await page.locator('#brand').fill('Samsung');
+    await page.locator('#model').fill('A10');
+    await page.locator('#complaint').fill('Layar mati total');
     await page.getByRole('button', { name: /Simpan|Terima Unit/i }).first().click();
 
     await expect(page.getByText('berhasil dibuat')).toBeVisible({ timeout: 15_000 });

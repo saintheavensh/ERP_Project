@@ -51,6 +51,12 @@ test('creates a ticket from a customer device via the previously-dead button', a
 
   // 5. Submit — the device section has no inputs to fill (locked), and since
   // Tahap B the form no longer asks for a flow (tiket memakai alur default toko).
+  //
+  // R1.8-T1 — keluhan wajib, DAN merek/model sengaja tidak diminta di sini:
+  // unitnya sudah terdaftar (`assetId` ikut di URL), jadi memaksa mengetik ulang
+  // identitasnya justru menghalangi pelanggan yang datang kembali. Jalur inilah
+  // yang membuktikan pengecualian itu benar-benar hidup, bukan cuma tertulis.
+  await page.fill('#complaint', 'Layar mati total');
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
   // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
   // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia

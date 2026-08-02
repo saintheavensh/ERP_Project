@@ -195,6 +195,8 @@ test.describe('desktop (1280x800)', () => {
         customerName: `Print Flexible ${Date.now()}`,
         assetType: 'Smartphone',
         assetBrand: 'Xiaomi',
+        assetModel: 'Redmi 12',
+        reportedComplaint: 'Layar mati total',
         flowTemplateId: DITUNGGU_FLOW_ID,
         branchId: '00000000-0000-0000-0000-000000000000',
       },

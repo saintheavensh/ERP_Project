@@ -40,6 +40,7 @@ async function createIntakeTicket(page: Page, customerName: string) {
       assetType: 'Laptop',
       assetBrand: 'Asus',
       assetModel: 'P4E2E',
+      reportedComplaint: 'Tidak bisa menyala',
       flowTemplateId: STANDARD_REPAIR_FLOW,
       branchId: '00000000-0000-0000-0000-000000000000',
     },

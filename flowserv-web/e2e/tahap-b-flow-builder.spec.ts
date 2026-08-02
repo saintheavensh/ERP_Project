@@ -196,6 +196,10 @@ test.describe('desktop (1280x800)', () => {
     await page.waitForLoadState('networkidle');
     await page.fill('#name', `Uji Keterangan ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
+    // R1.8-T1 — merek, model & keluhan kini wajib.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'A10');
+    await page.fill('#complaint', 'Layar mati total');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
     // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
@@ -237,6 +241,10 @@ test.describe('desktop (1280x800)', () => {
       await page.waitForLoadState('networkidle');
       await page.fill('#name', `Uji Gerbang ${Date.now()}`);
       await page.selectOption('#type', 'Smartphone');
+      // R1.8-T1 — merek, model & keluhan kini wajib.
+      await page.fill('#brand', 'Samsung');
+      await page.fill('#model', 'A10');
+      await page.fill('#complaint', 'Layar mati total');
       await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
       // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
       // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia

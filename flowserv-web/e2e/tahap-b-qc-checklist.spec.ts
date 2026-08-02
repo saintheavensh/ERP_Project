@@ -43,6 +43,7 @@ async function ticketAtQcAwal(page: Page, customerName: string) {
     headers,
     data: {
       customerName, customerPhone: '081200001111', assetType: 'Smartphone',
+      assetBrand: 'Samsung', assetModel: 'A10', reportedComplaint: 'Layar mati total',
       flowTemplateId: SERVIS_FLOW, branchId: BRANCH_PUSAT,
     },
   });

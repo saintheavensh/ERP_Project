@@ -47,6 +47,7 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Xiaomi');
     await page.fill('#model', 'Redmi Note 12');
+    await page.fill('#complaint', 'Layar mati total'); // R1.8-T1 — keluhan wajib
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
     // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
@@ -80,6 +81,7 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Samsung');
     await page.fill('#model', 'A05');
+    await page.fill('#complaint', 'Layar mati total'); // R1.8-T1 — keluhan wajib
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
     // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
@@ -103,6 +105,7 @@ test.describe('desktop (1280x800)', () => {
     await page.selectOption('#type', 'Smartphone');
     await page.fill('#brand', 'Oppo');
     await page.fill('#model', 'A57');
+    await page.fill('#complaint', 'Layar mati total'); // R1.8-T1 — keluhan wajib
     await page.fill('#passcode', '1234');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
@@ -133,6 +136,11 @@ test.describe('desktop (1280x800)', () => {
     const uniqueName = `Tahap A No Passcode ${Date.now()}`;
     await page.fill('#name', uniqueName);
     await page.selectOption('#type', 'Tablet');
+    // R1.8-T1 — merek, model & keluhan kini wajib. Sandi/pola SENGAJA dibiarkan
+    // kosong: justru itu yang diuji di sini.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'Tab A7');
+    await page.fill('#complaint', 'Layar mati total');
     await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
     // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
     // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia
@@ -154,6 +162,10 @@ test.describe('desktop (1280x800)', () => {
 
     await page.fill('#name', `Tahap A Pattern ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
+    // R1.8-T1 — merek, model & keluhan kini wajib.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'A10');
+    await page.fill('#complaint', 'Layar mati total');
 
     // Switch to "Pola" mode and tap the dots 1 -> 2 -> 3 -> 6 -> 9.
     await page.getByRole('button', { name: 'Pola', exact: true }).click();
@@ -183,6 +195,10 @@ test.describe('desktop (1280x800)', () => {
 
     await page.fill('#name', `Tahap A Draw ${Date.now()}`);
     await page.selectOption('#type', 'Smartphone');
+    // R1.8-T1 — merek, model & keluhan kini wajib.
+    await page.fill('#brand', 'Samsung');
+    await page.fill('#model', 'A10');
+    await page.fill('#complaint', 'Layar mati total');
     await page.getByRole('button', { name: 'Pola', exact: true }).click();
 
     // Drag the diagonal 1 -> 5 -> 9 then across to 8, without clicking each dot.

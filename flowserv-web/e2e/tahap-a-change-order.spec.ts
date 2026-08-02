@@ -27,6 +27,9 @@ async function intakeTicket(page: Page, name: string) {
   await page.fill('#name', name);
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
+  // R1.8-T1 — model & keluhan kini wajib di form intake.
+  await page.fill('#model', 'A10');
+  await page.fill('#complaint', 'Layar mati total');
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
   // R1.5D — kasir kini TETAP di form setelah simpan (toast, bukan
   // lemparan halaman). Tes ini butuh halaman tiketnya, jadi ia

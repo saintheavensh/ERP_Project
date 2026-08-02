@@ -54,6 +54,8 @@ test('walks a repair from intake to close entirely through the UI', async ({ pag
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
   await page.fill('#model', 'Galaxy A10');
+  // R1.8-T1 — keluhan wajib. Ditempuh lewat form, seperti kasir sungguhan.
+  await page.fill('#complaint', 'LCD blank setelah jatuh');
   // Tahap B — tak ada lagi pemilih alur di intake: kasir baru memutuskan
   // ditunggu/disimpan setelah diagnosis, jadi tiket memakai alur default toko
   // ("Servis", satu template bercabang).

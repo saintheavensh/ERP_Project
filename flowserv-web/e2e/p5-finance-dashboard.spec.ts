@@ -71,6 +71,7 @@ test('a real invoice with pure labor revenue flows through to the P&L table', as
       assetType: 'Laptop',
       assetBrand: 'Test',
       assetModel: 'P5',
+      reportedComplaint: 'Tidak bisa menyala',
       flowTemplateId: '80000000-0000-4000-8000-000000000001',
       branchId: '00000000-0000-0000-0000-000000000000',
     },

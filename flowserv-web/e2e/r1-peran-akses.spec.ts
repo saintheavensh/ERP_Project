@@ -89,6 +89,9 @@ test('kasir membuat tiket lewat UI dan tiketnya muncul di daftar', async ({ page
   // "Jenis" wajib diisi (required, default kosong) — tanpa ini submit diblokir
   // validasi browser dan halaman diam saja.
   await page.locator('#type').selectOption('Smartphone');
+  // R1.8-T1 — merek & model kini wajib juga.
+  await page.locator('#brand').fill('Samsung');
+  await page.locator('#model').fill('A10');
   await page.locator('#complaint').fill('Tidak bisa mengisi daya');
 
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();

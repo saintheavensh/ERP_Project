@@ -58,6 +58,9 @@ test.describe('R1.6-T1 — pesan validasi adalah kalimat, bukan JSON', () => {
       data: {
         customerName: 'Uji Pola Pendek',
         assetType: 'Handphone',
+        assetBrand: 'Samsung',
+        assetModel: 'A10',
+        reportedComplaint: 'Layar mati total',
         branchId: BRANCH_PUSAT,
         devicePasscode: 'pola:1-2-3',
       },
@@ -80,7 +83,18 @@ test.describe('R1.6-T1 — pesan validasi adalah kalimat, bukan JSON', () => {
     const token = await apiToken(page, 'cashier@demo.com');
     const res = await page.request.post(`${API_BASE}/tickets/intake`, {
       headers: { Authorization: `Bearer ${token}` },
-      data: { customerName: 'Uji Sandi Pendek', assetType: 'Handphone', branchId: BRANCH_PUSAT, devicePasscode: '12' },
+      // R1.8-T1 — unit & keluhan diisi lengkap DENGAN SENGAJA: tes ini soal
+      // pesan sandi pendek, jadi ia tidak boleh lulus gara-gara tersandung
+      // aturan lain lebih dulu.
+      data: {
+        customerName: 'Uji Sandi Pendek',
+        assetType: 'Handphone',
+        assetBrand: 'Samsung',
+        assetModel: 'A10',
+        reportedComplaint: 'Layar mati total',
+        branchId: BRANCH_PUSAT,
+        devicePasscode: '12',
+      },
     });
 
     expect(res.status()).toBe(400);
@@ -113,6 +127,9 @@ test.describe('R1.6-T1 — pesan validasi adalah kalimat, bukan JSON', () => {
       data: {
         customerName: 'Uji Pola Sah',
         assetType: 'Handphone',
+        assetBrand: 'Samsung',
+        assetModel: 'A10',
+        reportedComplaint: 'Layar mati total',
         branchId: BRANCH_PUSAT,
         devicePasscode: 'pola:1-2-3-6',
       },

@@ -205,6 +205,7 @@ test('API menolak sandi/PIN & pola yang terlalu pendek, di kedua jalur tulis', a
   const dasar = {
     assetType: 'Handphone',
     assetBrand: 'Samsung',
+    assetModel: 'A10',
     reportedComplaint: 'Layar mati total',
     branchId: BRANCH_PUSAT,
   };
@@ -240,6 +241,8 @@ test('mengosongkan sandi saat serah-terima tetap boleh (jangan ikut terjaring)',
       customerName: 'Uji hapus sandi ' + Date.now(),
       customerPhone: '0812' + Math.floor(Math.random() * 1e8),
       assetType: 'Handphone',
+      assetBrand: 'Samsung',
+      assetModel: 'A10',
       reportedComplaint: 'Layar mati total',
       branchId: BRANCH_PUSAT,
       devicePasscode: '1234',
@@ -284,6 +287,9 @@ test('kasir tetap di form setelah simpan, dapat toast bernomor, form kosong lagi
   await page.fill('#name', nama);
   await page.selectOption('#type', 'Smartphone');
   await page.fill('#brand', 'Samsung');
+  // R1.8-T1 — model & keluhan kini wajib.
+  await page.fill('#model', 'A10');
+  await page.fill('#complaint', 'Layar mati total');
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
   // Inti R1.5D: kasir TIDAK berpindah halaman.
@@ -315,6 +321,10 @@ test('cetak otomatis tetap terpicu dari form intake, tidak ikut hilang', async (
 
   await page.fill('#name', `Uji cetak intake ${Date.now()}`);
   await page.selectOption('#type', 'Smartphone');
+  // R1.8-T1 — merek, model & keluhan kini wajib.
+  await page.fill('#brand', 'Samsung');
+  await page.fill('#model', 'A10');
+  await page.fill('#complaint', 'Layar mati total');
   await page.getByRole('button', { name: 'Simpan & Terima Unit' }).click();
 
   // Tanpa printer ter-assign, statusnya melaporkan itu — bukti pemicunya jalan.

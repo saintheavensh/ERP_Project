@@ -41,6 +41,7 @@ async function createAssignedDiagnosisTicket(page: Page, customerName: string, t
       assetType: 'Laptop',
       assetBrand: 'Asus',
       assetModel: 'P11-E2E',
+      reportedComplaint: 'Tidak bisa menyala',
       flowTemplateId: STANDARD_REPAIR_FLOW,
       branchId: '00000000-0000-0000-0000-000000000000',
     },
