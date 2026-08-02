@@ -13,10 +13,46 @@ async function login(page: Page, email = 'admin@demo.com', password = 'admin123'
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 20_000 });
 }
 
+const API_BASE = 'http://localhost:3001/v1';
+const CUSTOMER_BUDI = '90000000-0000-4000-8000-000000000001'; // IDS.customerBudi
+
+/**
+ * Memastikan Budi punya minimal satu tiket, tanpa bergantung pada tes lain.
+ * Idempoten: dijalankan ulang cuma menambah satu tiket lagi, dan pencarian
+ * hanya butuh ada-tidaknya, bukan jumlahnya.
+ */
+async function ensureBudiTicket(page: Page) {
+  const login = await page.request.post(`${API_BASE}/auth/login`, {
+    data: { email: 'admin@demo.com', password: 'admin123' },
+  });
+  const token = (await login.json()).data.token as string;
+
+  const res = await page.request.post(`${API_BASE}/tickets/intake`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      customerId: CUSTOMER_BUDI,
+      assetType: 'Handphone',
+      assetBrand: 'Samsung',
+      assetModel: 'A10',
+      reportedComplaint: 'Layar mati total',
+      branchId: '00000000-0000-0000-0000-000000000000',
+    },
+  });
+  expect(res.status()).toBe(201);
+}
+
 test.describe('desktop (1280x800) — inline search', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test('typing a known customer name shows grouped results and navigates on click', async ({ page }) => {
+    // Fixture mandiri (ditambahkan R1.8). Tes ini menuntut grup "Tiket" muncul
+    // untuk Budi, padahal SEED TIDAK PERNAH membuat tiket untuk Budi — tiket
+    // seed-nya milik Andi. Selama ini ia lulus karena f7-create-ticket-from-
+    // device kebetulan berjalan lebih dulu (workers: 1) dan membuatkan tiket
+    // untuk Budi sebagai efek samping. Ketahuan saat f7 sempat gagal: p8 ikut
+    // gagal, padahal tak ada kaitannya. Lulus karena alasan yang salah adalah
+    // bentuk cacat yang berulang di proyek ini — jadi tiketnya dibuat di sini.
+    await ensureBudiTicket(page);
     await login(page);
 
     const input = page.locator('input[placeholder^="Cari pelanggan"]');
