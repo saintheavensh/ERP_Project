@@ -12,15 +12,21 @@ export const load = async ({ locals }) => {
   if (!token) throw redirect(302, '/login');
 
   let brands: any[] = [];
+  // R1.8-T5 — unit yang masuk lewat Terima Unit tapi tak cocok ke katalog.
+  let uncatalogued: any[] = [];
 
   try {
-    const res = await fetch(`${API}/device-catalog/brands`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) brands = (await res.json()).data || [];
+    const [resBrands, resUncat] = await Promise.all([
+      fetch(`${API}/device-catalog/brands`, { headers: { Authorization: `Bearer ${token}` } }),
+      fetch(`${API}/device-catalog/uncatalogued`, { headers: { Authorization: `Bearer ${token}` } }),
+    ]);
+    if (resBrands.ok) brands = (await resBrands.json()).data || [];
+    // Digerbangi `catalog.manage`. Peran tanpa izin itu dapat 403 — halamannya
+    // tetap tampil utuh, cuma tanpa panel ini. Katalognya sendiri bukan rahasia.
+    if (resUncat.ok) uncatalogued = (await resUncat.json()).data || [];
   } catch (err) {
     console.error('Failed to load device catalog', err);
   }
 
-  return { token, brands };
+  return { token, brands, uncatalogued };
 };

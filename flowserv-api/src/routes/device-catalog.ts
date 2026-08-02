@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '../lib/validator';
 import { db } from '../db/connection';
-import { deviceBrands, deviceModels } from '../db/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { deviceBrands, deviceModels, customerAssets, customers } from '../db/schema';
+import { eq, and, sql, isNull } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
@@ -17,6 +17,74 @@ import { successResponse, errorResponse } from '../lib/response';
 // existing tenant-scoped table instead of a new one.
 export const deviceCatalogRouter = new Hono();
 deviceCatalogRouter.use('*', requireAuth);
+
+/**
+ * GET /v1/device-catalog/uncatalogued — unit yang pernah masuk lewat Terima
+ * Unit tapi tidak cocok ke katalog device.
+ *
+ * R1.8-T5, pasangan wajib dari T1. Pemilik (2026-08-02): "nantinya dapat pesan
+ * notifikasi pada device katalog bahwa ada unit service yang masih belum ada
+ * katalognya". Tanpa ini, "boleh ketik bebas" pelan-pelan berubah jadi katalog
+ * yang ditinggalkan: tiap unit tak dikenal masuk sebagai teks, tak ada yang
+ * tahu, dan setahun lagi katalognya tak mewakili apa pun yang masuk ke toko.
+ *
+ * TIDAK ADA KOLOM BARU. Datanya sudah terekam bentuknya sejak Tahap A:
+ * `customer_assets` yang merek/model-nya terisi tapi `device_model_id`-nya
+ * NULL persis berarti "unit masuk tanpa katalog" — `routes/tickets.ts` memang
+ * menjatuhkan id yang tak cocok alih-alih menolak intake-nya.
+ *
+ * Digerbangi `catalog.manage` (izin yang sudah ada, bukan baru): ini pekerjaan
+ * admin katalog, bukan bacaan kasir.
+ *
+ * Dikelompokkan per (merek, model) dan diurutkan dari yang paling sering
+ * muncul — yang sering datang itulah yang paling layak dimasukkan katalog.
+ */
+deviceCatalogRouter.get('/uncatalogued', requirePermission('catalog.manage'), async (c) => {
+  const { tenantId } = getAuthContext(c);
+
+  try {
+    const rows = await db
+      .select({
+        brand: customerAssets.brand,
+        model: customerAssets.model,
+        assetType: sql<string>`min(${customerAssets.assetType})`,
+        jumlah: sql<number>`count(*)::int`,
+      })
+      .from(customerAssets)
+      // customer_assets tidak punya tenant_id sendiri; kepemilikannya lewat
+      // customers. Tanpa join ini, satu toko bisa melihat unit toko lain.
+      .innerJoin(customers, eq(customerAssets.customerId, customers.id))
+      .where(and(
+        eq(customers.tenantId, tenantId),
+        isNull(customerAssets.deviceModelId),
+        // Merek/model kosong bukan "belum ada di katalog" — itu data lama dari
+        // sebelum T1 mewajibkannya. Menampilkannya cuma jadi baris hampa yang
+        // tak bisa ditindaklanjuti.
+        sql`coalesce(trim(${customerAssets.brand}), '') <> ''`,
+        sql`coalesce(trim(${customerAssets.model}), '') <> ''`,
+        // `device_model_id` NULL saja TIDAK cukup untuk berkata "belum ada di
+        // katalog". Kolom itu hanya terisi bila kasir memilih dari autocomplete;
+        // mengetik "Samsung Galaxy A10" sendiri tetap menghasilkan NULL walau
+        // modelnya jelas-jelas ada di katalog. Tanpa pemeriksaan teks ini,
+        // panelnya menyuruh admin menambahkan yang sudah ada — panel yang
+        // berbohong, dan itu lebih buruk daripada tidak ada panel.
+        sql`not exists (
+          select 1 from ${deviceModels} dm
+          join ${deviceBrands} db on db.id = dm.device_brand_id
+          where db.tenant_id = ${tenantId}
+            and lower(trim(db.name)) = lower(trim(${customerAssets.brand}))
+            and lower(trim(dm.name)) = lower(trim(${customerAssets.model}))
+        )`,
+      ))
+      .groupBy(customerAssets.brand, customerAssets.model)
+      .orderBy(sql`count(*) desc`, customerAssets.brand)
+      .limit(50);
+
+    return successResponse(c, rows);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to fetch uncatalogued devices', [err.message]);
+  }
+});
 
 // GET /v1/device-catalog/brands — brands with their models nested, tenant-scoped.
 // Open to any authenticated user: the intake form needs this list.

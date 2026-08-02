@@ -5,6 +5,12 @@
 
   let { data } = $props();
   let brands = $derived(data.brands || []);
+  // R1.8-T5 — unit yang pernah masuk lewat Terima Unit tapi tak cocok ke
+  // katalog. Sengaja panel di halaman ini, BUKAN lonceng atau popup: ini
+  // pekerjaan admin yang bisa ditunda, bukan kabar mendesak. Mengganggu kasir
+  // yang sedang melayani antrean dengan ini justru bikin orang berhenti
+  // mengisi merek dengan jujur — dan itu merusak T1 sekaligus.
+  let uncatalogued = $derived(data.uncatalogued || []);
 
   // Katalog bisa berisi ribuan model (import dari xlsx). Jangan render semua —
   // default tampilkan sedikit per merk; ketik untuk mencari (fondasi dulu;
@@ -132,6 +138,31 @@
       Merk Baru
     </button>
   </div>
+
+  {#if uncatalogued.length > 0}
+    <div class="bg-amber-50 border border-amber-200 rounded-xl overflow-hidden" data-testid="uncatalogued-panel">
+      <div class="px-4 py-3 border-b border-amber-200">
+        <h2 class="font-semibold text-amber-900">Belum ada di katalog ({uncatalogued.length})</h2>
+        <p class="text-sm text-amber-800 mt-0.5">
+          Unit ini pernah masuk lewat Terima Unit tapi mereknya belum terdaftar di katalog.
+          Yang paling sering masuk ada di urutan atas — itu yang paling layak ditambahkan.
+        </p>
+      </div>
+      <div class="divide-y divide-amber-200">
+        {#each uncatalogued as u}
+          <div class="px-4 py-2.5 flex flex-wrap items-center justify-between gap-2" data-testid="uncatalogued-row">
+            <div class="min-w-0">
+              <span class="font-medium text-slate-900">{u.brand} {u.model}</span>
+              <span class="text-xs text-slate-500 ml-2">{u.assetType}</span>
+            </div>
+            <span class="text-xs text-amber-900 bg-amber-100 border border-amber-200 rounded-full px-2 py-0.5 whitespace-nowrap">
+              {u.jumlah}× masuk
+            </span>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <div class="space-y-4">
     {#each brands as brand (brand.id)}
