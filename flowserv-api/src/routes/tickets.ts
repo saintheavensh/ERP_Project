@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { checkPasscode } from '../lib/passcode';
+import { checkComplaint, checkUnitIdentity, checkCustomerName } from '../lib/intake-fields';
 import { zValidator } from '../lib/validator';
 import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands } from '../db/schema';
@@ -217,6 +218,8 @@ const intakeSchema = z.object({
   devicePasscode: passcodeField,
   // Tahap A — go-live gap Tier-1 #3. Feeds the label/tanda-terima print
   // documents ("kerusakan"); editable later via the same PATCH endpoint.
+  // R1.8-T1 — sekarang WAJIB. Aturannya di superRefine di bawah, bukan di
+  // sini, supaya satu pesan keluar per kolom dan bukan dua (kosong + pendek).
   reportedComplaint: z.preprocess(emptyToUndefined, z.string().optional()),
 
   // Tahap B — OPSIONAL sekarang. Alur nyata toko tidak memilih "ditunggu atau
@@ -226,7 +229,46 @@ const intakeSchema = z.object({
   // eksplisit — fixture e2e & tiket yang sengaja memakai template lain.
   flowTemplateId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
   branchId: z.string().uuid() // for this MVP we'll need to pass branchId from frontend (or default it)
-});
+})
+  // R1.8-T1 — kolom wajib saat menerima unit (uji-R1.7 D1). Di sini, bukan per
+  // kolom, karena aturannya LINTAS-KOLOM: merek/model/jenis hanya wajib bila
+  // unitnya baru didaftarkan; bila `assetId` dikirim, unitnya sudah terdaftar
+  // dan memaksa mengetik ulang identitasnya justru menghalangi pelanggan lama.
+  // Hal yang sama untuk nama pelanggan terhadap `customerId`.
+  //
+  // `path` diisi supaya form bisa menyorot kolom yang salah; pesannya sendiri
+  // datang dari `lib/intake-fields.ts` — satu-satunya tempat aturan ini hidup.
+  .superRefine((data, ctx) => {
+    if (!data.customerId) {
+      const name = checkCustomerName(data.customerName);
+      if (!name.valid) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: name.message, path: ['customerName'] });
+      }
+    }
+
+    if (!data.assetId) {
+      const unit = checkUnitIdentity({
+        assetType: data.assetType,
+        assetBrand: data.assetBrand,
+        assetModel: data.assetModel,
+      });
+      if (!unit.valid) {
+        const kolom: Record<string, string> = {
+          UNIT_TYPE_REQUIRED: 'assetType',
+          UNIT_BRAND_REQUIRED: 'assetBrand',
+          UNIT_MODEL_REQUIRED: 'assetModel',
+        };
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: unit.message, path: [kolom[unit.code] ?? 'assetType'] });
+      }
+    }
+
+    // Keluhan wajib apa pun keadaannya — unit lama milik pelanggan lama pun
+    // datang kembali karena SESUATU, dan itulah yang dibaca teknisi di antrian.
+    const keluhan = checkComplaint(data.reportedComplaint);
+    if (!keluhan.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: keluhan.message, path: ['reportedComplaint'] });
+    }
+  });
 
 ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('json', intakeSchema), auditMiddleware({ action: 'ticket.create', entityType: 'service_ticket', bodyFields: ['flowTemplateId', 'branchId', 'customerId', 'assetId', 'assetType'] }), async (c) => {
   const { tenantId, userId } = getAuthContext(c);

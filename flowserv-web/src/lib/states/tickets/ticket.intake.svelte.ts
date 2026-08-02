@@ -192,14 +192,59 @@ export class TicketIntakeState {
     this.showDropdown = false;
   }
 
+  /**
+   * R1.8-T1 — cermin dari `flowserv-api/src/lib/intake-fields.ts`.
+   *
+   * Sengaja diduplikasi kecil, sama alasannya dengan `utils/pattern.ts` vs
+   * `lib/passcode.ts`: dua paket terpisah, tak bisa saling impor. Yang TIDAK
+   * boleh terjadi adalah aturannya berbeda — jadi urutan dan syaratnya dibuat
+   * persis sama, dan tes e2e-lah yang membuktikan keduanya sepakat (form
+   * menolak, DAN API menolak bila form dilewati).
+   *
+   * Mengembalikan kalimat kolom pertama yang belum diisi, atau null bila lengkap.
+   */
+  kolomYangBelumDiisi(): string | null {
+    const kosong = (v: string) => !v || v.trim() === '';
+
+    // Pelanggan lama dipilih dari daftar -> namanya sudah ada di database.
+    if (!this.form.customerId && kosong(this.form.customerName)) {
+      return 'Nama pelanggan wajib diisi.';
+    }
+
+    // Unit lama dipilih dari daftar -> identitasnya sudah tercatat; memaksa
+    // mengetik ulang justru menghalangi pelanggan yang datang kembali.
+    if (!this.form.assetId) {
+      if (kosong(this.form.assetType)) return 'Jenis unit wajib dipilih.';
+      if (kosong(this.form.assetBrand)) {
+        return 'Merek unit wajib diisi. Bila mereknya tidak umum, ketik saja apa adanya.';
+      }
+      if (kosong(this.form.assetModel)) {
+        return 'Model / tipe unit wajib diisi. Bila tidak ada di daftar, ketik saja apa adanya.';
+      }
+    }
+
+    if (kosong(this.form.reportedComplaint)) return 'Keluhan / kerusakan wajib diisi.';
+    if (this.form.reportedComplaint.trim().length < 3) {
+      return 'Keluhan / kerusakan minimal 3 huruf — tulis singkat pun tidak apa-apa, mis. "mati total".';
+    }
+
+    return null;
+  }
+
   async submitIntake() {
     this.loading = true;
     this.errorMsg = '';
     
     // Tahap B — flowTemplateId tak lagi wajib: alur ditentukan setelah
     // diagnosis, dan backend memakai template default toko bila tak dikirim.
-    if (!this.form.customerName || !this.form.assetType) {
-      this.errorMsg = 'Nama pelanggan dan jenis perangkat wajib diisi.';
+    //
+    // R1.8-T1 — peringatan LEBIH AWAL, bukan gerbangnya. Gerbang sebenarnya ada
+    // di backend (`lib/intake-fields.ts`); kalau pemeriksaan di sini dilewati,
+    // API tetap menolak. Yang dilakukan di sini cuma satu: menghemat satu
+    // perjalanan ke server saat kasir sedang melayani antrean.
+    const kurang = this.kolomYangBelumDiisi();
+    if (kurang) {
+      this.errorMsg = kurang;
       this.loading = false;
       return;
     }

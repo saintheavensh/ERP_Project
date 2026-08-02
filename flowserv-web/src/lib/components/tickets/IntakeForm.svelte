@@ -89,7 +89,7 @@
           </select>
         </div>
         <div class="relative">
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Merek</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="brand">Merek <span class="text-red-500">*</span></label>
           <input id="brand" type="text" bind:value={state.form.assetBrand} oninput={() => state.searchBrand()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. Samsung">
           {#if state.showBrandDropdown && state.brandResults.length > 0}
             <ul class="absolute z-10 w-full bg-white border border-slate-200 mt-1 rounded-lg shadow-lg max-h-48 overflow-y-auto" data-testid="brand-dropdown">
@@ -104,7 +104,7 @@
           {/if}
         </div>
         <div class="relative">
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1" for="model">Model / Tipe <span class="text-red-500">*</span></label>
           <input id="model" type="text" bind:value={state.form.assetModel} oninput={() => state.searchDeviceModel()} onfocus={() => state.searchDeviceModel()} autocomplete="off" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder={state.selectedBrandId ? 'Pilih / ketik model...' : 'e.g. Galaxy S23'}>
 
           {#if state.showDeviceDropdown && state.deviceModelResults.length > 0}
@@ -186,12 +186,14 @@
   <!-- Service Details -->
   <div>
     <h2 class="text-lg font-semibold text-slate-800 mb-4 border-b pb-2">Keluhan</h2>
-    <!-- Tahap A — go-live gap Tier-1 #3. Optional but encouraged: feeds the
-         label/tanda-terima print documents ("kerusakan"). SVC-001 always
-         named complaint capture as part of intake; no field for it existed
-         until now. -->
+    <!-- Tahap A — go-live gap Tier-1 #3. Feeds the label/tanda-terima print
+         documents ("kerusakan"). SVC-001 always named complaint capture as
+         part of intake; no field for it existed until now.
+         R1.8-T1 — tidak lagi opsional (uji-R1.7 D1: "buat keluhan / kerusakan
+         jadi kolom wajib di isi"). Ditegakkan di backend; tanda * di sini
+         hanya memberi tahu lebih awal. -->
     <div class="mb-4">
-      <label class="block text-sm font-medium text-slate-700 mb-1" for="complaint">Keluhan / Kerusakan</label>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="complaint">Keluhan / Kerusakan <span class="text-red-500">*</span></label>
       <textarea id="complaint" bind:value={state.form.reportedComplaint} rows="2" class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="mis. LCD retak, tidak bisa charge"></textarea>
       <!-- Saran servis umum — klik untuk menambah ke Keluhan. Tidak bergantung
            pada device yang dipilih. -->

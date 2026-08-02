@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { checkPasscode } from '../../lib/passcode';
+import { checkComplaint } from '../../lib/intake-fields';
 
 // A 'part' charge references real inventory. unitPrice defaults from the item's selling
 // price (looked up in the service) but stays editable — technicians negotiate — so it is
@@ -82,7 +83,27 @@ export const updateIntakeDetailsInput = z.object({
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: check.message });
     }
   }),
-  reportedComplaint: z.string().nullable().optional(),
+  // R1.8-T1 — keluhan sekarang WAJIB, jadi di sini ia berbeda dari sandi/pola
+  // tepat di satu hal: `null` TIDAK lagi diterima. Sandi boleh dikosongkan
+  // (memang dihapus saat unit diserahkan kembali); keluhan tidak — mengosongkan
+  // catatan kenapa unit ini ada di toko bukan koreksi, itu kehilangan data.
+  // Menghilangkan kuncinya lewat pintu belakang PATCH sama saja dengan tak
+  // pernah memasangnya di POST (pelajaran S5).
+  //
+  // Kunci yang TIDAK dikirim tetap no-op, seperti sebelumnya — pemanggil yang
+  // hanya memperbaiki sandi tak pernah tersandung aturan keluhan.
+  // `null` sengaja tetap DITERIMA tipenya lalu ditolak di superRefine, bukan
+  // ditolak oleh `z.string()` — supaya pesannya kalimat toko yang sama
+  // ("Keluhan / kerusakan wajib diisi.") dan bukan keluhan tipe bawaan Zod
+  // tentang kolom bernama `reportedComplaint`, yang tak berarti apa-apa bagi
+  // kasir yang membacanya.
+  reportedComplaint: z.string().nullable().optional().superRefine((val, ctx) => {
+    if (val === undefined) return;
+    const check = checkComplaint(val);
+    if (!check.valid) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: check.message });
+    }
+  }),
   // Tahap B — hasil diagnosis teknisi + lama pengerjaan yang dijanjikan ke
   // pelanggan. Ikut endpoint yang sama, bukan endpoint baru: pola "field kecil
   // di service_ticket yang bisa diperbaiki kapan saja" persis sama dengan dua
