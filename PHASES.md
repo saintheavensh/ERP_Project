@@ -242,6 +242,60 @@
 >       fisik (sama seperti 6D.1) — masuk checklist uji pemilik poin D5, bukan diam-diam
 >       di-`[x]`.
 >
+> - [x] **R1.8 — Perbaikan hasil uji R1.7** (2026-08-03, kode selesai).
+>       Pemilik menjalankan [`plan/uji-R1.7-perbaikan.md`](plan/uji-R1.7-perbaikan.md):
+>       **14 dari 18 poin lulus bersih**, termasuk keempat hal yang R1.7 memang ada untuk
+>       memperbaikinya. Rencananya
+>       [`plan/R1.8-perbaikan-hasil-uji-R1.7.md`](plan/R1.8-perbaikan-hasil-uji-R1.7.md).
+>       **Tiga catatan pemilik ternyata BUKAN bug** — diperiksa ke kode dulu, bukan
+>       ditebak: nomor antrian `-` (endpoint intake selalu mengisinya, **seed**-nya yang
+>       tidak), tombol "Ambil Pekerjaan" yang "tidak ketemu" (tombolnya ada, **poin
+>       ujinya** yang usang sejak R1.7 memindahkan jalannya ke popup beranda), dan
+>       `/finance/receivables` (memang belum punya rincian).
+>       - [x] **T1 — merek, model, keluhan wajib** (`c13f7ea`). Yang pemilik tulis sambil
+>             lalu ternyata paling longgar: satu-satunya kolom unit yang wajib adalah
+>             "Jenis", jadi tiket sah bisa berisi seluruh unitnya cuma kata **"Smartphone"**,
+>             dan keluhan tak diperiksa di mana pun. Ditegakkan **backend dulu**
+>             (`lib/intake-fields.ts`, satu definisi dipakai POST + PATCH) — mengunci form
+>             saja kunci semu (S5, R1.5C). Aturannya **lintas-kolom**: merek/model wajib
+>             hanya saat unit BARU; unit lama tak diketik ulang. Keluhan minimal 3 huruf
+>             (menutup jalan pintas mengetik `-`); merek/model **tanpa** panjang minimum
+>             (nama sah bisa "LG"/"X"). Isi bebas — "Advan G30" di luar katalog tetap
+>             tersimpan, fondasi yang T5 andalkan.
+>       - [x] **T2 — rincian piutang untuk kasir** (`6aa4730`). Tanpa endpoint/izin baru.
+>             Modal POS **tidak** dipakai ulang walau isinya nyaris persis: ia membawa
+>             Void + Ubah yang digerbangi izin yang kasir tak punya — memasang kontrol
+>             yang pasti gagal adalah anti-pattern yang Track F dan R1.7-T3 berantas.
+>       - [x] **T3 — nomor antrian di data contoh** (`58dd30f`). Kedua kalinya data contoh
+>             membuat pemilik menguji hal yang salah (di R1.5: kartu Piutang bernilai 0).
+>       - [x] **T5 — panel "Belum ada di katalog"** (`9682406`). Tanpa kolom baru.
+>             **Ditemukan saat menjalankannya:** `device_model_id IS NULL` saja TIDAK
+>             cukup — "Samsung Galaxy A10" muncul sebagai belum-berkatalog padahal ada di
+>             katalog, karena kolom itu hanya terisi bila dipilih dari autocomplete.
+>             Ditutup dengan `NOT EXISTS` pembanding teks; 6 baris → 2 yang benar asing.
+>       - [x] **T6/T7 — teknisi opsional + perkiraan biaya** (`09dd968`). Keduanya
+>             **ditanyakan dulu** karena menabrak keputusan pemilik sendiri. T6 digerbangi
+>             `ticket.create`, bukan `ticket.assign_technician`: menugaskan saat MEMBUAT ≠
+>             memindahkan pekerjaan berjalan. Lebih ketat dari H8 — orangnya harus benar
+>             berperan Teknisi. T7 pakai kolom baru `intake_estimated_cost`; **aturan S5
+>             tidak dicabut** (biaya sungguhan di Intake tetap 422, ada tesnya).
+>             Bug lama yang ditemukan tes lebar baris T7: "Barang diambil dengan
+>             menunjukkan" 33 karakter di kertas 32 kolom — terpotong di printer sungguhan
+>             sejak tanda terima dibuat.
+>       - [ ] **T8 — uji manual pemilik**
+>             ([`plan/uji-R1.8-perbaikan.md`](plan/uji-R1.8-perbaikan.md)) ← **gerbang R2**
+>
+>       **Bukti akhir:** **304 unit** (dari 288) · **21 e2e API** · **Playwright 212/212 di
+>       DB bersih** (dari 191), termasuk **21 tes baru** di `e2e/r1-8-perbaikan.spec.ts` ·
+>       `tsc` bersih · `svelte-check` 734 berkas 0 error · matriks penolakan intake
+>       terekam via curl.
+>       **Dua temuan sampingan yang bukan bagian tugas mana pun:** (1) `p8-global-search`
+>       ternyata **lulus karena alasan yang salah** — ia menuntut grup "Tiket" muncul untuk
+>       Budi, padahal seed hanya membuat tiket untuk **Andi**; selama ini `f7` kebetulan
+>       berjalan lebih dulu dan membuatkannya. Dibuktikan dengan menjalankannya sendirian
+>       di DB bersih, lalu dibuat mandiri (`07ae667`). (2) 24 titik fixture intake di 10
+>       spec diperbarui **menempuh jalan kasir sungguhan**, bukan dilonggarkan (`38a4a10`).
+>
 > - [x] **R1 — Peran & akses** (2026-07-31). Kasir dapat `ticket.create` + baris menu
 >       "Servis"; `GET /v1/tickets` menerima `?assignedTo=none`; daftar teknisi jadi dua
 >       kelompok ("Menunggu Diambil" / "Sedang Saya Kerjakan") dan beranda teknisi dapat

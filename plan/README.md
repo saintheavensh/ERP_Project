@@ -48,7 +48,8 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 | [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) | **Cerita lengkap R1 → R1.7**: apa yang direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya. Menggantikan 5 berkas terpisah | 📖 Rujukan, jangan dihapus |
 | [`uji-00-kondisi-sekarang.md`](uji-00-kondisi-sekarang.md) | Uji aplikasi **apa adanya hari ini** — semua area, ~150 poin | 📋 Opsional, kapan saja |
 | [`uji-R1.7-perbaikan.md`](uji-R1.7-perbaikan.md) | Uji khusus Fase R1.7 | ✅ Sudah diisi pemilik 2026-08-02 |
-| [`R1.8-perbaikan-hasil-uji-R1.7.md`](R1.8-perbaikan-hasil-uji-R1.7.md) | **Rencana aktif** — T1–T4 + dua keputusan yang ditahan + pertanyaan R2 yang dibalik bentuknya | 🟢 Aktif |
+| [`R1.8-perbaikan-hasil-uji-R1.7.md`](R1.8-perbaikan-hasil-uji-R1.7.md) | Rencana + bukti R1.8 (T1–T7), temuan saat mengerjakannya, dan pertanyaan R2 yang dibalik bentuknya | 📖 Rujukan |
+| [`uji-R1.8-perbaikan.md`](uji-R1.8-perbaikan.md) | Uji khusus Fase R1.8 | 🔴 **SIAP DIJALANKAN** |
 
 **Checklist uji R2 dan R3 sengaja belum ditulis** — isinya akan menyesuaikan catatan pemilik
 dari fase sebelumnya. Menulisnya sekarang berarti menebak.
@@ -64,7 +65,7 @@ R1   Peran & akses                ✅ SELESAI 2026-07-31 — sudah diuji pemilik
 R1.5 Perbaikan hasil uji R1       ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.6 Perbaikan hasil uji R1.5     ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.7 Perbaikan hasil uji R1.6     ✅ SELESAI 2026-08-01 — sudah diuji pemilik (14/18 lulus bersih)
-R1.8 Perbaikan hasil uji R1.7     🟢 RENCANA SIAP - 2 keputusan pemilik menentukan cakupannya
+R1.8 Perbaikan hasil uji R1.7     ✅ KODE SELESAI 2026-08-03 — menunggu uji manual pemilik
 R2   Halaman tiket per peran      ⛔ TERKUNCI - butuh aturan per tahap dari pemilik
 R3   QC jadi modul sendiri        ⏳ menunggu catatan uji R2
 R4   Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
