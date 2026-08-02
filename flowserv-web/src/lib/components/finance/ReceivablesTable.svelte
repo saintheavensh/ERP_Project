@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ReceivablesState } from '$lib/states/finance/receivables.svelte';
+  import ReceivableDetailModal from './ReceivableDetailModal.svelte';
 
   let { state } = $props<{ state: ReceivablesState }>();
 </script>
@@ -50,12 +51,23 @@
               </span>
             </td>
             <td class="p-4 text-right">
-              <button
-                class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
-                onclick={() => state.openPayModal(inv)}
-              >
-                Bayar
-              </button>
+              <div class="flex justify-end gap-2">
+                <!-- R1.8-T2 — kasir yang menagih perlu tahu tagihan ini isinya
+                     apa sebelum menerima uang (uji-R1.7 A1). -->
+                <button
+                  class="px-3 py-1.5 border border-slate-200 text-slate-700 rounded-lg text-sm hover:bg-slate-100 transition-colors"
+                  onclick={() => state.openDetail(inv)}
+                  data-testid="ar-rincian"
+                >
+                  Rincian
+                </button>
+                <button
+                  class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                  onclick={() => state.openPayModal(inv)}
+                >
+                  Bayar
+                </button>
+              </div>
             </td>
           </tr>
         {/each}
@@ -64,6 +76,8 @@
   </table>
  </div>
 </div>
+
+<ReceivableDetailModal {state} />
 
 {#if state.payingInvoice}
   {@const invoice = state.payingInvoice}

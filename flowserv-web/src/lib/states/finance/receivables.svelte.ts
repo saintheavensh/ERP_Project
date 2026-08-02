@@ -16,12 +16,55 @@ export class ReceivablesState {
   payError = $state('');
   payIdempotencyKey = $state('');
 
+  // R1.8-T2 — rincian satu tagihan (uji-R1.7 A1). Pemilik: "lebih baik jika
+  // kasir bisa melihat detail transaksi piutangnya". Alasannya operasional:
+  // kasir yang menagih perlu tahu tagihan ini isinya apa sebelum menerima uang.
+  detailInvoice: any = $state(null);
+  loadingDetail = $state(false);
+  detailError = $state('');
+
   constructor(data: any) {
     this.data = data;
   }
 
   get receivables() {
     return this.data.receivables || [];
+  }
+
+  /**
+   * Daftar piutang tidak membawa baris item maupun riwayat pembayaran — jadi
+   * rinciannya diambil saat dibuka, bukan ikut di setiap baris tabel. Selain
+   * lebih ringan, itu juga menjaga daftar tetap sekadar daftar.
+   *
+   * Endpoint-nya `GET /v1/pos/invoices/:id`, yang memang sudah boleh dipanggil
+   * kasir (digerbangi login saja, bukan izin keuangan). Tidak ada izin baru
+   * yang ditambahkan di sini — /finance, /finance/ledger, dan /finance/payables
+   * tetap tertutup untuk kasir.
+   */
+  async openDetail(invoice: any) {
+    this.detailInvoice = invoice;
+    this.detailError = '';
+    this.loadingDetail = true;
+    try {
+      const res = await fetch(`${API_BASE}/pos/invoices/${invoice.id}`, {
+        headers: { Authorization: `Bearer ${this.data.token}` },
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error?.message || 'Gagal memuat rincian tagihan');
+      // Hasil dari server menimpa baris daftar, bukan menggantikannya mentah:
+      // baris daftar sudah membawa nama pelanggan hasil join yang tidak selalu
+      // ikut di respons detail.
+      this.detailInvoice = { ...invoice, ...result.data };
+    } catch (err: any) {
+      this.detailError = err.message;
+    } finally {
+      this.loadingDetail = false;
+    }
+  }
+
+  closeDetail() {
+    this.detailInvoice = null;
+    this.detailError = '';
   }
 
   outstandingBalance(inv: any) {
