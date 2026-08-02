@@ -47,7 +47,8 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 | [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R5: peran, halaman tiket per peran, QC, retur | 🟢 Aktif |
 | [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) | **Cerita lengkap R1 → R1.7**: apa yang direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya. Menggantikan 5 berkas terpisah | 📖 Rujukan, jangan dihapus |
 | [`uji-00-kondisi-sekarang.md`](uji-00-kondisi-sekarang.md) | Uji aplikasi **apa adanya hari ini** — semua area, ~150 poin | 📋 Opsional, kapan saja |
-| [`uji-R1.7-perbaikan.md`](uji-R1.7-perbaikan.md) | Uji khusus Fase R1.7 | 🔴 **SIAP DIJALANKAN** |
+| [`uji-R1.7-perbaikan.md`](uji-R1.7-perbaikan.md) | Uji khusus Fase R1.7 | ✅ Sudah diisi pemilik 2026-08-02 |
+| [`R1.8-perbaikan-hasil-uji-R1.7.md`](R1.8-perbaikan-hasil-uji-R1.7.md) | **Rencana aktif** — T1–T4 + dua keputusan yang ditahan + pertanyaan R2 yang dibalik bentuknya | 🟢 Aktif |
 
 **Checklist uji R2 dan R3 sengaja belum ditulis** — isinya akan menyesuaikan catatan pemilik
 dari fase sebelumnya. Menulisnya sekarang berarti menebak.
@@ -62,7 +63,8 @@ dari fase sebelumnya. Menulisnya sekarang berarti menebak.
 R1   Peran & akses                ✅ SELESAI 2026-07-31 — sudah diuji pemilik
 R1.5 Perbaikan hasil uji R1       ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.6 Perbaikan hasil uji R1.5     ✅ SELESAI 2026-08-01 — sudah diuji pemilik
-R1.7 Perbaikan hasil uji R1.6     ✅ SELESAI 2026-08-01 — menunggu uji manual pemilik
+R1.7 Perbaikan hasil uji R1.6     ✅ SELESAI 2026-08-01 — sudah diuji pemilik (14/18 lulus bersih)
+R1.8 Perbaikan hasil uji R1.7     🟢 RENCANA SIAP - 2 keputusan pemilik menentukan cakupannya
 R2   Halaman tiket per peran      ⛔ TERKUNCI - butuh aturan per tahap dari pemilik
 R3   QC jadi modul sendiri        ⏳ menunggu catatan uji R2
 R4   Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
@@ -76,9 +78,16 @@ alur "setelah diagnosis kembali ke kasir", tombol minta pindah teknisi, laporan 
 teknisi, teknisi tidak melihat harga modal.
 
 Satu butir menghalangi sisanya: **"tiket tidak boleh maju sebelum data tahapnya lengkap"**
-menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**. Pertanyaannya sudah
-diajukan dua kali dan belum dijawab; ia diulang di akhir
-[`uji-R1.7-perbaikan.md`](uji-R1.7-perbaikan.md).
+menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**.
+
+**Pertanyaannya diubah bentuk 2026-08-02** setelah tiga kali diajukan sebagai tabel kosong
+dan tak pernah diisi. Itu kesalahan cara bertanya, bukan kelalaian pemilik: tabel kosong
+menuntut merancang aturan dari nol, sementara pemilik menjawabnya dengan mudah begitu
+pertanyaannya konkret dan sedang dipakai — poin D1 di uji R1.7 (*"buat keluhan / kerusakan
+jadi kolom wajib di isi"*) sebenarnya adalah jawaban baris pertama tabel itu, ditulis
+sambil menguji. Sekarang agent yang mengusulkan isi kelima barisnya, pemilik tinggal
+membenarkan atau mencoret per baris — lihat
+[`R1.8-perbaikan-hasil-uji-R1.7.md`](R1.8-perbaikan-hasil-uji-R1.7.md).
 
 Menebaknya lalu menegakkan tebakan itu **persis kesalahan yang S5 sudah pernah buat dan
 cabut** — gerbang penagihan dipasang berdasarkan `allowsInvoicing` hasil backfill, lalu
