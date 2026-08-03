@@ -116,12 +116,23 @@ sebelumnya dijalankan pemilik dan hasilnya dicatat.
 ## 2. Urutan fase
 
 ```
-R1  Peran & akses                 ✅ SELESAI 2026-07-31 — menunggu uji manual pemilik
-R2  Halaman tiket per peran       ⏳ mulai setelah catatan uji R1 dibaca
-R3  QC jadi modul sendiri         🔴 besar, sentuh DB + BE + FE
-R4  Bersih-bersih hasil audit     🟢 kecil, bisa disisipkan kapan saja
-R5  Retur / tukar barang          ⏸️  tunggu pilot
+R1    Peran & akses               ✅ SELESAI 2026-07-31 — sudah diuji pemilik
+R1.5  Perbaikan hasil uji R1      ✅ SELESAI 2026-08-01 — sudah diuji pemilik
+R1.6  Perbaikan hasil uji R1.5    ✅ SELESAI 2026-08-01 — sudah diuji pemilik
+R1.7  Perbaikan hasil uji R1.6    ✅ SELESAI 2026-08-01 — sudah diuji pemilik
+R1.8  Perbaikan hasil uji R1.7    ✅ SELESAI 2026-08-03 — sudah diuji pemilik, TAK ADA yang gagal
+R1.9  Perbaikan hasil uji R1.8    🔴 SEDANG DIKERJAKAN — R1.9-perbaikan-hasil-uji-R1.8.md
+R2    Halaman tiket per peran     ⛔ terkunci: butuh aturan per tahap dari pemilik
+R3    QC jadi modul sendiri       🔴 besar, sentuh DB + BE + FE
+R4    Bersih-bersih hasil audit   🟢 kecil, bisa disisipkan kapan saja
+R5    Retur / tukar barang        ⏸️  tunggu pilot
+R6    Buka/Tutup Kasir (FIN-002)  🆕 diminta pemilik 2026-08-04; urutan belum diputuskan
 ```
+
+**R1 melahirkan lima fase perbaikan, dan itu bukan kegagalan rencana — itu rencananya
+bekerja.** Tiap putaran uji pemilik menemukan hal yang 300 tes otomatis tidak bisa
+temukan, karena semuanya soal **apakah aplikasinya bisa dipakai**, bukan apakah kodenya
+benar. Rinciannya di [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md).
 
 Alasan R1 dulu: ia **memblokir pemakaian harian** (kasir tak bisa terima unit, teknisi tak
 bisa ambil kerja) dan perubahannya paling kecil. R2 sebelum R3 karena R3 akan menambah satu
@@ -228,8 +239,9 @@ merapikan setelahnya.
 
 **Definition of Done R1:**
 `npx vitest run` hijau · `svelte-check` 0 error · spec baru + spec lama lulus ·
-**checklist uji manual R1 dijalankan pemilik dan hasilnya dicatat** ← *satu-satunya
-yang belum: [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md)*
+**checklist uji manual R1 dijalankan pemilik dan hasilnya dicatat** ← *sudah dijalankan
+2026-08-01; kesimpulan "ada yang harus diperbaiki dulu" → lahirlah R1.5 … R1.9. Ceritanya
+di [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md); berkas ujinya sudah dihapus.*
 
 ## Bukti R1 (2026-07-31)
 
@@ -575,21 +587,65 @@ menghentikan.
 
 ---
 
+# FASE R6 — Buka/Tutup Kasir (Kas Harian) 🆕
+
+**Diminta pemilik 2026-08-04** (uji R1.8 poin C1):
+
+> *"sebaiknya di reset tiap hari yang jadi triggernya nanti ketika buka kasir karena saya
+> ingin ada fitur buka tutup kasir, kalau tidak salah sudah saya mention juga untuk masalah
+> ini di dokumentasinya"*
+
+**Pemilik benar soal dokumentasinya.** `specification/features/10-finance.md` **FIN-002
+Cash Management** — *"Track cash in/out per branch per day. Cash register opening/closing"* —
+ditandai **MVP ✅** di katalog fitur sejak awal. **Belum dibangun sama sekali:** tak ada
+tabel, endpoint, maupun layar.
+
+**Bentuk kasarnya** (belum rencana teknis — ditulis saat fase ini benar-benar dimulai):
+
+| Bagian | Isi |
+|---|---|
+| Buka | saldo awal laci, siapa yang membuka, jam buka. Satu sesi terbuka per (cabang, kasir) |
+| Selama sesi | tiap pembayaran POS + penerimaan piutang menempel ke sesi yang sedang buka; kas masuk/keluar non-penjualan dicatat manual (ambil uang untuk beli galon, dsb.) |
+| Tutup | hitungan fisik dimasukkan → **selisih** dihitung sistem (bukan diketik). Selisih inilah gunanya fitur ini ada |
+| Setelah tutup | sesi terkunci; laporan per sesi & per hari |
+
+**Dua hal yang harus diputuskan sebelum kode ditulis:**
+
+1. **Apakah kasir boleh menerima pembayaran saat tak ada sesi terbuka?** Menolaknya = disiplin
+   kas yang sesungguhnya, tapi juga berarti staf yang lupa "buka kasir" tidak bisa melayani
+   pelanggan sama sekali. Ini keputusan pemilik, bukan agent.
+2. **Pemicu nomor antrian ikut pindah ke sini** (dari "ganti tanggal" jadi "buka sesi").
+   **Jangan disentuh sebelum R6 benar-benar ada** — mengganti pemicu tanggal dengan pemicu
+   sesi yang belum dibangun akan membuat nomor antrian berhenti jalan sama sekali.
+
+**Urutannya belum diputuskan** — sebelum atau sesudah R2 adalah pilihan pemilik. Yang jelas
+ini **bukan tambalan**: ia menyentuh POS, piutang, dan buku kas sekaligus, jadi tidak boleh
+disisipkan ke fase perbaikan.
+
+---
+
 # 5. Checklist Uji Manual — satu berkas per fase
 
 **Checklist uji dipisah dari dokumen ini**, satu berkas per fase, supaya pemilik bisa
 mengisinya bebas dan agent tahu persis apa yang harus dibaca sebelum lanjut.
 
-| Berkas | Untuk | Kapan ditulis |
+| Berkas | Untuk | Status |
 |---|---|---|
-| [`uji-00-kondisi-sekarang.md`](uji-00-kondisi-sekarang.md) | Aplikasi apa adanya hari ini — semua area, di luar tiga fase ini | Sudah ada, opsional, kapan saja |
-| [`uji-R1-peran-akses.md`](uji-R1-peran-akses.md) | Fase R1 | Sudah ada, jalankan **setelah** R1 selesai |
+| `uji-R1-peran-akses.md` → `uji-R1.8-perbaikan.md` (6 berkas) | Fase R1 … R1.8 | ✅ Semuanya sudah diisi pemilik, lalu **dihapus** setelah di-commit. Isinya di [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) |
+| `uji-00-kondisi-sekarang.md` | Aplikasi apa adanya — semua area | ❌ Dihapus 2026-08-04: **tak pernah dijalankan** (0/~150) dan premisnya usang. Fakta "area stok/pembelian/keuangan/cetak belum teruji" tetap dicatat di riwayat |
+| `uji-R1.9-*.md` | Fase R1.9 | **Ditulis saat kode R1.9 selesai** |
 | `uji-R2-*.md` | Fase R2 | **Ditulis saat R2 dikerjakan** |
 | `uji-R3-*.md` | Fase R3 | **Ditulis saat R3 dikerjakan** |
 
-**Kenapa R2/R3 belum ditulis:** isinya harus menyesuaikan catatan pemilik dari fase
-sebelumnya. Menulisnya sekarang berarti menebak bentuk akhirnya — dan tebakan itu justru
-yang membuat pekerjaan melebar.
+**Kenapa checklist berikutnya belum ditulis:** isinya harus menyesuaikan catatan pemilik
+dari fase sebelumnya. Menulisnya sekarang berarti menebak bentuk akhirnya — dan tebakan itu
+justru yang membuat pekerjaan melebar.
+
+**Kenapa berkas yang sudah diisi dihapus, bukan ditumpuk:** permintaan pemilik 2026-08-01
+dan 2026-08-04 ("agar tidak terlalu menumpuk tetapi riwayatnya jangan sampai hilang").
+Aturannya: **commit dulu, baru hapus** — kalimat asli pemilik adalah bagian paling berharga
+dari seluruh proses ini, karena tiap bug di riwayat ini ditemukan dengan **memakai**
+aplikasinya, bukan oleh tes.
 
 **Alurnya:**
 
@@ -622,14 +678,16 @@ arah.
 # 7. Ringkasan urutan
 
 ```
-R1  Peran & akses            ← mulai sekarang, tak perlu menunggu jawaban apa pun
-    └─ uji manual R1 → catatan Anda
-R2  Halaman tiket per peran  ← butuh jawaban K1, K2
+R1 … R1.8  Peran, akses, dan lima putaran perbaikan  ✅ semuanya sudah diuji pemilik
+R1.9       Perbaikan hasil uji R1.8   ← SEDANG DIKERJAKAN
+    └─ uji manual R1.9 → catatan Anda
+R2  Halaman tiket per peran  ← butuh jawaban K1, K2 + aturan wajib per tahap
     └─ uji manual R2 → catatan Anda
 R3  QC modul sendiri         ← butuh jawaban K3, K4 + jawaban pertanyaan QC
     └─ uji manual R3 → catatan Anda
 R4  Bersih-bersih audit      ← butuh jawaban K5 (kecil, bisa kapan saja)
 R5  Retur / tukar            ⏸️ setelah pilot menunjukkan bentuk nyatanya
+R6  Buka/Tutup Kasir         🆕 urutannya keputusan Anda: sebelum atau sesudah R2
 
 Paralel, dijalankan Anda, tak perlu kode:
     · 6D.1  Test cetak fisik

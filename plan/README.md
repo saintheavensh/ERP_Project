@@ -44,33 +44,46 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 |---|---|---|
 | [`go-live-plan.md`](go-live-plan.md) | **Konteks toko** dari wawancara pemilik 2026-07-24 — jenis usaha, jumlah cabang, cara bayar, cara gaji teknisi, kenapa pindah dari `pos_sederhana` | 📖 Rujukan, jangan dihapus |
 | [`go-live-tahap-b-onward.md`](go-live-tahap-b-onward.md) | Peta prioritas besar menuju pilot 1 cabang (Milestone 0 / B / C / D / E) | 🟢 Aktif |
-| [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R5: peran, halaman tiket per peran, QC, retur | 🟢 Aktif |
-| [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) | **Cerita lengkap R1 → R1.7**: apa yang direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya. Menggantikan 5 berkas terpisah | 📖 Rujukan, jangan dihapus |
-| [`uji-00-kondisi-sekarang.md`](uji-00-kondisi-sekarang.md) | Uji aplikasi **apa adanya hari ini** — semua area, ~150 poin | 📋 Opsional, kapan saja |
-| [`uji-R1.7-perbaikan.md`](uji-R1.7-perbaikan.md) | Uji khusus Fase R1.7 | ✅ Sudah diisi pemilik 2026-08-02 |
-| [`R1.8-perbaikan-hasil-uji-R1.7.md`](R1.8-perbaikan-hasil-uji-R1.7.md) | Rencana + bukti R1.8 (T1–T7), temuan saat mengerjakannya, dan pertanyaan R2 yang dibalik bentuknya | 📖 Rujukan |
-| [`uji-R1.8-perbaikan.md`](uji-R1.8-perbaikan.md) | Uji khusus Fase R1.8 | 🔴 **SIAP DIJALANKAN** |
+| [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R6: peran, halaman tiket per peran, QC, retur, buka/tutup kasir | 🟢 Aktif |
+| [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) | **Rencana fase yang sedang berjalan** — T1–T6 dari catatan uji R1.8 pemilik | 🔴 **AKTIF** |
+| [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) | **Cerita lengkap R1 → R1.8**: apa yang direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya. Menggantikan 9 berkas terpisah. *(Namanya masih "…sampai-R1.7" supaya rujukan di `PHASES.md` tidak putus.)* | 📖 Rujukan, jangan dihapus |
 
-**Checklist uji R2 dan R3 sengaja belum ditulis** — isinya akan menyesuaikan catatan pemilik
-dari fase sebelumnya. Menulisnya sekarang berarti menebak.
+**Berkas dirapikan 2026-08-04** atas permintaan pemilik ("jika tidak digunakan hapus saja
+tapi ingat riwayatnya jangan sampai hilang"): 4 berkas selesai dihapus —
+`uji-R1.7-perbaikan.md`, `R1.8-perbaikan-hasil-uji-R1.7.md`, `uji-R1.8-perbaikan.md`
+(ketiganya sudah diisi/ditutup) dan `uji-00-kondisi-sekarang.md` (tak pernah dijalankan,
+premisnya usang). Ceritanya + kalimat asli pemilik pindah ke `riwayat-R1-sampai-R1.7.md`
+bagian **"Berkas yang dihapus"**; teks aslinya tetap utuh di git history karena tiap
+catatan uji **di-commit lebih dulu** sebelum berkasnya dihapus.
+
+**Checklist uji R1.9, R2, dan R3 sengaja belum ditulis** — isinya menyesuaikan hasil fase
+yang bersangkutan. Menulisnya sekarang berarti menebak.
 
 ---
 
 ## Status sekarang
 
-**Branch:** `go-live/tahap-b` · **Baseline:** 288 unit + 21 e2e API backend hijau (dicek 2026-08-01)
+**Branch:** `go-live/tahap-b` · **Baseline:** 304 unit + 21 e2e API + 212 Playwright hijau
+(dicek 2026-08-03, DB bersih)
 
 ```
 R1   Peran & akses                ✅ SELESAI 2026-07-31 — sudah diuji pemilik
 R1.5 Perbaikan hasil uji R1       ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.6 Perbaikan hasil uji R1.5     ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.7 Perbaikan hasil uji R1.6     ✅ SELESAI 2026-08-01 — sudah diuji pemilik (14/18 lulus bersih)
-R1.8 Perbaikan hasil uji R1.7     ✅ KODE SELESAI 2026-08-03 — menunggu uji manual pemilik
+R1.8 Perbaikan hasil uji R1.7     ✅ SELESAI 2026-08-03 — sudah diuji pemilik (A-G, TAK ADA yang gagal)
+R1.9 Perbaikan hasil uji R1.8     🔴 SEDANG DIKERJAKAN — R1.9-perbaikan-hasil-uji-R1.8.md
 R2   Halaman tiket per peran      ⛔ TERKUNCI - butuh aturan per tahap dari pemilik
 R3   QC jadi modul sendiri        ⏳ menunggu catatan uji R2
 R4   Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
 R5   Retur (pelanggan + supplier) ⏸️  menunggu bentuk retur nyata dari pilot
+R6   Buka/Tutup Kasir (FIN-002)   🆕 diminta pemilik 2026-08-04 — urutannya belum diputuskan
 ```
+
+**R1.8 adalah putaran pertama tanpa satu pun poin GAGAL.** Keenam catatan pemilik yang jadi
+R1.9 berbunyi *"sudah benar, dan sekarang saya butuh …"* — kecuali satu yang bug betulan
+(**A6**: kasir punya izin `customer.manage` tapi tak punya baris menu ke halaman
+Pelanggan — bentuknya persis bug R1 yang memulai cara kerja fase-demi-fase ini).
 
 **⛔ Kenapa R2 TERKUNCI, bukan sekadar "menunggu".** Daftar isinya sudah lengkap dan
 terkumpul dari tiga putaran uji (rinciannya di
@@ -81,14 +94,18 @@ teknisi, teknisi tidak melihat harga modal.
 Satu butir menghalangi sisanya: **"tiket tidak boleh maju sebelum data tahapnya lengkap"**
 menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**.
 
-**Pertanyaannya diubah bentuk 2026-08-02** setelah tiga kali diajukan sebagai tabel kosong
+**Pertanyaannya diubah bentuk 2026-08-02** setelah dua kali diajukan sebagai tabel kosong
 dan tak pernah diisi. Itu kesalahan cara bertanya, bukan kelalaian pemilik: tabel kosong
 menuntut merancang aturan dari nol, sementara pemilik menjawabnya dengan mudah begitu
 pertanyaannya konkret dan sedang dipakai — poin D1 di uji R1.7 (*"buat keluhan / kerusakan
 jadi kolom wajib di isi"*) sebenarnya adalah jawaban baris pertama tabel itu, ditulis
-sambil menguji. Sekarang agent yang mengusulkan isi kelima barisnya, pemilik tinggal
-membenarkan atau mencoret per baris — lihat
-[`R1.8-perbaikan-hasil-uji-R1.7.md`](R1.8-perbaikan-hasil-uji-R1.7.md).
+sambil menguji. Bentuk barunya (agent mengusulkan, pemilik tinggal mencoret) juga belum
+terjawab di uji R1.8 — jadi **empat kali diajukan**.
+
+**Kabar baiknya: yang tersisa tinggal empat baris.** Baris pertama (Terima Unit) sudah
+ditegakkan R1.8-T1 **dan** sudah pemilik uji lulus di R1.8 poin A. Sisa yang butuh jawaban:
+Diagnosa, Pengerjaan, QC, Serah Terima — tabelnya di
+[`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) bagian paling bawah.
 
 Menebaknya lalu menegakkan tebakan itu **persis kesalahan yang S5 sudah pernah buat dan
 cabut** — gerbang penagihan dipasang berdasarkan `allowsInvoicing` hasil backfill, lalu
@@ -98,7 +115,7 @@ dicabut setelah 2 tes e2e menabraknya dan ternyata tes-nya yang benar.
 
 - **6D.1 — Test cetak fisik.** Seluruh jalur cetak dibangun & diuji **tanpa hardware**.
   "Kertas benar-benar keluar dan terpotong" belum pernah dibuktikan siapa pun. Checklist di
-  `printer-agent/README.md`; poin **2.15** di `uji-00-kondisi-sekarang.md`.
+  `printer-agent/README.md`.
 - **B2.6 — Onboarding stok asli.** Masalah asli pemilik ("stok berantakan"). Mesinnya sudah
   siap (Opname untuk stok awal, PO untuk pembelian rutin). Setelah input, **wajib** jalankan
   `GET /v1/inventory/reconciliation` sampai daftar selisihnya kosong.

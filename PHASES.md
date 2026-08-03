@@ -18,8 +18,9 @@
 > **⚠️ Updated 2026-07-31 — cara kerja berubah, baca ini dulu.** Pekerjaan sekarang
 > berjalan **satu fase pada satu waktu, dengan uji manual pemilik sebagai gerbang di
 > antaranya**. Rencana aktifnya
-> **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R5), indeksnya
-> [`plan/README.md`](plan/README.md).
+> **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R6), indeksnya
+> [`plan/README.md`](plan/README.md). Fase yang sedang dikerjakan:
+> **[`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md)**.
 >
 > **Aturan yang mengikat agent:** jangan pernah mengerjakan dua fase sekaligus, dan
 > **jangan mulai fase berikutnya sebelum membaca berkas `plan/uji-R*.md` yang sudah diisi
@@ -39,6 +40,59 @@
 > direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya,
 > lengkap dengan kalimat asli pemilik. Setiap catatan uji di-commit lebih dulu sebelum
 > berkasnya dihapus, jadi teks aslinya tetap utuh di git history.
+>
+> **Dirapikan lagi 2026-08-04**, permintaan yang sama: 4 berkas dihapus
+> (`uji-R1.7-perbaikan.md`, `R1.8-perbaikan-hasil-uji-R1.7.md`, `uji-R1.8-perbaikan.md` —
+> ketiganya sudah diisi/ditutup — plus `uji-00-kondisi-sekarang.md` yang **tak pernah
+> dijalankan satu poin pun** dan premisnya sudah usang). Ceritanya masuk ke
+> `riwayat-R1-sampai-R1.7.md` (yang isinya kini sampai **R1.8**; namanya sengaja tidak
+> diganti supaya 8 tautan di berkas ini tidak putus). **Tautan `plan/uji-R1.*.md` di bawah
+> yang mengarah ke berkas tak ada lagi itu wajar — penanda sejarah, bukan tautan rusak.**
+>
+> - [ ] **R1.9 — Perbaikan hasil uji manual R1.8** (rencana ditulis 2026-08-04) —
+>       [`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md).
+>       **Putaran pertama yang TIDAK punya satu pun poin gagal** — ketujuh bagian uji (A–G)
+>       dijalankan pemilik dan semua yang R1.8 janjikan terbukti. Kesimpulannya tetap "ada
+>       yang harus diperbaiki dulu", tapi lima dari enam catatan berbunyi *"sudah benar, dan
+>       sekarang saya butuh …"*.
+>       - [ ] **T1 🔴 — kasir & manager tak punya jalan ke halaman Pelanggan.** Poin uji A6:
+>             *"di bagian mana saya bisa mengakses pelanggan saat menggunakan role kasir,
+>             tidak ada buttonnya jadi saya belum bisa mencoba bagian ini?"* **Bentuknya
+>             persis bug R1** yang memulai seluruh cara kerja fase-demi-fase ini: kasir
+>             **punya** `customer.manage` dan `GET /v1/customers` **tak digerbangi izin apa
+>             pun** — yang tak pernah dibuat adalah barisnya di menu. Manager kena hal yang
+>             sama; hanya Super Admin yang punya. Akibatnya satu poin uji **tak bisa
+>             dijalankan sama sekali**, jadi jalur "pelanggan lama → Servis Unit Ini" masih
+>             belum pernah dibuktikan siapa pun.
+>       - [ ] **T1b — dan celah yang ikut terbuka bersamanya.** Halaman pelanggan memuat
+>             sakelar **"Boleh bayar tempo"**, dan `PUT /v1/customers/:id` digerbangi
+>             `customer.manage` — izin yang kasir punya. Artinya **kasir bisa memberi
+>             pelanggan hak berutang**, menabrak keputusan D1 pemilik sendiri (`allow_tempo`
+>             default false, *"pelanggan baru tak boleh utang sampai diizinkan"*). Ditutup
+>             dengan izin baru `customer.allow_tempo` (Manager + Super Admin), ditegakkan
+>             **kondisional** persis pola D2 `pos.apply_discount`. Celahnya **sudah ada hari
+>             ini** lewat API langsung; T1 hanya membuatnya jadi satu klik.
+>       - [ ] **T2 — piutang dikelompokkan per pelanggan.** Poin uji B1. Frontend saja;
+>             pengelompokan sebagai fungsi murni + tes unit. Batas R1.5A wajib dibuktikan
+>             lagi sesudahnya (`/finance`, `/ledger`, `/payables` tetap tertutup untuk kasir).
+>       - [ ] **T3 — Katalog Device: hapus + panel yang bisa ditindaklanjuti.** Poin uji D1.
+>             `DELETE` untuk merek & model **belum ada sama sekali**; menghapusnya harus
+>             menolak dengan alasan yang terbaca (`DEVICE_MODEL_IN_USE` /
+>             `DEVICE_BRAND_HAS_MODELS`), bukan 500 dari foreign key. Plus "Tambahkan ke
+>             katalog" langsung dari panel R1.8-T5 — tanpanya admin mengetik ulang nama yang
+>             sudah terpampang di layar.
+>       - [ ] **T4 — perkiraan konter vs estimasi teknisi.** Poin uji F2 (*"teknisi bisa saja
+>             mengubah angka estimasi itu"*). **Ditanyakan dulu, tidak ditebak:** menimpa
+>             `intake_estimated_cost` akan menghapus angka yang dijanjikan ke pelanggan di
+>             konter — tepat hal yang R1.8-T7 sengaja pisahkan.
+>       - [ ] **T5 — kasir memilih apa yang dicetak di Terima Unit.** Poin uji F5. Memakai
+>             helper `autoPrint()` yang sama, bukan jalur cetak kedua.
+>       - [ ] **T6 — (jawaban) nomor antrian & Buka/Tutup Kasir.** Poin uji C1. Jawabannya:
+>             **sudah reset tiap hari** per cabang, di dalam transaksi intake. Yang pemilik
+>             minta lebih besar — **FIN-002 Cash Management**, MVP di katalog fitur sejak
+>             awal dan belum dibangun sama sekali → dibuka sebagai **Fase R6**, bukan
+>             disisipkan ke fase perbaikan. Pemicu nomor antrian pindah ke sana **saat R6
+>             benar-benar ada**, tidak sebelum itu.
 >
 > - [x] **R1.7 — Perbaikan hasil uji manual R1.6** (2026-08-01, kode selesai).
 >       Kesimpulan pemilik: **"Ada yang harus diperbaiki dulu"**.
@@ -88,8 +142,11 @@
 >             membacanya dan **langsung menghapusnya di server**. Nol kode waktu di browser.
 >             Tes T4 dari R1.6 sengaja **tidak** diganti isinya — janji ke pemakai tetap
 >             sama, dan tes yang bertahan melewati penggantian mekanisme justru itu gunanya.
->       - [ ] **R1.7-T6 — uji manual pemilik**
->             ([`plan/uji-R1.7-perbaikan.md`](plan/uji-R1.7-perbaikan.md)) ← **gerbang R2**
+>       - [x] **R1.7-T6 — uji manual pemilik** (2026-08-02). **18 poin, 14 lulus bersih**,
+>             termasuk keempat hal yang R1.7 memang ada untuk memperbaikinya (*"Ya persis
+>             seperti yang di inginkan saya"* untuk popup antrian). Sisanya jadi R1.8.
+>             Berkas ujinya dihapus 2026-08-04; isinya di
+>             [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md).
 >
 >       **Bukti R1.7:** **288 unit** (backend tak disentuh) · **Playwright 188/191**
 >       (11 baru di `e2e/r1-7-perbaikan.spec.ts`) · `tsc` bersih · `svelte-check` 733 berkas
@@ -101,8 +158,12 @@
 >       alur "setelah diagnosis kembali ke kasir", minta pindah teknisi, laporan bulanan
 >       teknisi), tapi satu butir — *"tiket tidak boleh maju sebelum data tahapnya lengkap"* —
 >       menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**. Pertanyaannya
->       sudah diajukan dua kali dan belum dijawab. Menebaknya lalu menegakkan tebakan itu
+>       **sudah diajukan empat kali** (dua kali sebagai tabel kosong, dua kali sebagai
+>       usul-tinggal-dicoret) dan belum dijawab. Menebaknya lalu menegakkan tebakan itu
 >       persis kesalahan yang S5 sudah pernah buat dan cabut.
+>       **Yang tersisa tinggal empat baris:** baris pertama (Terima Unit) sudah ditegakkan
+>       R1.8-T1 **dan** sudah pemilik uji lulus di R1.8 poin A — jadi tinggal Diagnosa,
+>       Pengerjaan, QC, dan Serah Terima.
 >
 > - [x] **R1.6 — Perbaikan hasil uji manual R1.5** (2026-08-01, kode selesai).
 >       Pemilik menjalankan [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md) dan
@@ -232,8 +293,10 @@
 >             jalan"; pemicunya dipindah ke form intake memakai helper `autoPrint()` yang
 >             sama. **18 tes di 9 spec** memakai lemparan itu sebagai langkah setup —
 >             semuanya diperbarui menempuh jalan kasir sungguhan, bukan dilonggarkan.
->       - [ ] **R1.5E — uji manual pemilik**
->             ([`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md)) ← **gerbang R2**
+>       - [x] **R1.5E — uji manual pemilik** (2026-08-01). Kesimpulan: *"Sepertinya masih
+>             ada yang perlu di perbaiki"* → jadi R1.6. **Tiga dari enam catatannya ternyata
+>             bukan bug**, dan itu ketahuan karena diperiksa ke database dulu. Isinya di
+>             [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md).
 >
 >       **Bukti akhir:** **278 unit** (dari 262) · `tsc` bersih · `svelte-check` 731 berkas
 >       0 error · **Playwright 170/170 lulus di DB bersih** (dari 168), termasuk **18 tes
@@ -282,8 +345,16 @@
 >             Bug lama yang ditemukan tes lebar baris T7: "Barang diambil dengan
 >             menunjukkan" 33 karakter di kertas 32 kolom — terpotong di printer sungguhan
 >             sejak tanda terima dibuat.
->       - [ ] **T8 — uji manual pemilik**
->             ([`plan/uji-R1.8-perbaikan.md`](plan/uji-R1.8-perbaikan.md)) ← **gerbang R2**
+>       - [x] **T8 — uji manual pemilik** (2026-08-04). **Ketujuh bagian (A–G) dijalankan;
+>             TIDAK ADA satu pun poin yang gagal** — putaran pertama yang seperti itu.
+>             Kesimpulan tetap *"ada yang harus diperbaiki dulu"*, tapi isinya lanjutan:
+>             *"validasinya jalan"*, *"bisa menyimpan data meskipun smartphone tidak ada
+>             dalam katalog device"*, *"jangan ada tombol edit di bagian tagihan"*, `/finance`
+>             dkk *"masih di tolak dan itu bagus"*. Enam catatan → **R1.9** di atas.
+>             Satu poin (**A6**) **tak bisa dijalankan sama sekali** karena kasir tak punya
+>             jalan ke halaman Pelanggan — itu bug, jadi R1.9-T1.
+>             Berkas ujinya dihapus setelah di-commit (`a87291d`); isinya di
+>             [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md).
 >
 >       **Bukti akhir:** **304 unit** (dari 288) · **21 e2e API** · **Playwright 212/212 di
 >       DB bersih** (dari 191), termasuk **21 tes baru** di `e2e/r1-8-perbaikan.spec.ts` ·

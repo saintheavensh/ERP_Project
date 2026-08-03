@@ -1,15 +1,26 @@
-# Riwayat Lengkap — Fase R1 sampai R1.7
+# Riwayat Lengkap — Fase R1 sampai R1.8
 
-> **Dibuat 2026-08-01.** Branch: `go-live/tahap-b`.
+> **Dibuat 2026-08-01, diperluas 2026-08-04.** Branch: `go-live/tahap-b`.
 > Induk: [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) · Indeks: [`README.md`](README.md)
 >
-> **Berkas ini menggantikan 5 berkas terpisah** yang sebelumnya menyimpan cerita ini
-> sepotong-sepotong: `uji-R1-peran-akses.md`, `R1.5-perbaikan-hasil-uji-R1.md`,
-> `uji-R1.5-perbaikan.md`, `R1.6-perbaikan-hasil-uji-R1.5.md`, `uji-R1.6-perbaikan.md`.
-> Kelimanya dihapus atas permintaan pemilik ("agar tidak terlalu menumpuk tetapi
-> riwayatnya jangan sampai hilang"). Isinya — termasuk kalimat asli pemilik, yang justru
-> bagian paling berharga — dipindahkan ke sini. Berkas aslinya tetap bisa dibaca utuh di
-> git history (commit `77d9da6`, `ec89e5a`, `7bc94c9`).
+> **Nama berkasnya masih `riwayat-R1-sampai-R1.7.md`, isinya sekarang sampai R1.8.**
+> Sengaja tidak diganti nama: `PHASES.md` menautkannya di 8 tempat dan git history
+> menyebutnya dengan nama itu — mengganti nama demi kerapian akan memutus rujukan yang
+> gunanya justru supaya cerita ini bisa ditemukan.
+>
+> **Berkas ini menggantikan 9 berkas terpisah** yang sebelumnya menyimpan cerita ini
+> sepotong-sepotong. Gelombang pertama (2026-08-01): `uji-R1-peran-akses.md`,
+> `R1.5-perbaikan-hasil-uji-R1.md`, `uji-R1.5-perbaikan.md`,
+> `R1.6-perbaikan-hasil-uji-R1.5.md`, `uji-R1.6-perbaikan.md`. Gelombang kedua
+> (2026-08-04): `uji-R1.7-perbaikan.md`, `R1.8-perbaikan-hasil-uji-R1.7.md`,
+> `uji-R1.8-perbaikan.md`, `uji-00-kondisi-sekarang.md` — daftar lengkap + alasannya di
+> bagian **"Berkas yang dihapus"** paling bawah.
+>
+> Semuanya dihapus atas permintaan pemilik ("agar tidak terlalu menumpuk tetapi riwayatnya
+> jangan sampai hilang"). Isinya — termasuk kalimat asli pemilik, yang justru bagian paling
+> berharga — dipindahkan ke sini. **Setiap catatan uji di-commit lebih dulu sebelum
+> berkasnya dihapus**, jadi teks aslinya tetap utuh dan bisa dibaca kata per kata di git
+> history (commit `77d9da6`, `ec89e5a`, `7bc94c9`, `c5ea7c3`, `a87291d`).
 
 ---
 
@@ -30,9 +41,14 @@ Tesnya menguji hal yang salah: memeriksa bahwa sesuatu **ada**, bukan bahwa sesu
 | R1.5 | menu keuangan disembunyikan dari kasir | **API-nya tetap membalas 200 berisi laba toko** |
 | R1.6 | pesan validasi dikembalikan backend | **isinya JSON mentah di layar kasir** |
 | R1.7 | API piutang membalas 200 untuk kasir, kartunya tampil | **tautan kartunya memantulkan kasir** |
+| R1.8 | kasir punya izin `customer.manage`, endpointnya terbuka | **tak ada satu pun baris menu ke halaman Pelanggan** |
 
-Baris terakhir yang paling telak: tes R1.6 memeriksa API-nya **dan** kartunya, lalu tetap
+Baris R1.7 yang paling telak: tes R1.6 memeriksa API-nya **dan** kartunya, lalu tetap
 lolos — karena tak satu pun **mengikuti tautannya**. Pemilik menemukannya dengan satu klik.
+
+Baris R1.8 membuktikan polanya belum habis: bentuknya **persis bug R1** — izin diberikan,
+jalannya tidak pernah dibuat — dan lolos lagi, sepuluh hari setelah bug pertama yang sama
+mengubah seluruh cara kerja proyek ini.
 
 ---
 
@@ -343,9 +359,134 @@ langkah yang absen di R1.6 dan membuat bug C2 lolos.
 
 ---
 
+## Uji manual R1.7 oleh pemilik → kesimpulan: **"Ada yang harus diperbaiki dulu"**
+
+**18 poin dijalankan, 14 lulus bersih** — termasuk keempat hal yang R1.7 memang ada untuk
+memperbaikinya:
+
+| Yang R1.7 janjikan | Kalimat pemilik |
+|---|---|
+| kartu Piutang bisa diklik kasir | terbuka; `/finance`, `/finance/ledger`, `/finance/payables` tetap ditolak (*"ya muncul toast — Halaman itu bukan untuk peran Anda"*); teknisi juga ditolak |
+| antrian di beranda + popup | *"Ya persis seperti yang di inginkan saya"* |
+| teknisi tak melihat pemilih teknisi lain | *"Benar dropdown sudah hilang dan tidak ada sama sekali"*; manajer masih punya |
+| riwayat unit masuk di halaman kasir | ada, bertahan setelah F5, barisnya bisa diklik |
+
+Yang tersisa **bukan kegagalan R1.7** — semuanya hal baru yang terlihat justru karena
+bagian di atas sudah jalan. Empat catatan yang jadi isi R1.8:
+
+| Poin | Kalimat pemilik | Kenyataannya |
+|---|---|---|
+| **D1** | *"saya bisa input tiket service meskipun unit service belum di isi dan buat keluhan / kerusakan jadi kolom wajib di isi"* + *"buat kasir bisa memilih teknisi saat membuat tiket service dan juga kasir bisa langsung memberi harga"* | **Benar, dan lebih longgar dari dugaannya** — satu-satunya kolom unit yang wajib adalah "Jenis", dan keluhan tak diperiksa di mana pun |
+| **A1** | *"lebih baik jika kasir bisa melihat detail transaksi piutangnya"* | Memang belum ada; endpoint & izinnya sudah cukup, murni frontend |
+| **B2** | *"untuk nomor antrian masih `-` apakah memang seperti itu?"* | **Bukan bug fitur** — endpoint intake selalu mengisinya; **seed**-nya yang tidak |
+| **C2** | *"di bagian mana di halaman mana saya harus mencarinya"* (tombol Ambil Pekerjaan) | **Tombolnya ada**; **poin ujinya** yang usang sejak R1.7 memindahkan jalannya ke popup beranda |
+
+Dan tiga kalimat yang sejak itu jadi definisi R2, disebut pemilik tiga kali dengan kata
+berbeda:
+
+> *"buat per step jadi tiap step itu ada requirement data yang harus di isi nanti si
+> teknisinya tinggal next next next jadi tidak bingung bila di gabung seperti sekarang
+> akan membingungkan teknisi"* (B3)
+> *"lebih di perjelas sekarang di tahap apa dan harus isi apa bisa next dan prev"* (B5)
+> *"ini masih harus ada pengembangan lagi dan lakukan secara bertahap masih terkesan
+> memaksakan saya prefer per step di bagian detail servicenya"* (E3)
+
+---
+
+## Fase R1.8 — Perbaikan hasil uji R1.7 (2026-08-03)
+
+### Tiga catatan pemilik yang ternyata BUKAN bug
+
+Diperiksa ke kode lebih dulu, bukan ditebak — kebiasaan yang sejak R1.6 selalu menghemat
+satu putaran perbaikan yang salah sasaran:
+
+| Catatan | Kenyataannya |
+|---|---|
+| nomor antrian `-` | `routes/tickets.ts` **selalu** mengisinya, di dalam transaksi intake, per cabang, reset tiap hari. **Seed** yang menulis tiket langsung ke tabel dan melewati endpoint |
+| tombol "Ambil Pekerjaan" tak ketemu | Ada di `TicketWorkspace.svelte:225`; yang hilang **jalan ke sana**, karena R1.7 sengaja memindahkannya ke popup beranda |
+| rincian piutang | Memang belum ada — jadi T2 |
+
+**Kedua kalinya data contoh membuat pemilik menguji hal yang salah** (di R1.5: kartu
+Piutang bernilai 0 karena seed tak pernah membuat faktur POS). Itu pelajaran tersendiri:
+seed yang tidak menyerupai data asli **membuat pemilik melaporkan bug yang tidak ada**.
+
+### Yang dibangun
+
+| Tugas | Isi |
+|---|---|
+| **T1 🔴** | Merek, model, keluhan **wajib** — ditegakkan **backend dulu** (`lib/intake-fields.ts`, satu definisi dipakai POST + PATCH). Aturannya **lintas-kolom**: merek/model wajib hanya saat unit BARU. Keluhan minimal 3 huruf (menutup jalan pintas mengetik `-`); merek/model **tanpa** panjang minimum ("LG"/"X" sah). Isi tetap bebas — "Advan G30" di luar katalog tersimpan |
+| **T2** | Tombol **Rincian** di daftar piutang. Modal POS **tidak** dipakai ulang walau isinya nyaris persis: ia membawa Void + Ubah yang digerbangi izin yang kasir tak punya — memasang kontrol yang pasti gagal adalah anti-pattern yang Track F dan R1.7-T3 berantas |
+| **T3** | `queueNumber` + `queueDate` diisi di data contoh |
+| **T5** | Panel **"Belum ada di katalog"** di `/devices`, tanpa kolom baru |
+| **T6** | Kasir boleh menunjuk teknisi saat intake, **opsional** — digerbangi `ticket.create`, bukan `ticket.assign_technician`: menugaskan saat MEMBUAT ≠ memindahkan pekerjaan berjalan |
+| **T7** | Kolom baru `intake_estimated_cost` — perkiraan konter, **bukan** baris biaya. Aturan S5 tidak dicabut (biaya sungguhan di Intake tetap 422) |
+
+### Empat hal yang hanya ketahuan dengan MENJALANKANNYA
+
+1. **`device_model_id IS NULL` ternyata tidak cukup (T5).** Percobaan pertama menampilkan
+   **"Samsung Galaxy A10"** sebagai belum-berkatalog — padahal jelas ada di katalog. Kolom
+   itu hanya terisi bila kasir memilih dari autocomplete; mengetik namanya sendiri tetap
+   NULL. Panel yang menyuruh admin menambahkan sesuatu yang **sudah ada** lebih buruk
+   daripada tidak ada panel. Ditutup dengan `NOT EXISTS` pembanding teks; 6 baris → 2 yang
+   benar-benar asing.
+2. **Penolakan teknisi sempat keluar sebagai 400 generik (T6).** `BusinessError` ditelan
+   `catch` lama yang selalu membalas `400 INTAKE_FAILED`. Endpoint intake tertinggal karena
+   ia **lebih tua dari `BusinessError` itu sendiri**. Sekarang 404 `TECHNICIAN_NOT_FOUND`.
+3. **Tes lebar baris T7 menemukan bug cetak yang sudah lama ada.** Baris *"Barang diambil
+   dengan menunjukkan"* panjangnya **33 karakter** di kertas 32 kolom — huruf terakhirnya
+   terpotong di printer sungguhan **sejak tanda terima itu dibuat**. Ditemukan tes, bukan
+   pembacaan ulang kode.
+4. **`p8-global-search` ternyata lulus karena alasan yang salah.** Ia menuntut grup "Tiket"
+   muncul untuk **Budi**, padahal seed hanya membuat tiket untuk **Andi**; selama ini `f7`
+   kebetulan berjalan lebih dulu dan membuatkannya. Dibuktikan dengan menjalankannya
+   sendirian di DB bersih → merah. Bentuk cacat yang sama yang berulang di seluruh riwayat
+   ini: **tes yang memeriksa sesuatu "ada" tanpa memastikan siapa yang mengadakannya.**
+
+**Bukti R1.8:** 304 unit (dari 288) · 21 e2e API · **Playwright 212/212 di DB bersih**
+(dari 191, 21 baru) · `tsc` bersih · `svelte-check` 734 berkas 0 error. 24 titik fixture
+intake di 10 spec diperbarui **menempuh jalan kasir sungguhan**, bukan dilonggarkan.
+
+---
+
+## Uji manual R1.8 oleh pemilik → kesimpulan: **"Ada yang harus diperbaiki dulu"**
+
+**Dan ini putaran pertama yang tak punya satu pun poin GAGAL.** Ketujuh bagian (A–G)
+dijalankan; semua yang R1.8 janjikan terbukti. Kesimpulannya tetap "perbaiki dulu", tapi
+isinya berubah sifat: **lanjutan, bukan kegagalan** — lima dari enam catatan berbunyi
+*"sudah benar, dan sekarang saya butuh …"*.
+
+Yang terbukti jalan, dengan kalimat pemilik:
+
+| Poin | Kalimat pemilik |
+|---|---|
+| A1–A3 | *"ya validasinya jalan — Merek unit wajib diisi. Bila mereknya tidak umum, ketik saja apa adanya"* |
+| A4 | *"bisa menyimpan data meskipun smartphone tidak ada dalam katalog device"* |
+| A5 | *"sandi statusnya optional bisa kosong bisa di isi"* |
+| B1–B3 | *"bisa di lihat oleh kasir"*; *"jangan ada tombol edit di bagian tagihan"*; `/finance` dkk *"masih di tolak dan itu bagus"* |
+| C2 | *"sudah benar… berarti untuk tampilan teknisi sudah fix"* |
+| D2/D3 | Samsung berkatalog tak muncul di panel; merek asing yang sama dua kali tetap satu baris `2× masuk` |
+| E1–E4 | antrian & langsung-bertuan keduanya jalan; *"jangan"* untuk kasir memindahkan tiket berjalan |
+| F1–F4 | perkiraan tersimpan, teknisi melihatnya, biaya sungguhan di Intake tetap ditolak, tanpa perkiraan tak ada baris Rp0 |
+| G1–G5 | keempat alur lama + pesan validasi masih utuh |
+
+Enam catatan yang jadi isi **R1.9**:
+
+| Poin | Kalimat pemilik | Sifatnya |
+|---|---|---|
+| **A6** 🔴 | *"di bagian mana saya bisa mengakses pelanggan saat menggunakan role kasir, tidak ada buttonnya jadi saya belum bisa mencoba bagian ini?"* | **Bug** — izin ada, menu tidak. Satu poin uji jadi tak bisa dijalankan sama sekali |
+| **B1** | *"apakah bisa lebih detail, misalnya pelanggan itu mempunyai dua nota yang belum di bayar… di lihat sub totalnya nanti bisa di klik lagi untuk melihat detail per notanya"* | Lanjutan |
+| **C1** | *"nomor antrian ini apakah per hari di reset atau terus increment? sebaiknya di reset tiap hari yang jadi triggernya nanti ketika buka kasir karena saya ingin ada fitur buka tutup kasir"* | Pertanyaan + **fitur baru** (FIN-002) |
+| **D1** | *"sebaiknya ada tombol hapus di bagian katalog devicenya dan untuk UI dan UXnya juga harus di perbaiki"* | Lanjutan |
+| **F2** | *"nanti teknisi bisa saja mengubah angka estimasi itu jika memang di temukan ada kerusakan yang lainnya"* | **Butuh keputusan** — menabrak pemisahan kolom yang T7 sengaja buat |
+| **F5** | *"biarkan ini kasir yang memilih ada opsi cetak nota"* | Lanjutan |
+
+Rencana penanganannya: [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md).
+
+---
+
 ## Yang menunggu R2 — dan satu hal yang menghalanginya
 
-Terkumpul dari tiga putaran uji, semuanya masih berlaku:
+Terkumpul dari empat putaran uji, semuanya masih berlaku:
 
 1. **Form per tahap**, bukan semua ditumpuk di halaman detail (uji-R1.5 E1, diulang
    uji-R1.6 B3: *"membingungkan cara inputnya"*).
@@ -360,7 +501,15 @@ Terkumpul dari tiga putaran uji, semuanya masih berlaku:
 
 **Yang menghalangi:** butir 2 menuntut satu masukan pemilik yang belum diberikan —
 **apa yang wajib terisi di tiap tahap sebelum tiket boleh maju.** Pertanyaannya sudah
-diajukan dua kali (akhir `uji-R1.6-perbaikan.md`) dan belum dijawab.
+diajukan **empat kali**: dua kali sebagai tabel kosong (akhir `uji-R1.6-perbaikan.md` dan
+`uji-R1.7-perbaikan.md`), lalu dua kali sebagai usul-tinggal-centang
+(`R1.8-perbaikan-hasil-uji-R1.7.md` dan `uji-R1.8-perbaikan.md`) setelah disimpulkan bahwa
+tabel kosong menuntut pemilik merancang aturan dari nol. Keempatnya belum dijawab.
+
+**Baris pertamanya sebenarnya sudah terjawab tanpa tabel** — pemilik menulisnya sambil
+menguji di uji-R1.7 D1 (*"buat keluhan / kerusakan jadi kolom wajib di isi"*), R1.8-T1
+menegakkannya, dan pemilik sendiri sudah mengujinya lulus di R1.8 poin A. Jadi yang benar-
+benar tersisa hanya **empat baris**: Diagnosa, Pengerjaan, QC, Serah Terima.
 
 Menebaknya lalu menegakkan tebakan itu **persis kesalahan yang S5 sudah pernah buat dan
 cabut**: gerbang penagihan sempat dipasang berdasarkan `allowsInvoicing` hasil backfill,
@@ -378,7 +527,44 @@ lalu dicabut setelah 2 tes e2e menabraknya dan ternyata tes-nya yang benar.
 
 ## Hal yang belum bisa diuji siapa pun
 
-**Cetak label otomatis dengan printer fisik** (uji-R1.5 D5, uji-R1.6 tidak menyentuhnya).
-Jalur cetaknya dibangun dan diuji tanpa hardware sejak Phase 6; "kertas benar-benar keluar
-dan terpotong" hanya bisa dibuktikan di perangkat asli. Checklist di
-`printer-agent/README.md`. Sama statusnya dengan 6D.1.
+**Cetak label otomatis dengan printer fisik** (uji-R1.5 D5, uji-R1.6 tidak menyentuhnya,
+uji-R1.8 F5 dilewati dengan sadar). Jalur cetaknya dibangun dan diuji tanpa hardware sejak
+Phase 6; "kertas benar-benar keluar dan terpotong" hanya bisa dibuktikan di perangkat asli.
+Checklist di `printer-agent/README.md`. Sama statusnya dengan 6D.1.
+
+**Dan satu lagi yang lebih luas, dicatat di sini supaya tidak hilang bersama berkasnya:**
+seluruh sisi aplikasi di luar servis & peran — **stok, pembelian, supplier, keuangan,
+cetak, setelan** — **belum pernah diuji pemilik secara menyeluruh.** Itu tujuan
+`uji-00-kondisi-sekarang.md` (~150 poin), yang ditulis 2026-07-31 dan **tak pernah
+dijalankan satu poin pun** (0 dari ~150 tercentang) karena uji per-fase selalu lebih
+mendesak. Berkasnya dihapus 2026-08-04 — premisnya sudah usang (ia masih menulis "kasir
+tidak bisa membuat tiket", yang R1 perbaiki) — tapi **kenyataan bahwa area itu belum
+teruji tetap berlaku** dan tidak boleh ikut terhapus. Rumahnya sekarang: pilot (Milestone
+B2.6) dan checklist per-fase saat area itu benar-benar disentuh.
+
+---
+
+## Berkas yang dihapus dari `plan/`
+
+Konvensi folder ini: sebuah berkas rencana hidup **hanya selama tugasnya aktif**. Yang
+durable pindah ke `PHASES.md` + berkas ini; teks aslinya tetap utuh di git history.
+
+### Gelombang 1 — 2026-08-01 (5 berkas)
+
+`uji-R1-peran-akses.md`, `R1.5-perbaikan-hasil-uji-R1.md`, `uji-R1.5-perbaikan.md`,
+`R1.6-perbaikan-hasil-uji-R1.5.md`, `uji-R1.6-perbaikan.md` — ceritanya ada di bagian
+R1 / R1.5 / R1.6 di atas.
+
+### Gelombang 2 — 2026-08-04 (4 berkas)
+
+| Berkas | Kenapa dihapus | Isinya ke mana |
+|---|---|---|
+| `uji-R1.7-perbaikan.md` | Sudah diisi pemilik, R1.8 sudah menutup seluruh temuannya | Bagian **"Uji manual R1.7"** di atas — 14 poin lulus + 4 catatan + tiga kalimat yang jadi definisi R2 |
+| `R1.8-perbaikan-hasil-uji-R1.7.md` | Rencana R1.8; T1–T7 selesai & sudah diuji pemilik | Bagian **"Fase R1.8"** di atas, termasuk empat temuan yang hanya ketahuan dengan menjalankannya |
+| `uji-R1.8-perbaikan.md` | Sudah diisi pemilik; jadi sumber R1.9 | Bagian **"Uji manual R1.8"** di atas + [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md). Teks aslinya di commit `a87291d` |
+| `uji-00-kondisi-sekarang.md` | **Tak pernah dijalankan** (0 dari ~150 poin) dan premisnya usang | Paragraf di atas — yang penting bukan checklistnya, melainkan **fakta bahwa area itu belum teruji** |
+
+**Urutannya penting, dan sengaja begitu:** tiap catatan uji **di-commit lebih dulu**, baru
+berkasnya dihapus. Jadi kalimat asli pemilik — bagian paling berharga dari seluruh proses
+ini, karena tiap bug di riwayat ini ditemukan dengan **memakai** aplikasinya — tetap bisa
+dibaca kata per kata kapan pun.
