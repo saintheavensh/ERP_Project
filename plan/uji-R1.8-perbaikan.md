@@ -7,6 +7,7 @@
 >
 > **Tiga catatan Anda ternyata bukan bug**, dan itu sudah saya periksa ke kode sebelum
 > mengerjakan apa pun:
+>
 > - **B2** nomor antrian `-` → fiturnya selalu jalan; **seed**-nya yang tidak mengisi.
 > - **C2** tombol Ambil Pekerjaan → tombolnya ada; **poin ujinya** yang usang.
 > - **A1** rincian piutang → memang belum ada, dan sekarang sudah.
@@ -30,14 +31,16 @@ Centang `[x]` = sudah dijalankan.
 
 ## Persiapan
 
-- [ ] **0.1** `npm run db:reset` di `flowserv-api/`
-      **Wajib kali ini**, bukan opsional: R1.8 menambah satu kolom baru
-      (`intake_estimated_cost`) dan mengisi nomor antrian di data contoh. Tanpa reset,
-      poin C dan F tidak akan berjalan.
-  - **Catatan saya:**
+- [ X] **0.1** `npm run db:reset` di `flowserv-api/`
+  **Wajib kali ini**, bukan opsional: R1.8 menambah satu kolom baru
+  (`intake_estimated_cost`) dan mengisi nomor antrian di data contoh. Tanpa reset,
+  poin C dan F tidak akan berjalan.
+  - \*_Catatan saya:_
+    Sudah di lakukan
 
-- [ ] **0.2** Jalankan `start-flowserv.bat`
+- [x] **0.2** Jalankan `start-flowserv.bat`
   - **Catatan saya:**
+    sudah di lakukan
 
 ---
 
@@ -45,38 +48,46 @@ Centang `[x]` = sudah dijalankan.
 
 > Poin uji R1.7 D1. Login sebagai **Kasir**, buka **Terima Unit**.
 
-- [ ] **A1** Isi nama + pilih Jenis saja. **Kosongkan Merek, Model, Keluhan** → Simpan
+- [x] **A1** Isi nama + pilih Jenis saja. **Kosongkan Merek, Model, Keluhan** → Simpan
   - **Harusnya:** muncul pesan **kalimat** ("Merek unit wajib diisi…"), Anda **tetap di
     form**, dan **tidak ada** tiket yang terbuat
   - **Catatan saya:**
+    ya validasinya jalan
+    Gagal menyimpan unit masuk
+    Merek unit wajib diisi. Bila mereknya tidak umum, ketik saja apa adanya.
 
-- [ ] **A2** Isi Merek + Model, tapi **Keluhan dikosongkan** → Simpan
+- [x] **A2** Isi Merek + Model, tapi **Keluhan dikosongkan** → Simpan
   - **Harusnya:** ditolak, pesannya menyebut keluhan
   - **Catatan saya:**
+    ya validasi berjalan
 
-- [ ] **A3** Isi Keluhan dengan **`-`** saja → Simpan
+- [x] **A3** Isi Keluhan dengan **`-`** saja → Simpan
   - **Harusnya:** tetap ditolak ("minimal 3 huruf"). Ini menutup jalan pintas mengetik
     strip supaya form lolos — begitu sebuah kolom jadi wajib, itu yang selalu terjadi
   - **Catatan saya:**
+    Ya validasinya berjalan dengan baik
 
-- [ ] **A4** Isi semuanya: Merek **Advan**, Model **G30** (sengaja yang tidak ada di
+- [x] **A4** Isi semuanya: Merek **Advan**, Model **G30** (sengaja yang tidak ada di
       katalog), keluhan wajar → Simpan
   - **Harusnya:** **berhasil.** Ini yang membuktikan aturan barunya **tidak** menutup
-    jalan yang Anda minta tetap terbuka: *"bisa di isi merknya Advan tipenya G30, bisa
-    seperti itu jadi flexible"*
+    jalan yang Anda minta tetap terbuka: _"bisa di isi merknya Advan tipenya G30, bisa
+    seperti itu jadi flexible"_
   - **Catatan saya:**
+    Ya bisa menyimpan data mskiput smartphone tidak ada dalam katalog device
 
-- [ ] **A5** Sandi/pola **dikosongkan** saat menyimpan
+- [x] **A5** Sandi/pola **dikosongkan** saat menyimpan
   - **Harusnya:** tetap boleh kosong — tidak semua unit terkunci, dan memaksa staf
     mengarang sandi lebih buruk daripada membiarkannya kosong
   - **Catatan saya:**
+    Ya benar sandi statusnya optional bisa kosong bisa di isi
 
-- [ ] **A6** Buka pelanggan lama → tombol **"Servis Unit Ini"** pada unit yang sudah
+- [x] **A6** Buka pelanggan lama → tombol **"Servis Unit Ini"** pada unit yang sudah
       terdaftar
   - **Harusnya:** Merek/Model **tidak** diminta ulang (unitnya sudah tercatat), tapi
     **keluhan tetap wajib**. Kalau di sini Anda dipaksa mengetik ulang merek, saya
     kebablasan
   - **Catatan saya:**
+    di bagian mana saya bisa mengakses pelanggan saat menggunakan role kasir tidak ada buttonnya jadi saya belum bisa mencoba bagian ini ?
 
 ---
 
@@ -84,60 +95,69 @@ Centang `[x]` = sudah dijalankan.
 
 > Poin uji R1.7 A1 — Anda bertanya sekaligus menjawab sendiri.
 
-- [ ] **B1** Login **Kasir** → Beranda → kartu **Piutang (AR)** → di daftar, tekan
+- [x] **B1** Login **Kasir** → Beranda → kartu **Piutang (AR)** → di daftar, tekan
       **"Rincian"**
   - **Harusnya:** muncul isi tagihannya — item yang dibeli, sudah dibayar berapa, sisa
     berapa, plus riwayat pembayaran kalau ada
   - **Catatan saya:**
+    Ya bisa di lihat oleh kasir dan apakah bisa lebih detail misalnya pelanggan itu mempunyai dua nota yang belum di bayar jadi rinciannya lebih jelas di bagian tagihan di lihat sub totalnya nanti bisa di klik lagi untuk melihat detail per notanya
 
-- [ ] **B2** Perhatikan tombol di dalam rincian itu
+- [x] **B2** Perhatikan tombol di dalam rincian itu
   - **Harusnya:** hanya **Tutup** dan **Bayar**. **Tidak ada** "Void" maupun "Ubah" —
     keduanya wewenang yang kasir tidak punya, dan menampilkan tombol yang pasti gagal
     saat ditekan adalah hal yang justru sedang kita berantas
   - **Catatan saya:**
+    ya benar jangan ada tombol edit di bagian tagihan
 
-- [ ] **B3** Masih sebagai Kasir → ketik `/finance`, lalu `/finance/ledger`, lalu
+- [x] **B3** Masih sebagai Kasir → ketik `/finance`, lalu `/finance/ledger`, lalu
       `/finance/payables`
   - **Harusnya:** **ketiganya tetap ditolak.** Kalau salah satu terbuka, perbaikan B1
     kebablasan dan membuka lagi kebocoran yang R1.5 tutup
   - **Catatan saya:**
+    Ya masih di tolak dan itu bagus
 
 ---
 
 # C. Nomor antrian
 
-- [ ] **C1** Buat satu unit lewat **Terima Unit**, lalu buka tiketnya
+- [x] **C1** Buat satu unit lewat **Terima Unit**, lalu buka tiketnya
   - **Harusnya:** nomor antrian **muncul** (bukan `-`)
   - **Catatan saya:**
+    dan untuk nomor antrian ini apakah per hari di reset atau terus increment ?
+    sebaiknya di reset tiap hari yang jadi triggernya nanti ketika buka kasir karena saya ingin ada fitur buka tutup kasir kalau tidak salah sudah saya mention juga untuk maslah ini di dokumentasinya
 
-- [ ] **C2** Login **Teknisi** → Beranda → ketuk baris di "Menunggu Diambil"
+- [x] **C2** Login **Teknisi** → Beranda → ketuk baris di "Menunggu Diambil"
   - **Harusnya:** popup rinciannya menampilkan **No. Antrian** berisi angka, termasuk
     untuk tiket contoh dari seed
   - **Catatan saya:**
+    ya sudah benar untuk masalah step by stepnya nanti di R2 ya di kerjakannya berarti untuk tampilan teknisi sudah fix
 
 ---
 
 # D. Katalog Device tahu ada unit yang belum terdaftar
 
-> Permintaan Anda 2026-08-02: *"dapat pesan notifikasi pada device katalog bahwa ada unit
-> service yang masih belum ada katalognya"*.
+> Permintaan Anda 2026-08-02: _"dapat pesan notifikasi pada device katalog bahwa ada unit
+> service yang masih belum ada katalognya"_.
 
-- [ ] **D1** Login **Admin/Manager** → sidebar **"Lainnya"** (tertutup default, klik dulu)
+- [x] **D1** Login **Admin/Manager** → sidebar **"Lainnya"** (tertutup default, klik dulu)
       → **Katalog Device**. Atau langsung ketik `/devices`
   - **Harusnya:** ada panel kuning **"Belum ada di katalog"**, dan **Advan G30** dari
     poin A4 ada di dalamnya
   - **Catatan saya:**
+    ya sudah bagus untuk masalah ini dan kalau bisa sebaiknya ada tombol hapus di bagian katalog devicenya dan untuk UI dan UXnya juga harus di perbaiki
 
-- [ ] **D2** Terima satu unit lagi bermerek **Samsung** model **Galaxy A10** (yang sudah
+- [x] **D2** Terima satu unit lagi bermerek **Samsung** model **Galaxy A10** (yang sudah
       ada di katalog), lalu buka `/devices` lagi
   - **Harusnya:** unit itu **TIDAK** muncul di panel. Panel yang menyuruh Anda menambahkan
     sesuatu yang sudah ada akan lebih buruk daripada tidak ada panel sama sekali
   - **Catatan saya:**
+    Ya benar saya sudah melakukannya dan itu valid
 
-- [ ] **D3** Terima unit bermerek asing yang **sama** dua kali
+- [x] **D3** Terima unit bermerek asing yang **sama** dua kali
   - **Harusnya:** ia tetap satu baris, dengan angka **`2× masuk`**. Yang sering masuk
     naik ke atas — itu yang paling layak Anda tambahkan ke katalog
   - **Catatan saya:**
+    ya benar
 
 > **Sengaja bukan lonceng atau popup.** Ini pekerjaan admin yang bisa ditunda, bukan
 > kabar mendesak. Mengganggu kasir yang sedang melayani antrean dengan ini justru bikin
@@ -149,27 +169,31 @@ Centang `[x]` = sudah dijalankan.
 
 > Permintaan Anda di D1, pilihan Anda: **opsional**.
 
-- [ ] **E1** Terima unit, **kosongkan** pilihan Teknisi ("Biarkan masuk antrian")
+- [x] **E1** Terima unit, **kosongkan** pilihan Teknisi ("Biarkan masuk antrian")
   - **Harusnya:** tiket masuk ke **"Menunggu Diambil"** di beranda teknisi, seperti
     sebelumnya
   - **Catatan saya:**
+    Ya benar
 
-- [ ] **E2** Terima unit lagi, kali ini **pilih Teknisi Andi**
+- [x] **E2** Terima unit lagi, kali ini **pilih Teknisi Andi**
   - **Harusnya:** tiket **langsung bertuan** — muncul di "Sedang Saya Kerjakan" milik
     Andi, dan **tidak** muncul di antrian siapa pun
   - **Catatan saya:**
+    iya pekerjaan langsung di serahkan ke tenknisi yang di pilih itu bagus
 
-- [ ] **E3** Login **Teknisi Rina**, buka tiket yang tadi ditugaskan ke Andi
+- [x] **E3** Login **Teknisi Rina**, buka tiket yang tadi ditugaskan ke Andi
   - **Harusnya:** Rina **tidak** melihat pemilih teknisi (aturan R1.7 masih berlaku)
   - **Catatan saya:**
+    Ya benar
 
-- [ ] **E4** Login **Kasir**, buka halaman detail tiket mana pun yang **sudah berjalan**
+- [x] **E4** Login **Kasir**, buka halaman detail tiket mana pun yang **sudah berjalan**
   - **Harusnya:** kasir **tidak** bisa memindahkan tiket itu ke teknisi lain. Menunjuk
     **saat membuat** tiket bukan hal yang sama dengan **mencabut** pekerjaan teknisi yang
     sedang berjalan — yang kedua tetap wewenang manajer.
     **Kalau Anda ingin kasir bisa memindahkan juga, tulis di sini** — itu keputusan
     terpisah yang tidak saya ambil diam-diam
   - **Catatan saya:**
+    jangan sudah seperti itu saja
 
 ---
 
@@ -177,52 +201,62 @@ Centang `[x]` = sudah dijalankan.
 
 > Permintaan Anda di D1, pilihan Anda: **perkiraan biaya**, bukan biaya sungguhan.
 
-- [ ] **F1** Terima unit, isi **Perkiraan Biaya** `450000`
+- [x] **F1** Terima unit, isi **Perkiraan Biaya** `450000`
   - **Harusnya:** tersimpan; buka tiketnya → ada baris **"Perkiraan Biaya (Konter)"**
     berisi Rp450.000
   - **Catatan saya:**
+    ya benar seperti itu
 
-- [ ] **F2** Login **Teknisi**, buka tiket itu
+- [x] **F2** Login **Teknisi**, buka tiket itu
   - **Harusnya:** teknisi **melihat** angka itu — dia perlu tahu apa yang sudah terlanjur
     dijanjikan ke pelanggan sebelum menyebut angkanya sendiri
   - **Catatan saya:**
+    ya nanti teknisi bisa saja mengubah angka estimasi itu jika memang di temukan ada kerusakan yang lainnya
 
-- [ ] **F3** Di tiket yang masih di tahap **Intake**, coba tambahkan **biaya/sparepart**
+- [x] **F3** Di tiket yang masih di tahap **Intake**, coba tambahkan **biaya/sparepart**
   - **Harusnya:** **tetap ditolak.** Perkiraan biaya bukan tagihan; aturan "belum boleh
     mencatat biaya sebelum unit diperiksa" yang Anda setujui dulu **tidak** ikut dicabut.
     Kalau di sini biaya bisa masuk, saya sudah membongkar gerbang yang justru dipasang
     supaya tiket tak punya tagihan sebelum ada yang melihat unitnya
   - **Catatan saya:**
+    Ya benar
 
-- [ ] **F4** Terima unit **tanpa** mengisi perkiraan biaya
+- [x] **F4** Terima unit **tanpa** mengisi perkiraan biaya
   - **Harusnya:** tak ada baris perkiraan sama sekali di tiketnya — bukan "Rp0"
   - **Catatan saya:**
+    ya bisa tanpa perkiraan biaya
 
-- [ ] **F5** *(butuh printer — boleh dilewati)* Cetak **Tanda Terima** untuk tiket yang
+- [x] **F5** _(butuh printer — boleh dilewati)_ Cetak **Tanda Terima** untuk tiket yang
       punya perkiraan biaya
   - **Harusnya:** tercetak "Perkiraan biaya: Rp 450.000" **beserta** keterangan "(belum
     final, menunggu pemeriksaan)". Pelanggan memegang kertas itu; angka tanpa keterangan
     akan dibaca sebagai harga pasti
   - **Catatan saya:**
+    biarkan ini kasir yang memilih ada opsi cetak nota
 
 ---
 
 # G. Regresi — yang lama jangan sampai rusak
 
-- [ ] **G1** Alur satu tiket dari Terima Unit sampai Selesai masih bisa ditempuh
+- [x] **G1** Alur satu tiket dari Terima Unit sampai Selesai masih bisa ditempuh
   - **Catatan saya:**
+    Ya masih bisa
 
-- [ ] **G2** Satu penjualan tunai di menu Kasir sampai selesai
+- [x] **G2** Satu penjualan tunai di menu Kasir sampai selesai
   - **Catatan saya:**
+    Masih bisa
 
-- [ ] **G3** Beranda tiap peran masih benar (Super Admin, Manager, Kasir, Teknisi)
+- [x] **G3** Beranda tiap peran masih benar (Super Admin, Manager, Kasir, Teknisi)
   - **Catatan saya:**
+    Ya masih sudah bagus
 
-- [ ] **G4** Teknisi mengambil pekerjaan dari popup antrian di beranda (inti R1.7)
+- [x] **G4** Teknisi mengambil pekerjaan dari popup antrian di beranda (inti R1.7)
   - **Catatan saya:**
+    ya benar
 
-- [ ] **G5** Pesan validasi masih kalimat, bukan JSON (Terima Unit → sandi/pola 3 titik)
+- [x] **G5** Pesan validasi masih kalimat, bukan JSON (Terima Unit → sandi/pola 3 titik)
   - **Catatan saya:**
+    iya bagus
 
 ---
 
@@ -231,10 +265,10 @@ Centang `[x]` = sudah dijalankan.
 **Apakah R1.8 sudah benar?**
 
 - [ ] Ya, lanjut ke R2
-- [ ] Ada yang harus diperbaiki dulu — daftarnya:
+- [x] Ada yang harus diperbaiki dulu — daftarnya:
 
 ```
-
+Masih ada sedikit yang harus di prbaiki saya cantumkan di poin poin di atas
 
 ```
 
@@ -251,13 +285,13 @@ sebenarnya **jawaban baris pertama tabel ini**, ditulis sambil menguji.
 Jadi bentuknya saya balik: **saya yang mengusulkan, Anda tinggal menyetujui atau
 mencoret.** Usulannya diturunkan dari kalimat Anda sendiri, bukan selera saya.
 
-| Tahap | Usul saya: wajib terisi sebelum tombol lanjut boleh ditekan | Setuju? |
-|---|---|---|
-| **Terima Unit** (kasir) | nama, no. HP, jenis+merek+model, **keluhan**. Sandi/pola **tidak** wajib | ☐ setuju / koreksi: |
-| **Diagnosa** (teknisi) | hasil diagnosa + perkiraan biaya. Lama pengerjaan **tidak** wajib | ☐ setuju / koreksi: |
-| **Pengerjaan** (teknisi) | **tidak ada yang wajib** — menahan teknisi di sini menghalangi kerja, bukan menjaga mutu | ☐ setuju / koreksi: |
-| **QC** | **semua** baris checklist tercentang. Kalau sebagian boleh, kalimat "QC lulus" tak berarti apa-apa | ☐ setuju / koreksi: |
-| **Selesai / Serah Terima** (kasir) | nota sudah dibuat. **Boleh ada sisa** (pelanggan tempo) | ☐ setuju / koreksi: |
+| Tahap                              | Usul saya: wajib terisi sebelum tombol lanjut boleh ditekan                                        | Setuju?             |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------- |
+| **Terima Unit** (kasir)            | nama, no. HP, jenis+merek+model, **keluhan**. Sandi/pola **tidak** wajib                           | ☐ setuju / koreksi: |
+| **Diagnosa** (teknisi)             | hasil diagnosa + perkiraan biaya. Lama pengerjaan **tidak** wajib                                  | ☐ setuju / koreksi: |
+| **Pengerjaan** (teknisi)           | **tidak ada yang wajib** — menahan teknisi di sini menghalangi kerja, bukan menjaga mutu           | ☐ setuju / koreksi: |
+| **QC**                             | **semua** baris checklist tercentang. Kalau sebagian boleh, kalimat "QC lulus" tak berarti apa-apa | ☐ setuju / koreksi: |
+| **Selesai / Serah Terima** (kasir) | nota sudah dibuat. **Boleh ada sisa** (pelanggan tempo)                                            | ☐ setuju / koreksi: |
 
 **Tulis koreksi Anda di sini (kalimat biasa saja):**
 
@@ -274,13 +308,13 @@ backfill, lalu harus dibongkar setelah 2 tes menabraknya dan ternyata tes-nya ya
 
 ## Yang masih menunggu, bukan dilupakan
 
-| Hal | Kenapa belum |
-|---|---|
-| Form servis **per langkah** (next-next-next) | Inti **R2**, menunggu tabel di atas |
-| Alur "setelah diagnosis kembali ke kasir" | R2 |
-| Tombol "minta pindah teknisi" | R2 |
-| Laporan bulanan teknisi (unit berhasil/gagal/garansi/sisa) | R2 |
-| Teknisi tidak melihat harga modal | R2 |
-| Perbaikan UI/UX halaman Kasir | Anda sendiri menulis "nanti" (uji-R1.7 E2) |
+| Hal                                                        | Kenapa belum                                                                                                            |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Form servis **per langkah** (next-next-next)               | Inti **R2**, menunggu tabel di atas                                                                                     |
+| Alur "setelah diagnosis kembali ke kasir"                  | R2                                                                                                                      |
+| Tombol "minta pindah teknisi"                              | R2                                                                                                                      |
+| Laporan bulanan teknisi (unit berhasil/gagal/garansi/sisa) | R2                                                                                                                      |
+| Teknisi tidak melihat harga modal                          | R2                                                                                                                      |
+| Perbaikan UI/UX halaman Kasir                              | Anda sendiri menulis "nanti" (uji-R1.7 E2)                                                                              |
 | Katalog device pindah ke admin SaaS (dipakai semua tenant) | Perubahan kepemilikan data lintas tenant — Phase 11/12, bukan fase perbaikan. Panel D di atas adalah langkah pertamanya |
-| Cetak fisik dengan printer sungguhan | Belum bisa diuji siapa pun tanpa hardware (sama statusnya dengan 6D.1) |
+| Cetak fisik dengan printer sungguhan                       | Belum bisa diuji siapa pun tanpa hardware (sama statusnya dengan 6D.1)                                                  |
