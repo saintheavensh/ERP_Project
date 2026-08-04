@@ -409,9 +409,38 @@ test.describe('R1.8-T7 — perkiraan biaya di intake, bukan biaya sungguhan', ()
     expect((await charge.json()).error.code).toBe('CHARGES_NOT_ALLOWED_AT_STAGE');
   });
 
-  test('tanpa perkiraan: tak ada baris perkiraan di halaman tiket', async ({ page }) => {
+  // ⚠️ DIPERSEMPIT OLEH R1.10-T1, dan alasannya ditulis di sini supaya tidak
+  // terlihat seperti tes yang "dilonggarkan supaya hijau".
+  //
+  // Aslinya tes ini berbunyi "tanpa perkiraan: tak ada baris perkiraan di
+  // halaman tiket" — TANPA syarat tahap. Maksud aslinya (R1.8-T7): jangan
+  // memampangkan baris kosong untuk unit yang memang tidak dikutip harga di
+  // depan. Maksud itu TETAP dijaga di bawah.
+  //
+  // Yang berubah: R1.10-T1 membuat kotaknya muncul (berisi "Belum disebutkan" +
+  // tombol Isi) SELAMA tiket masih di tahap Penerimaan, karena pemilik tidak
+  // punya cara apa pun mengisi angka yang lupa disebutkan di konter — dan itu
+  // separuh dari keluhan E2-nya ("belum bisa di ubah nominalnya"). Begitu unit
+  // lepas dari konter, kotaknya kembali hilang persis seperti aturan R1.8.
+  //
+  // Ini menimpa perilaku yang pemilik sudah uji lulus di R1.8, jadi disebutkan
+  // terbuka di checklist uji R1.10 (poin A5) supaya ia bisa menolaknya.
+  test('tanpa perkiraan: tak ada baris perkiraan setelah unit lepas dari konter', async ({ page }) => {
     const res = await intake(page, { ...unitLengkap, customerName: 'Uji Tanpa Perkiraan ' + Date.now() });
     const ticketId = (await res.json()).data.id as string;
+    const token = await apiToken(page, 'admin@demo.com');
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const detail = await (await page.request.get(`${API_BASE}/tickets/${ticketId}`, { headers })).json();
+    const flow = (await (await page.request.get(
+      `${API_BASE}/flows/${detail.data.ticket.flowTemplateId}`, { headers },
+    )).json()).data;
+    const lanjut = flow.transitions.find((t: any) => t.fromNodeId === detail.data.ticket.currentNodeId);
+    const pindah = await page.request.post(`${API_BASE}/tickets/${ticketId}/transition`, {
+      headers: { ...headers, 'Idempotency-Key': crypto.randomUUID() },
+      data: { targetNodeId: lanjut.toNodeId },
+    });
+    expect(pindah.status()).toBe(200);
 
     await login(page, 'admin@demo.com');
     await page.goto(`/tickets/${ticketId}`);
