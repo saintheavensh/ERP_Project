@@ -140,18 +140,67 @@
            melihatnya sebelum menyebut angkanya sendiri: pelanggan sudah terlanjur
            mendengar yang ini. Hanya tampil bila memang disebutkan; tidak semua
            unit dikutip harga di depan. -->
-      {#if state.perkiraanKonter !== null}
+      <!-- R1.10-T1 — kotaknya juga muncul saat perkiraan BELUM diisi, asalkan
+           tiket masih di tahap Penerimaan. Sebelumnya kotak ini hanya ada bila
+           angkanya sudah terisi, jadi kasir yang lupa menyebutkannya di konter
+           tak punya tempat menambahkannya sama sekali. -->
+      {#if state.perkiraanKonter !== null || state.perkiraanBolehDiubah}
         {@const rp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)}
         <div class="mt-3 pt-3 border-t border-slate-100" data-testid="intake-estimate">
-          <!-- R1.9-T4 — keduanya berdampingan beserta selisihnya. Perkiraan
-               konter BACA-SAJA bagi semua peran (backend menolak perubahannya
-               dengan 422 INTAKE_ESTIMATE_LOCKED begitu tiket lewat Penerimaan);
-               estimasi teknisi diubah lewat baris biaya, bukan di sini. -->
+          <!-- R1.9-T4 — keduanya berdampingan beserta selisihnya. Estimasi
+               teknisi diubah lewat baris biaya, bukan di sini.
+               R1.10-T1 — perkiraan konter bisa dibetulkan SELAGI di tahap
+               Penerimaan; sesudah itu tombolnya hilang karena backend memang
+               menolaknya (422 INTAKE_ESTIMATE_LOCKED). Tombol yang pasti gagal
+               adalah anti-pattern yang Track F & R1.7-T3 sudah berantas. -->
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perkiraan Konter</span>
-              <p class="text-sm text-slate-900 mt-1 font-medium" data-testid="perkiraan-konter">{rp(state.perkiraanKonter)}</p>
-              <p class="text-xs text-slate-500">Disebutkan kasir saat unit diterima.</p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perkiraan Konter</span>
+                {#if state.perkiraanBolehDiubah && !state.perkiraanEditing}
+                  <button
+                    onclick={() => state.openPerkiraanEdit()}
+                    data-testid="ubah-perkiraan-konter"
+                    class="text-xs font-medium text-blue-600 hover:text-blue-700"
+                  >{state.perkiraanKonter === null ? 'Isi' : 'Ubah'}</button>
+                {/if}
+              </div>
+
+              {#if state.perkiraanEditing}
+                <div class="flex items-start gap-2 mt-1">
+                  <input
+                    type="number" min="0" step="1000"
+                    bind:value={state.perkiraanDraft}
+                    data-testid="input-perkiraan-konter"
+                    placeholder="mis. 450000"
+                    aria-label="Perkiraan biaya konter"
+                    class="flex-1 min-w-0 px-2 py-1 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <div class="flex flex-col gap-1">
+                    <button
+                      onclick={() => state.savePerkiraan()}
+                      disabled={state.perkiraanLoading}
+                      data-testid="simpan-perkiraan-konter"
+                      class="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-2 py-1 rounded-lg"
+                    >{state.perkiraanLoading ? '...' : 'Simpan'}</button>
+                    <button
+                      onclick={() => state.perkiraanEditing = false}
+                      class="text-xs font-medium text-slate-500 hover:text-slate-700 px-2 py-1"
+                    >Batal</button>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Kosongkan bila tidak jadi menyebut angka.</p>
+              {:else if state.perkiraanKonter !== null}
+                <p class="text-sm text-slate-900 mt-1 font-medium" data-testid="perkiraan-konter">{rp(state.perkiraanKonter)}</p>
+                <p class="text-xs text-slate-500">
+                  {state.perkiraanBolehDiubah
+                    ? 'Disebutkan kasir saat unit diterima.'
+                    : 'Disebutkan kasir saat unit diterima — terkunci setelah unit lepas dari konter.'}
+                </p>
+              {:else}
+                <p class="text-sm text-slate-400 mt-1" data-testid="perkiraan-konter">Belum disebutkan</p>
+                <p class="text-xs text-slate-500">Isi selagi unit masih di konter.</p>
+              {/if}
             </div>
             <div>
               <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estimasi Teknisi</span>

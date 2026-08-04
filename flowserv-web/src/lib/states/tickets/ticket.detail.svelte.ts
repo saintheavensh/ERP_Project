@@ -450,6 +450,75 @@ export class TicketDetailState {
     return this.estimasiTeknisi - this.perkiraanKonter;
   }
 
+  // ---------------------------------------------------------------------------
+  // R1.10-T1 — perkiraan konter akhirnya bisa DIBETULKAN dari layar.
+  //
+  // R1.9-T4 membangun aturannya di backend dengan benar (boleh diubah selagi di
+  // tahap Penerimaan, lalu 422 INTAKE_ESTIMATE_LOCKED) dan membuktikannya lewat
+  // curl + `page.request.patch`. Yang tidak pernah dibuat adalah kontrolnya,
+  // jadi pemilik menjalankan uji R1.9 dan bertanya "di bagian mana saya bisa
+  // merubahnya?" — poin E2, dan E3 ikut tak bisa dijalankan karenanya.
+  //
+  // Ini kali KETIGA bentuk cacat yang sama (R1: izin ada, baris menu tidak;
+  // R1.7-T1: komentar menyebut pengecualian, barisnya tak ditulis). Ketiganya
+  // lolos karena tesnya memanggil API alih-alih menekan tombol — karena itu tes
+  // R1.10 untuk fitur ini WAJIB lewat layar.
+  // ---------------------------------------------------------------------------
+
+  perkiraanEditing = $state(false);
+  perkiraanDraft = $state<string | number | null>('');
+  perkiraanLoading = $state(false);
+
+  /**
+   * Boleh diubah hanya selagi tiket di tahap Penerimaan.
+   *
+   * Diturunkan dari `stage_kind` — SUMBER YANG SAMA yang dipakai gerbang di
+   * `modules/tickets/service.ts`, bukan dari nama tahap ("Intake") yang bisa
+   * diganti pemilik lewat editor alur, dan bukan tebakan terpisah yang bisa
+   * berbeda dari backend. Kalau ini salah, yang terjadi cuma tombol tak muncul;
+   * uang tetap dijaga backend.
+   */
+  get perkiraanBolehDiubah(): boolean {
+    return this.currentNode?.stageKind === 'penerimaan';
+  }
+
+  openPerkiraanEdit() {
+    this.perkiraanDraft = this.perkiraanKonter === null ? '' : String(this.perkiraanKonter);
+    this.perkiraanEditing = true;
+  }
+
+  async savePerkiraan() {
+    this.perkiraanLoading = true;
+    this.errorMsg = '';
+    try {
+      // Kosong = "tidak jadi menyebut angka di konter", bukan nol rupiah.
+      // Backend menerima null dan mengosongkan kolomnya.
+      const nilai =
+        this.perkiraanDraft === null ||
+        this.perkiraanDraft === undefined ||
+        String(this.perkiraanDraft).trim() === ''
+          ? null
+          : Number(this.perkiraanDraft);
+
+      const res = await fetch(`${API_BASE}/tickets/${this.ticket.id}/intake-details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.token}` },
+        body: JSON.stringify({ intakeEstimatedCost: nilai })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        this.perkiraanEditing = false;
+        await invalidateAll();
+      } else {
+        // Pesan server ditampilkan APA ADANYA — termasuk INTAKE_ESTIMATE_LOCKED
+        // bila tiketnya sempat dimajukan di tab lain. Menelannya akan membuat
+        // tombol Simpan seolah tak melakukan apa-apa.
+        this.errorMsg = result.error?.message || 'Gagal menyimpan perkiraan biaya';
+      }
+    } catch { this.errorMsg = 'Network error'; }
+    finally { this.perkiraanLoading = false; }
+  }
+
   resetChargeForm() {
     this.chargeForm = { sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: '' };
   }
