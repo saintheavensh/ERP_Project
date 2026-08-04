@@ -45,7 +45,8 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 | [`go-live-plan.md`](go-live-plan.md) | **Konteks toko** dari wawancara pemilik 2026-07-24 — jenis usaha, jumlah cabang, cara bayar, cara gaji teknisi, kenapa pindah dari `pos_sederhana` | 📖 Rujukan, jangan dihapus |
 | [`go-live-tahap-b-onward.md`](go-live-tahap-b-onward.md) | Peta prioritas besar menuju pilot 1 cabang (Milestone 0 / B / C / D / E) | 🟢 Aktif |
 | [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R6: peran, halaman tiket per peran, QC, retur, buka/tutup kasir | 🟢 Aktif |
-| [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) | **Rencana fase yang sedang berjalan** — T1–T6 dari catatan uji R1.8 pemilik | 🔴 **AKTIF** |
+| [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) | Rencana **+ bukti** fase R1.9 — T1–T6 dari catatan uji R1.8 pemilik | ✅ **Kode selesai 2026-08-04** |
+| [`uji-R1.9-perbaikan.md`](uji-R1.9-perbaikan.md) | **Checklist uji manual pemilik untuk R1.9** — 7 bagian (A–G) + 3 pertanyaan terbuka | 🔴 **MENUNGGU PEMILIK** ← gerbang R2 |
 | [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) | **Cerita lengkap R1 → R1.8**: apa yang direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya. Menggantikan 9 berkas terpisah. *(Namanya masih "…sampai-R1.7" supaya rujukan di `PHASES.md` tidak putus.)* | 📖 Rujukan, jangan dihapus |
 
 **Berkas dirapikan 2026-08-04** atas permintaan pemilik ("jika tidak digunakan hapus saja
@@ -56,8 +57,9 @@ premisnya usang). Ceritanya + kalimat asli pemilik pindah ke `riwayat-R1-sampai-
 bagian **"Berkas yang dihapus"**; teks aslinya tetap utuh di git history karena tiap
 catatan uji **di-commit lebih dulu** sebelum berkasnya dihapus.
 
-**Checklist uji R1.9, R2, dan R3 sengaja belum ditulis** — isinya menyesuaikan hasil fase
-yang bersangkutan. Menulisnya sekarang berarti menebak.
+**Checklist uji R1.9 ditulis 2026-08-04**, setelah kodenya selesai — bukan sebelumnya.
+**Checklist R2 dan R3 masih sengaja belum ditulis**: isinya menyesuaikan hasil fase yang
+bersangkutan, dan menulisnya sekarang berarti menebak.
 
 ---
 
@@ -72,7 +74,7 @@ R1.5 Perbaikan hasil uji R1       ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.6 Perbaikan hasil uji R1.5     ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.7 Perbaikan hasil uji R1.6     ✅ SELESAI 2026-08-01 — sudah diuji pemilik (14/18 lulus bersih)
 R1.8 Perbaikan hasil uji R1.7     ✅ SELESAI 2026-08-03 — sudah diuji pemilik (A-G, TAK ADA yang gagal)
-R1.9 Perbaikan hasil uji R1.8     🔴 SEDANG DIKERJAKAN — R1.9-perbaikan-hasil-uji-R1.8.md
+R1.9 Perbaikan hasil uji R1.8     ✅ KODE SELESAI 2026-08-04 — menunggu uji pemilik (uji-R1.9-perbaikan.md)
 R2   Halaman tiket per peran      🔓 TERBUKA 2026-08-04 — aturan per tahap sudah dijawab pemilik
 R3   QC jadi modul sendiri        ⏳ menunggu catatan uji R2
 R4   Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja

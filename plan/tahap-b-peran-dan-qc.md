@@ -121,7 +121,7 @@ R1.5  Perbaikan hasil uji R1      ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.6  Perbaikan hasil uji R1.5    ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.7  Perbaikan hasil uji R1.6    ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.8  Perbaikan hasil uji R1.7    ✅ SELESAI 2026-08-03 — sudah diuji pemilik, TAK ADA yang gagal
-R1.9  Perbaikan hasil uji R1.8    🔴 SEDANG DIKERJAKAN — R1.9-perbaikan-hasil-uji-R1.8.md
+R1.9  Perbaikan hasil uji R1.8    ✅ KODE SELESAI 2026-08-04 — menunggu uji pemilik (uji-R1.9-perbaikan.md)
 R2    Halaman tiket per peran     🔓 TERBUKA 2026-08-04 — aturan per tahap sudah dijawab
 R3    QC jadi modul sendiri       🔴 besar, sentuh DB + BE + FE
 R4    Bersih-bersih hasil audit   🟢 kecil, bisa disisipkan kapan saja
@@ -667,7 +667,7 @@ mengisinya bebas dan agent tahu persis apa yang harus dibaca sebelum lanjut.
 |---|---|---|
 | `uji-R1-peran-akses.md` → `uji-R1.8-perbaikan.md` (6 berkas) | Fase R1 … R1.8 | ✅ Semuanya sudah diisi pemilik, lalu **dihapus** setelah di-commit. Isinya di [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) |
 | `uji-00-kondisi-sekarang.md` | Aplikasi apa adanya — semua area | ❌ Dihapus 2026-08-04: **tak pernah dijalankan** (0/~150) dan premisnya usang. Fakta "area stok/pembelian/keuangan/cetak belum teruji" tetap dicatat di riwayat |
-| `uji-R1.9-*.md` | Fase R1.9 | **Ditulis saat kode R1.9 selesai** |
+| [`uji-R1.9-perbaikan.md`](uji-R1.9-perbaikan.md) | Fase R1.9 | ✅ **Ditulis 2026-08-04** — menunggu diisi pemilik ← **gerbang R2** |
 | `uji-R2-*.md` | Fase R2 | **Ditulis saat R2 dikerjakan** |
 | `uji-R3-*.md` | Fase R3 | **Ditulis saat R3 dikerjakan** |
 

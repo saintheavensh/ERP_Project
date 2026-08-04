@@ -20,7 +20,9 @@
 > antaranya**. Rencana aktifnya
 > **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R6), indeksnya
 > [`plan/README.md`](plan/README.md). Fase yang sedang dikerjakan:
-> **[`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md)**.
+> **[`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md)** —
+> **kodenya SELESAI 2026-08-04**, sekarang menunggu pemilik menjalankan
+> [`plan/uji-R1.9-perbaikan.md`](plan/uji-R1.9-perbaikan.md). **Itu gerbang R2.**
 >
 > **Aturan yang mengikat agent:** jangan pernah mengerjakan dua fase sekaligus, dan
 > **jangan mulai fase berikutnya sebelum membaca berkas `plan/uji-R*.md` yang sudah diisi
@@ -49,50 +51,118 @@
 > diganti supaya 8 tautan di berkas ini tidak putus). **Tautan `plan/uji-R1.*.md` di bawah
 > yang mengarah ke berkas tak ada lagi itu wajar — penanda sejarah, bukan tautan rusak.**
 >
-> - [ ] **R1.9 — Perbaikan hasil uji manual R1.8** (rencana ditulis 2026-08-04) —
->       [`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md).
->       **Putaran pertama yang TIDAK punya satu pun poin gagal** — ketujuh bagian uji (A–G)
->       dijalankan pemilik dan semua yang R1.8 janjikan terbukti. Kesimpulannya tetap "ada
->       yang harus diperbaiki dulu", tapi lima dari enam catatan berbunyi *"sudah benar, dan
->       sekarang saya butuh …"*.
->       - [ ] **T1 🔴 — kasir & manager tak punya jalan ke halaman Pelanggan.** Poin uji A6:
->             *"di bagian mana saya bisa mengakses pelanggan saat menggunakan role kasir,
->             tidak ada buttonnya jadi saya belum bisa mencoba bagian ini?"* **Bentuknya
->             persis bug R1** yang memulai seluruh cara kerja fase-demi-fase ini: kasir
->             **punya** `customer.manage` dan `GET /v1/customers` **tak digerbangi izin apa
->             pun** — yang tak pernah dibuat adalah barisnya di menu. Manager kena hal yang
->             sama; hanya Super Admin yang punya. Akibatnya satu poin uji **tak bisa
->             dijalankan sama sekali**, jadi jalur "pelanggan lama → Servis Unit Ini" masih
->             belum pernah dibuktikan siapa pun.
->       - [ ] **T1b — dan celah yang ikut terbuka bersamanya.** Halaman pelanggan memuat
->             sakelar **"Boleh bayar tempo"**, dan `PUT /v1/customers/:id` digerbangi
->             `customer.manage` — izin yang kasir punya. Artinya **kasir bisa memberi
->             pelanggan hak berutang**, menabrak keputusan D1 pemilik sendiri (`allow_tempo`
->             default false, *"pelanggan baru tak boleh utang sampai diizinkan"*). Ditutup
->             dengan izin baru `customer.allow_tempo` (Manager + Super Admin), ditegakkan
->             **kondisional** persis pola D2 `pos.apply_discount`. Celahnya **sudah ada hari
->             ini** lewat API langsung; T1 hanya membuatnya jadi satu klik.
->       - [ ] **T2 — piutang dikelompokkan per pelanggan.** Poin uji B1. Frontend saja;
->             pengelompokan sebagai fungsi murni + tes unit. Batas R1.5A wajib dibuktikan
->             lagi sesudahnya (`/finance`, `/ledger`, `/payables` tetap tertutup untuk kasir).
->       - [ ] **T3 — Katalog Device: hapus + panel yang bisa ditindaklanjuti.** Poin uji D1.
->             `DELETE` untuk merek & model **belum ada sama sekali**; menghapusnya harus
->             menolak dengan alasan yang terbaca (`DEVICE_MODEL_IN_USE` /
->             `DEVICE_BRAND_HAS_MODELS`), bukan 500 dari foreign key. Plus "Tambahkan ke
->             katalog" langsung dari panel R1.8-T5 — tanpanya admin mengetik ulang nama yang
->             sudah terpampang di layar.
->       - [ ] **T4 — perkiraan konter vs estimasi teknisi.** Poin uji F2 (*"teknisi bisa saja
->             mengubah angka estimasi itu"*). **Ditanyakan dulu, tidak ditebak:** menimpa
->             `intake_estimated_cost` akan menghapus angka yang dijanjikan ke pelanggan di
->             konter — tepat hal yang R1.8-T7 sengaja pisahkan.
->       - [ ] **T5 — kasir memilih apa yang dicetak di Terima Unit.** Poin uji F5. Memakai
->             helper `autoPrint()` yang sama, bukan jalur cetak kedua.
->       - [ ] **T6 — (jawaban) nomor antrian & Buka/Tutup Kasir.** Poin uji C1. Jawabannya:
->             **sudah reset tiap hari** per cabang, di dalam transaksi intake. Yang pemilik
->             minta lebih besar — **FIN-002 Cash Management**, MVP di katalog fitur sejak
->             awal dan belum dibangun sama sekali → dibuka sebagai **Fase R6**, bukan
->             disisipkan ke fase perbaikan. Pemicu nomor antrian pindah ke sana **saat R6
->             benar-benar ada**, tidak sebelum itu.
+> - [x] **R1.9 — Perbaikan hasil uji manual R1.8** (2026-08-04, kode selesai).
+>       Rencana + bukti: [`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md).
+>       **Uji R1.8 tidak menemukan satu pun kegagalan** — keenam catatan pemilik berbunyi
+>       *"sudah benar, dan sekarang saya butuh …"*, kecuali satu yang **tidak bisa diuji
+>       sama sekali** dan itu bug (T1).
+>       - [x] **R1.9-T1 🔴 — kasir & manager akhirnya punya jalan ke Pelanggan.** Poin uji
+>             A6: *"di bagian mana saya bisa mengakses pelanggan saat menggunakan role kasir,
+>             tidak ada buttonnya"*. **Bentuknya persis bug R1 yang memulai seluruh cara
+>             kerja fase-demi-fase ini: izin diberikan, jalannya tidak pernah dibuat.** Kasir
+>             sudah punya `customer.manage` sejak H12 dan `GET /v1/customers` tak digerbangi
+>             izin apa pun — yang tak ada cuma barisnya di menu. Manager kena hal yang sama.
+>             Akibatnya satu poin uji tak bisa dijalankan siapa pun, jadi jalur "pelanggan
+>             lama → Servis Unit Ini" belum pernah terbukti. Teknisi sengaja tidak dapat.
+>       - [x] **R1.9-T1b — izin baru `customer.allow_tempo` (Manager + Super Admin).**
+>             **Tidak diminta pemilik; T1 yang membukanya.** Begitu kasir punya jalan ke
+>             halaman pelanggan, ia ikut mendapat sakelar "Boleh bayar tempo" — artinya
+>             kasir bisa memberi pelanggan hak berutang, menabrak keputusan pemilik sendiri
+>             di D1 (*"pelanggan baru tak boleh utang sampai diizinkan"*). Ditegakkan
+>             **kondisional** (pola D2 `pos.apply_discount`): hanya diperiksa saat nilai
+>             `allowTempo` benar-benar **berubah** — dibandingkan ke nilai tersimpan, bukan
+>             ke "ada di payload", karena form mengirim seluruh objek tiap simpan dan kasir
+>             yang cuma membetulkan nomor telepon tidak boleh ikut diblokir. **Jalur POST
+>             ikut ditutup** — membuat pelanggan langsung dengan tempo adalah pintu yang
+>             sama. Terverifikasi: kasir PUT → **403**, kasir ubah telepon → **200**,
+>             manager → **200**, kasir POST dengan tempo → **403**, tanpa tempo → **201**.
+>             **Celahnya sudah ada sebelum T1** lewat panggilan API langsung; T1 hanya
+>             membuatnya jadi satu klik.
+>       - [x] **R1.9-T2 — piutang dikelompokkan per pelanggan.** Poin uji B1. Frontend saja
+>             — tak ada endpoint baru, tak ada izin baru. **Pengelompokan berdasarkan `id`,
+>             bukan nama:** dua pelanggan berbeda yang kebetulan bernama "Budi" adalah dua
+>             baris, dan menggabungkannya berarti menagih orang yang salah **tanpa
+>             memunculkan error apa pun**. Faktur POS walk-in (tanpa pelanggan) juga tidak
+>             digabung. Pelanggan dengan **satu** nota sengaja tetap satu baris datar:
+>             menambah klik yang tak mengungkap apa pun adalah kerumitan yang track
+>             penyederhanaan (S1–S5) ada untuk mengurangi.
+>             **Seed diperbaiki juga, dan sebabnya sama persis dengan R1.6-T3:** dua faktur
+>             ter-seed milik dua orang BERBEDA, jadi tiap grup selalu berisi satu nota dan
+>             fitur yang pemilik minta **tak akan menampakkan apa pun saat diuji**.
+>             `INV-SEED-0003` (Budi, Rp 275.000) ditambahkan — jasa saja, supaya tidak
+>             mengotori `GET /v1/inventory/reconciliation` (keputusan H4), dengan baris buku
+>             kas ber-`referenceType: 'pos_sale'` (jebakan yang R1.6-T3 sudah bayar sekali).
+>             Rekonsiliasi **0 selisih**, ledger **isClean: true**.
+>       - [x] **R1.9-T3 — Katalog Device bisa dihapus, diubah, dan panelnya ditindaklanjuti.**
+>             Poin uji D1. `DELETE` model/merek + `PATCH` merek (**salah ketik "Smasung"
+>             sebelumnya tidak bisa dibetulkan sama sekali**). Penolakan menyebut alasannya
+>             — **422 `DEVICE_MODEL_IN_USE`** / **`DEVICE_BRAND_HAS_MODELS`** berikut
+>             jumlahnya — bukan 500 dari foreign key (pola `TEMPLATE_IN_USE`/`NODE_IN_USE`).
+>             UI: tombol **"Tambahkan ke katalog"** di panel R1.8-T5 (tanpanya admin harus
+>             mengetik ulang nama yang sudah terpampang di layar), dan **pencarian jadi satu
+>             daftar datar lintas merek** — dulu kotak cari hanya menyaring DI DALAM tiap
+>             kartu merek, dari 1.784 model.
+>             **Penjaganya sempat lolos dan tesnya sendiri yang berbohong:** verifikasi
+>             pertama menghapus Galaxy A10 dengan **204**, karena **seed tidak pernah mengisi
+>             `customer_assets.device_model_id` maupun membuat satu pun baris
+>             `product_compatibility`** — "modelnya dipakai" itu asumsi, bukan kenyataan di
+>             database. Diuji ulang lewat **intake sungguhan** → 422, dan lewat
+>             `PUT /inventory/:id/compatibility` → 422. Tes Playwright-nya sekarang membuat
+>             tautannya sendiri, jadi tak bisa lulus karena kebetulan.
+>       - [x] **R1.9-T4 — perkiraan konter vs estimasi teknisi, berdampingan + selisihnya.**
+>             Poin uji F2. Pemilik memilih tafsir **(b)**: *"simpan keduanya, angka konter
+>             tidak bisa diubah"*. Estimasi teknisi **tidak** dapat kolom baru — ia sudah
+>             hidup sebagai jumlah `ticket_charges` → kuotasi; kolom kedua berisi angka yang
+>             sama adalah dua sumber kebenaran.
+>             **Yang ditemukan saat membangunnya membalik bentuk tugasnya:**
+>             `intakeEstimatedCost` ternyata **tidak diterima `updateIntakeDetailsInput`
+>             sama sekali** — dan karena Zod **membuang kunci tak dikenal tanpa bersuara**,
+>             kasir yang salah ketik 450.000 jadi 4.500.000 tak punya jalan membetulkannya
+>             *dan tidak diberi tahu bahwa tulisannya dibuang*. Jadi keduanya dibangun:
+>             boleh dibetulkan **selagi di tahap Penerimaan**, lalu **422
+>             `INTAKE_ESTIMATE_LOCKED`** sesudahnya — **termasuk untuk Super Admin**, karena
+>             ini aturan bukti, bukan aturan wewenang. Ditegakkan di service, bukan dengan
+>             mengunci form (S5, R1.5C, R1.8-T1 sudah membayar pelajaran itu tiga kali).
+>       - [x] **R1.9-T5 — kasir memilih apa yang dicetak di Terima Unit.** Poin uji F5.
+>             Halaman itu sebelumnya **tidak punya tombol cetak sama sekali**: yang ada cuma
+>             cetak otomatis, dan tombol manual di halaman detail — padahal sejak R1.5D kasir
+>             sengaja tidak lagi dilempar ke sana. Memakai helper `autoPrint()` yang **sama**,
+>             bukan jalur cetak kedua (aturan yang sudah menyelamatkan R1.5D & R1.6-T2).
+>             Cetak otomatis **tidak dicabut** — pemilik memintanya di uji R1.5 A7; apakah
+>             masih diinginkan jadi **pertanyaan** di checklist R1.9, bukan tebakan.
+>       - [x] **R1.9-T6 — jawaban nomor antrian + Fase R6 dibuka.** Poin uji C1. **Nomor
+>             antrian sudah reset tiap hari secara otomatis** (`max(queue_number)` difilter
+>             `queue_date` per cabang, di dalam transaksi intake). Buka/Tutup Kasir (FIN-002,
+>             ditandai MVP ✅ sejak awal tapi **belum dibangun sama sekali**) dibuka sebagai
+>             **Fase R6**, dikerjakan **setelah R2** atas keputusan pemilik. **Sengaja tidak
+>             disisipkan ke fase perbaikan:** ia butuh tabel sesi kas, saldo awal, penutupan
+>             dengan selisih, dan setiap pembayaran POS terhubung ke sesi — menyisipkannya
+>             akan mengulangi persis kesalahan yang membuat aplikasi ini "terlalu rumit".
+>       - [ ] **R1.9-T7 — uji manual pemilik**
+>             ([`plan/uji-R1.9-perbaikan.md`](plan/uji-R1.9-perbaikan.md)) ← **gerbang R2**
+>
+>       **Bukti R1.9:** **304 unit backend** · **12 unit frontend (infrastruktur BARU)** ·
+>       **21 e2e API** · **Playwright 229/234** (22 baru di `e2e/r1-9-perbaikan.spec.ts`) ·
+>       `tsc` bersih · `svelte-check` **781 berkas 0 error 0 warning**.
+>
+>       **Frontend akhirnya punya tes unit** (`flowserv-web/vitest.config.ts`). Sampai R1.9
+>       ia hanya punya Playwright, dan itu meninggalkan lubang nyata: `lib/auth/route-access.ts`
+>       — tabel yang memutuskan peran mana boleh membuka halaman mana — **tak pernah punya
+>       satu pun tes unit** padahal fungsi murni. Kasus yang T2 harus jaga ("dua orang
+>       berbeda bernama sama") praktis tak terjangkau lewat browser, dan salahnya **tidak
+>       memunculkan error apa pun**. Config-nya sengaja **tidak** memuat plugin SvelteKit:
+>       begitu sebuah fungsi butuh `$lib` atau rune, ia bukan logika murni lagi.
+>
+>       **5 Playwright yang gagal, TIDAK SATU PUN regresi — dan itu dibuktikan, bukan
+>       diklaim:** `p6b-print:71`, `printer-scan:36`, `pos-service-flow:80` sama seperti
+>       R1.6/R1.7/R1.8 (menguji perilaku saat agen printer MATI, di mesin ini menyala).
+>       **Dua yang baru diperiksa satu per satu:** `tahap-a-flow-templates:158` gagal karena
+>       pratinjau katalog menutupi pad pola — perubahan R1.9 di-`git stash` dan tesnya
+>       **tetap gagal 2/2 di kode lama**; `tahap-a-payment-methods:34` **lulus saat
+>       dijalankan sendiri**, jadi polusi antar-tes (satu DB bersama, `fullyParallel: false`).
+>       Keduanya kelemahan yang sudah ada sebelum R1.9 dan **sengaja tidak ditambal di sini**
+>       — memperbaikinya menyentuh form intake dan urutan seluruh suite di tengah fase yang
+>       scope-nya sudah ditentukan pemilik. Dicatat sebagai kandidat **R4**.
 >
 > - [x] **R1.7 — Perbaikan hasil uji manual R1.6** (2026-08-01, kode selesai).
 >       Kesimpulan pemilik: **"Ada yang harus diperbaiki dulu"**.
