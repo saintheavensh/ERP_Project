@@ -66,6 +66,15 @@ customersRouter.post('/', requirePermission('customer.manage'), zValidator('json
     if (blocked) return blocked;
   }
 
+  // R1.10-T4 — kategori pelanggan, pola yang sama persis. Kondisional terhadap
+  // DEFAULT ('service'), bukan terhadap "ada di payload": form selalu mengirim
+  // kolom ini, jadi memeriksa keberadaannya akan memblokir kasir mendaftarkan
+  // pelanggan biasa — bug yang R1.9-T1b sudah hindari sekali.
+  if (data.customerType !== undefined && data.customerType !== 'service') {
+    const blocked = await enforcePermission(c, 'customer.set_category');
+    if (blocked) return blocked;
+  }
+
   const result = await db.insert(customers).values({
     tenantId,
     name: data.name,
@@ -92,7 +101,7 @@ customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('js
   const customerId = c.req.param('id');
   const data = c.req.valid('json');
   
-  const cust = await db.select({ id: customers.id, allowTempo: customers.allowTempo }).from(customers).where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)));
+  const cust = await db.select({ id: customers.id, allowTempo: customers.allowTempo, customerType: customers.customerType }).from(customers).where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)));
   if (cust.length === 0) {
     return errorResponse(c, 'NOT_FOUND', 'Customer not found', [], 404);
   }
@@ -104,6 +113,16 @@ customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('js
   // atas membuat gerbangnya persis sesempit wewenang yang dimaksud.
   if (data.allowTempo !== undefined && data.allowTempo !== cust[0].allowTempo) {
     const blocked = await enforcePermission(c, 'customer.allow_tempo');
+    if (blocked) return blocked;
+  }
+
+  // R1.10-T4 — kategori pelanggan. Dibandingkan ke nilai TERSIMPAN dengan
+  // alasan yang sama seperti tempo di atas: kasir yang cuma membetulkan nomor
+  // telepon mengirim kategori yang tidak berubah, dan ia tidak boleh ikut
+  // terblokir. Pemilik (uji-R1.9 A1): "kategorinya readonly hanya bisa di edit
+  // oleh manager".
+  if (data.customerType !== undefined && data.customerType !== cust[0].customerType) {
+    const blocked = await enforcePermission(c, 'customer.set_category');
     if (blocked) return blocked;
   }
 

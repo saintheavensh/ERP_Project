@@ -12,6 +12,11 @@
   // utang bukan wewenangnya. Backend sudah menolaknya dengan 403; ini hanya
   // supaya tombolnya tidak dipampangkan sebagai kontrol yang hidup.
   let bolehUbahTempo = $derived(roleCan(data.user?.roleName, 'customer.allow_tempo'));
+
+  // R1.10-T4 — alasan sama persis dengan baris di atas: backend sudah menolak
+  // dengan 403, ini hanya supaya dropdown-nya tidak dipampangkan sebagai
+  // kontrol yang hidup padahal pasti gagal (anti-pattern Track F / R1.7-T3).
+  let bolehUbahKategori = $derived(roleCan(data.user?.roleName, 'customer.set_category'));
 </script>
 
 <svelte:head>
@@ -36,15 +41,21 @@
       <span class="text-xs font-medium px-2 py-1 rounded {(state.customer?.customerType || 'service') === 'sparepart' ? 'bg-indigo-50 text-indigo-700' : 'bg-emerald-50 text-emerald-700'}" data-testid="customer-type-badge">
         {(state.customer?.customerType || 'service') === 'sparepart' ? 'Pelanggan Sparepart' : 'Pelanggan Servis'}
       </span>
-      <select
-        aria-label="Ubah kategori pelanggan"
-        value={state.customer?.customerType || 'service'}
-        onchange={(e) => state.setCustomerType(e.currentTarget.value as 'service' | 'sparepart')}
-        disabled={state.typeSaving}
-        class="text-sm border border-slate-200 rounded-lg px-2 py-1 bg-white disabled:opacity-50 outline-none focus:ring-2 focus:ring-blue-500">
-        <option value="service">Servis</option>
-        <option value="sparepart">Sparepart</option>
-      </select>
+      {#if bolehUbahKategori}
+        <select
+          aria-label="Ubah kategori pelanggan"
+          value={state.customer?.customerType || 'service'}
+          onchange={(e) => state.setCustomerType(e.currentTarget.value as 'service' | 'sparepart')}
+          disabled={state.typeSaving}
+          class="text-sm border border-slate-200 rounded-lg px-2 py-1 bg-white disabled:opacity-50 outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="service">Servis</option>
+          <option value="sparepart">Sparepart</option>
+        </select>
+      {:else}
+        <span class="text-xs text-slate-400" data-testid="kategori-terkunci">
+          Hanya manajer/pemilik yang dapat mengubah ini.
+        </span>
+      {/if}
     </div>
   </div>
 

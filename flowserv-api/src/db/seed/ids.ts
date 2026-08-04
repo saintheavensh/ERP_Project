@@ -111,6 +111,18 @@ export const IDS = {
   // Keduanya dipakai autocomplete di form Terima Unit, jadi kasir wajib tetap
   // bisa memanggilnya — yang ditutup adalah pengelolaannya, bukan pemakaiannya.
   permDeviceCatalogManage: 'd1000000-0000-4000-8000-000000000032',
+  // R1.10-T4 — mengubah KATEGORI pelanggan (Servis / Sparepart). Manager +
+  // Super Admin, pola dan alasan sama persis dengan permCustomerAllowTempo di
+  // atas: pemilik (uji-R1.9 A1) menulis "kategorinya readonly hanya bisa di
+  // edit oleh manager".
+  //
+  // Kenapa izin sendiri dan bukan menumpang `customer.allow_tempo` yang
+  // kebetulan punya daftar peran yang sama persis: menggerbangi perubahan
+  // kategori di balik izin bernama "allow_tempo" akan membuat kode berbunyi
+  // satu hal sementara melakukan hal lain — bentuk kesalahan yang proyek ini
+  // sudah bayar mahal di R1.7-T1 (komentar benar di atas kode salah). Nama
+  // yang jujur lebih murah daripada satu baris seed yang dihemat.
+  permCustomerSetCategory: 'd1000000-0000-4000-8000-000000000033',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',

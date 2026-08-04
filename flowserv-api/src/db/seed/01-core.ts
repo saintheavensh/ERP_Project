@@ -81,6 +81,9 @@ const PERMISSIONS = [
   // BUKAN kasir. Ditegakkan kondisional (hanya saat allowTempo benar-benar
   // berubah), jadi kasir tetap bisa mengubah nama/telepon/email seperti biasa.
   { id: IDS.permCustomerAllowTempo, code: 'customer.allow_tempo', description: 'Grant or revoke a customer\'s permission to pay on credit (tempo)' },
+  // R1.10-T4 — mengubah kategori pelanggan (Servis/Sparepart). Manager + Super
+  // Admin, alasan & pola sama dengan customer.allow_tempo di atas.
+  { id: IDS.permCustomerSetCategory, code: 'customer.set_category', description: 'Change a customer\'s category (service / sparepart)' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
@@ -103,6 +106,7 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'pos.apply_discount', // D2 — manager may discount; cashier may not
     'ticket.qc', // QC akhir sering dikontrol atasan, bukan teknisi yang mengerjakan
     'customer.allow_tempo', // R1.9-T1b — memberi hak utang; kasir tidak boleh
+    'customer.set_category', // R1.10-T4 — kategori pelanggan; kasir read-only
   ],
   [IDS.roleTechnician]: [
     // R1.5B (2026-08-01) — `ticket.create` DICABUT dari teknisi setelah uji

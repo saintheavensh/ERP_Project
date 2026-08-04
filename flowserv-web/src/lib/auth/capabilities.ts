@@ -16,6 +16,11 @@ const ROLES_WITH: Record<string, readonly string[]> = {
   // tanpa pemisahan ini satu baris menu diam-diam menyerahkan wewenang memberi
   // utang ke konter — menabrak keputusan D1.
   'customer.allow_tempo': ['Super Admin', 'Manager'],
+  // R1.10-T4 — mengubah kategori pelanggan (Servis/Sparepart). Pemilik
+  // (uji-R1.9 A1): "kategorinya readonly hanya bisa di edit oleh manager".
+  // Kasir tetap MELIHAT kategorinya — ia perlu tahu — hanya tidak bisa
+  // mengubahnya, persis perlakuan tempo yang pemilik sudah setujui di B1/B2.
+  'customer.set_category': ['Super Admin', 'Manager'],
 };
 
 /**

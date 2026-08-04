@@ -21,6 +21,9 @@
   // R1.9-T1b — lihat komentar di `/customers/[id]`. Membuat pelanggan LANGSUNG
   // dengan hak tempo adalah pintu yang sama, jadi ditutup di tempat yang sama.
   let bolehUbahTempo = $derived(roleCan(data.user?.roleName, 'customer.allow_tempo'));
+  // R1.10-T4 — pintu yang sama: membuat pelanggan LANGSUNG berkategori
+  // Sparepart adalah cara lain mengubah kategori, jadi ditutup di sini juga.
+  let bolehUbahKategori = $derived(roleCan(data.user?.roleName, 'customer.set_category'));
 </script>
 
 <svelte:head>
@@ -102,4 +105,4 @@
   </div>
 </div>
 
-<CustomerListModal {state} {bolehUbahTempo} />
+<CustomerListModal {state} {bolehUbahTempo} {bolehUbahKategori} />

@@ -289,3 +289,93 @@ test.describe('R1.10-T3 — katalog device hanya untuk Super Admin', () => {
     await expect(page.getByText(/berhasil dibuat/i)).toBeVisible({ timeout: 20_000 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// T4 — kategori pelanggan read-only bagi kasir (uji-R1.9 A1)
+// ---------------------------------------------------------------------------
+
+test.describe('R1.10-T4 — kategori pelanggan hanya manajer/pemilik', () => {
+  /** Pelanggan baru milik manager, supaya tesnya tak bergantung data seed. */
+  async function buatPelanggan(page: Page) {
+    const token = await apiToken(page, 'manager@demo.com');
+    const res = await page.request.post(`${API_BASE}/customers`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { name: 'Uji T4 ' + Date.now(), phone: '0812' + Date.now().toString().slice(-8) },
+    });
+    expect(res.status()).toBe(201);
+    return (await res.json()).data.id as string;
+  }
+
+  test('kasir MELIHAT kategorinya tapi tidak punya kontrol untuk mengubahnya', async ({ page }) => {
+    // Pemilik: "kategorinya readonly hanya bisa di edit oleh manager".
+    // Kasir tetap perlu TAHU kategorinya — jadi badge-nya wajib tetap ada.
+    const id = await buatPelanggan(page);
+
+    await login(page, 'cashier@demo.com');
+    await page.goto(`/customers/${id}`);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByTestId('customer-type-badge')).toBeVisible();
+    await expect(page.getByLabel('Ubah kategori pelanggan')).toHaveCount(0);
+    await expect(page.getByTestId('kategori-terkunci')).toBeVisible();
+  });
+
+  test('manager punya kontrolnya dan bisa mengubah kategori', async ({ page }) => {
+    const id = await buatPelanggan(page);
+
+    await login(page, 'manager@demo.com');
+    await page.goto(`/customers/${id}`);
+    await page.waitForLoadState('networkidle');
+
+    const pilih = page.getByLabel('Ubah kategori pelanggan');
+    await expect(pilih).toBeVisible();
+    await pilih.selectOption('sparepart');
+    await expect(page.getByTestId('customer-type-badge')).toContainText('Sparepart');
+  });
+
+  test('kasir tidak melihat pilihan Kategori saat menambah pelanggan', async ({ page }) => {
+    await login(page, 'cashier@demo.com');
+    await page.goto('/customers');
+    await page.waitForLoadState('networkidle');
+    await page.getByRole('button', { name: 'Tambah Pelanggan' }).click();
+
+    await expect(page.locator('#name')).toBeVisible();
+    await expect(page.locator('#customer-type')).toHaveCount(0);
+  });
+
+  test('(pendamping API) gerbangnya di backend, dan tidak kelewat lebar', async ({ page }) => {
+    // Yang mudah salah di sini BUKAN penolakannya, melainkan penolakan yang
+    // terlalu lebar: form mengirim seluruh objek tiap simpan, jadi memeriksa
+    // "customerType ada di payload" akan memblokir kasir yang cuma membetulkan
+    // nomor telepon. Karena itu tes ini menuntut 200 untuk kasus itu.
+    const id = await buatPelanggan(page);
+    const kasir = await apiToken(page, 'cashier@demo.com');
+    const manager = await apiToken(page, 'manager@demo.com');
+
+    const ubahKategori = await page.request.put(`${API_BASE}/customers/${id}`, {
+      headers: { Authorization: `Bearer ${kasir}` },
+      data: { name: 'Uji T4 kasir', customerType: 'sparepart' },
+    });
+    expect(ubahKategori.status()).toBe(403);
+
+    const ubahTelepon = await page.request.put(`${API_BASE}/customers/${id}`, {
+      headers: { Authorization: `Bearer ${kasir}` },
+      data: { name: 'Uji T4 kasir', phone: '081200000000', customerType: 'service' },
+    });
+    expect(ubahTelepon.status()).toBe(200);
+
+    const olehManager = await page.request.put(`${API_BASE}/customers/${id}`, {
+      headers: { Authorization: `Bearer ${manager}` },
+      data: { name: 'Uji T4 manager', customerType: 'sparepart' },
+    });
+    expect(olehManager.status()).toBe(200);
+
+    // Jalur POST ikut ditutup — membuat pelanggan LANGSUNG berkategori
+    // sparepart adalah cara lain melakukan hal yang sama.
+    const buatLangsung = await page.request.post(`${API_BASE}/customers`, {
+      headers: { Authorization: `Bearer ${kasir}` },
+      data: { name: 'Uji T4 pintu belakang', customerType: 'sparepart' },
+    });
+    expect(buatLangsung.status()).toBe(403);
+  });
+});

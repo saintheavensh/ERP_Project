@@ -3,7 +3,11 @@
 
   // `bolehUbahTempo` datang sebagai prop, bukan sebagai field di state:
   // nilainya turunan dari peran pengguna, bukan bagian dari keadaan form.
-  let { state, bolehUbahTempo = false } = $props<{ state: CustomerListState; bolehUbahTempo?: boolean }>();
+  let { state, bolehUbahTempo = false, bolehUbahKategori = false } = $props<{
+    state: CustomerListState;
+    bolehUbahTempo?: boolean;
+    bolehUbahKategori?: boolean;
+  }>();
 </script>
 
 {#if state.showModal}
@@ -23,14 +27,20 @@
           <input id="name" type="text" bind:value={state.newCustomer.name} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="John Doe">
         </div>
         <!-- Tahap-B — kategori pelanggan. Label saja: pelanggan 'sparepart' tetap
-             bisa dipilih untuk tiket servis. -->
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1" for="customer-type">Kategori</label>
-          <select id="customer-type" bind:value={state.newCustomer.customerType} class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="service">Pelanggan Servis</option>
-            <option value="sparepart">Pelanggan Sparepart</option>
-          </select>
-        </div>
+             bisa dipilih untuk tiket servis.
+             R1.10-T4 — hanya ditampilkan bagi peran yang backend memang izinkan
+             (`customer.set_category`). Bagi kasir, pelanggan baru selalu masuk
+             sebagai "Servis" — nilai default yang sama yang dipakai backend,
+             jadi tak ada yang gagal diam-diam. -->
+        {#if bolehUbahKategori}
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1" for="customer-type">Kategori</label>
+            <select id="customer-type" bind:value={state.newCustomer.customerType} class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="service">Pelanggan Servis</option>
+              <option value="sparepart">Pelanggan Sparepart</option>
+            </select>
+          </div>
+        {/if}
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1" for="phone">Nomor Telepon</label>
           <input id="phone" type="tel" bind:value={state.newCustomer.phone} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="08123456789">
