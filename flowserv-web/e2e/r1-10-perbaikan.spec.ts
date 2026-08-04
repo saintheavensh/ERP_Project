@@ -184,3 +184,57 @@ test.describe('R1.10-T1 — Perkiraan Konter bisa diubah dari layar', () => {
     expect((await ditolak.json()).error.code).toBe('INTAKE_ESTIMATE_LOCKED');
   });
 });
+
+// ---------------------------------------------------------------------------
+// T2 — daftar pelanggan menyegarkan diri + toast (uji-R1.9 B4)
+// ---------------------------------------------------------------------------
+
+test.describe('R1.10-T2 — daftar pelanggan menyegarkan diri sendiri', () => {
+  test('pelanggan baru muncul TANPA memuat ulang halaman, dan toast berhasil terlihat', async ({ page }) => {
+    // Bug-nya bukan "data tidak datang" — invalidateAll() sudah dipanggil sejak
+    // dulu. Yang salah: state memegang salinan `data` dari saat halaman pertama
+    // dibuka. Karena itu tes ini TIDAK BOLEH memakai reload() untuk membuktikan
+    // keberhasilannya; reload justru menyembunyikan bug-nya.
+    const nama = 'Pelanggan Uji T2 ' + Date.now();
+
+    await login(page, 'cashier@demo.com');
+    await page.goto('/customers');
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('cell', { name: nama })).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Tambah Pelanggan' }).click();
+    await page.locator('#name').fill(nama);
+    await page.locator('#phone').fill('0812' + Date.now().toString().slice(-8));
+    await page.getByRole('button', { name: 'Save Customer' }).click();
+
+    // Inti T2: barisnya muncul sendiri.
+    await expect(page.getByRole('cell', { name: nama })).toBeVisible();
+
+    const toast = page.getByTestId('customer-toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('berhasil ditambahkan');
+  });
+
+  test('gagal menyimpan memunculkan toast gagal, bukan diam-diam', async ({ page }) => {
+    // Nama satu huruf: ditolak backend (`z.string().min(2)`) TAPI lolos dari
+    // tombol yang hanya mati saat nama kosong — jadi ini kegagalan yang
+    // benar-benar bisa dicapai kasir, bukan yang dikarang untuk tes.
+    //
+    // Telepon duplikat sengaja TIDAK dipakai sebagai pemicu: diperiksa ke
+    // `routes/customers.ts` lebih dulu, dan ternyata nomor kembar memang
+    // DITERIMA (tak ada unique constraint) — tesnya akan hijau karena alasan
+    // yang salah.
+    await login(page, 'cashier@demo.com');
+    await page.goto('/customers');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: 'Tambah Pelanggan' }).click();
+    await page.locator('#name').fill('A');
+    await page.getByRole('button', { name: 'Save Customer' }).click();
+
+    const toast = page.getByTestId('customer-toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).not.toContainText('berhasil ditambahkan');
+  });
+});

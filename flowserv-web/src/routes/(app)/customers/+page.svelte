@@ -8,6 +8,16 @@
   // svelte-ignore state_referenced_locally
   const state = new CustomerListState(data, data.token);
 
+  // R1.10-T2 — menjaga `data` di dalam state tetap yang terbaru. Tanpa ini,
+  // invalidateAll() setelah menambah pelanggan menukar prop `data` halaman tapi
+  // TIDAK salinan yang dipegang state, jadi tabelnya tetap daftar lama sampai
+  // halaman dimuat ulang penuh — persis yang pemilik laporkan di uji-R1.9 B4.
+  // Pola yang sama dengan `/tickets/[id]`, yang sudah membayar pelajaran ini
+  // sejak H15.
+  $effect(() => {
+    state.data = data;
+  });
+
   // R1.9-T1b — lihat komentar di `/customers/[id]`. Membuat pelanggan LANGSUNG
   // dengan hak tempo adalah pintu yang sama, jadi ditutup di tempat yang sama.
   let bolehUbahTempo = $derived(roleCan(data.user?.roleName, 'customer.allow_tempo'));
@@ -35,6 +45,20 @@
       </button>
     </div>
   </div>
+
+  <!-- R1.10-T2 — pemilik (uji-R1.9 B4): "tidak ada toast untuk mengetahui
+       apakah berhasil atau tidaknya penambahan pelanggan". Ditaruh di alur
+       halaman (bukan melayang di atas tabel) supaya tidak menutupi baris yang
+       baru saja ditambahkan — yang justru ingin dilihat pemakainya. -->
+  {#if state.toast}
+    <div
+      data-testid="customer-toast"
+      role="status"
+      class="mb-4 px-4 py-3 rounded-lg text-sm font-medium border {state.toast.tone === 'ok'
+        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+        : 'bg-red-50 text-red-800 border-red-200'}"
+    >{state.toast.text}</div>
+  {/if}
 
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
    <div class="overflow-x-auto">
