@@ -379,3 +379,42 @@ test.describe('R1.10-T4 — kategori pelanggan hanya manajer/pemilik', () => {
     expect(buatLangsung.status()).toBe(403);
   });
 });
+
+// ---------------------------------------------------------------------------
+// T5 — pencarian katalog per kata (uji-R1.9 D2)
+// ---------------------------------------------------------------------------
+
+test.describe('R1.10-T5 — pencarian katalog device per kata', () => {
+  test('"samsung a20" menemukan Galaxy A20 — kalimat pemilik, di layar', async ({ page }) => {
+    // Aturannya sudah dijaga 13 tes unit di lib/devices/__tests__; yang ini
+    // membuktikan kotak cari di halaman benar-benar MEMAKAI aturan itu — bukan
+    // masih memakai pencocokan lamanya.
+    await login(page, 'admin@demo.com');
+    await page.goto('/devices');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('device-search').fill('samsung a20');
+    const baris = page.getByTestId('hasil-cari-baris').filter({ hasText: 'Galaxy A20' });
+    await expect(baris.first()).toBeVisible();
+  });
+
+  test('urutan kata bebas: "a20 samsung" juga menemukannya', async ({ page }) => {
+    await login(page, 'admin@demo.com');
+    await page.goto('/devices');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('device-search').fill('a20 samsung');
+    await expect(
+      page.getByTestId('hasil-cari-baris').filter({ hasText: 'Galaxy A20' }).first(),
+    ).toBeVisible();
+  });
+
+  test('kata yang tidak ada membuat hasilnya kosong, bukan asal cocok', async ({ page }) => {
+    await login(page, 'admin@demo.com');
+    await page.goto('/devices');
+    await page.waitForLoadState('networkidle');
+
+    await page.getByTestId('device-search').fill('samsung iphone');
+    await expect(page.getByTestId('hasil-cari-baris')).toHaveCount(0);
+  });
+});

@@ -2,6 +2,7 @@
   import { API_BASE } from '$lib/api/config';
   import { resolveImageUrl } from '$lib/utils/image';
   import ImageUpload from '$lib/components/inventory/ImageUpload.svelte';
+  import { cocokSemuaKata } from '$lib/devices/match-device';
 
   let { data } = $props();
   let brands = $derived(data.brands || []);
@@ -28,13 +29,17 @@
    * bukan "merek mana yang punya model bernama X".
    */
   let hasilCari = $derived.by(() => {
-    const q = deviceSearch.trim().toLowerCase();
-    if (!q) return [];
+    if (deviceSearch.trim() === '') return [];
     const out: Array<{ brand: any; model: any }> = [];
     for (const brand of brands) {
       for (const model of brand.deviceModels || []) {
-        // Cocokkan ke "<merek> <model>" supaya "samsung a10" juga ketemu.
-        if (`${brand.name} ${model.name}`.toLowerCase().includes(q)) out.push({ brand, model });
+        // R1.10-T5 — dicocokkan PER KATA, bukan sebagai satu tulisan utuh.
+        // Pemilik (uji-R1.9 D2): "samsung a20 tidak di temukan harus samsung
+        // galaxy a20". Aturannya hidup di `lib/devices/match-device.ts` sebagai
+        // fungsi murni bertes unit — salahnya tak memunculkan error apa pun,
+        // cuma hasil yang keliru, jadi mata bukan alat yang tepat untuk
+        // menjaganya.
+        if (cocokSemuaKata(`${brand.name} ${model.name}`, deviceSearch)) out.push({ brand, model });
       }
     }
     return out;
