@@ -45,8 +45,9 @@ fase berikutnya sebelum catatan uji fase sebelumnya dibaca.
 | [`go-live-plan.md`](go-live-plan.md) | **Konteks toko** dari wawancara pemilik 2026-07-24 — jenis usaha, jumlah cabang, cara bayar, cara gaji teknisi, kenapa pindah dari `pos_sederhana` | 📖 Rujukan, jangan dihapus |
 | [`go-live-tahap-b-onward.md`](go-live-tahap-b-onward.md) | Peta prioritas besar menuju pilot 1 cabang (Milestone 0 / B / C / D / E) | 🟢 Aktif |
 | [`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) | **Rencana teknis yang sedang dikerjakan** — Fase R1–R6: peran, halaman tiket per peran, QC, retur, buka/tutup kasir | 🟢 Aktif |
-| [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) | Rencana **+ bukti** fase R1.9 — T1–T6 dari catatan uji R1.8 pemilik | ✅ **Kode selesai 2026-08-04** |
-| [`uji-R1.9-perbaikan.md`](uji-R1.9-perbaikan.md) | **Checklist uji manual pemilik untuk R1.9** — 7 bagian (A–G) + 3 pertanyaan terbuka | 🔴 **MENUNGGU PEMILIK** ← gerbang R2 |
+| [`R1.10-perbaikan-hasil-uji-R1.9.md`](R1.10-perbaikan-hasil-uji-R1.9.md) | **Rencana fase yang sedang dikerjakan** — 5 tugas kecil dari catatan uji R1.9 pemilik | 🟢 **AKTIF** |
+| [`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) | Rencana **+ bukti** fase R1.9 — T1–T6 dari catatan uji R1.8 pemilik | ✅ Selesai & sudah diuji pemilik |
+| [`uji-R1.9-perbaikan.md`](uji-R1.9-perbaikan.md) | Checklist uji R1.9 — **sudah diisi pemilik** 2026-08-05 (commit `21c8bbc`); jadi sumber R1.10 | ✅ Terisi |
 | [`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) | **Cerita lengkap R1 → R1.8**: apa yang direncanakan, apa yang pemilik temukan saat mengujinya, apa yang berubah karenanya. Menggantikan 9 berkas terpisah. *(Namanya masih "…sampai-R1.7" supaya rujukan di `PHASES.md` tidak putus.)* | 📖 Rujukan, jangan dihapus |
 
 **Berkas dirapikan 2026-08-04** atas permintaan pemilik ("jika tidak digunakan hapus saja

@@ -20,9 +20,8 @@
 > antaranya**. Rencana aktifnya
 > **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R6), indeksnya
 > [`plan/README.md`](plan/README.md). Fase yang sedang dikerjakan:
-> **[`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md)** —
-> **kodenya SELESAI 2026-08-04**, sekarang menunggu pemilik menjalankan
-> [`plan/uji-R1.9-perbaikan.md`](plan/uji-R1.9-perbaikan.md). **Itu gerbang R2.**
+> **[`plan/R1.10-perbaikan-hasil-uji-R1.9.md`](plan/R1.10-perbaikan-hasil-uji-R1.9.md)** —
+> putaran perbaikan **kecil** (5 tugas) dari uji R1.9 pemilik, lalu **R2**.
 >
 > **Aturan yang mengikat agent:** jangan pernah mengerjakan dua fase sekaligus, dan
 > **jangan mulai fase berikutnya sebelum membaca berkas `plan/uji-R*.md` yang sudah diisi
@@ -50,6 +49,64 @@
 > `riwayat-R1-sampai-R1.7.md` (yang isinya kini sampai **R1.8**; namanya sengaja tidak
 > diganti supaya 8 tautan di berkas ini tidak putus). **Tautan `plan/uji-R1.*.md` di bawah
 > yang mengarah ke berkas tak ada lagi itu wajar — penanda sejarah, bukan tautan rusak.**
+>
+> - [ ] **R1.10 — Perbaikan hasil uji manual R1.9** (rencana ditulis 2026-08-05) —
+>       [`plan/R1.10-perbaikan-hasil-uji-R1.9.md`](plan/R1.10-perbaikan-hasil-uji-R1.9.md).
+>       Putaran **kecil**: 5 tugas, dua di antaranya bug nyata dan empat sisanya keputusan
+>       pemilik yang tinggal diterapkan. **Dua catatan berubah artinya setelah diperiksa ke
+>       kode & API dulu** — kebiasaan yang sudah menyelamatkan empat fase berturut-turut.
+>       - [ ] **T1 🔴 — Perkiraan Konter tidak bisa diubah dari layar mana pun.** Poin uji
+>             E2: *"di bagian mana saya bisa merubahnya, untuk saat ini masih belum bisa di
+>             ubah nominalnya"*. **Backend R1.9-T4 sudah benar dan dibuktikan ulang hari
+>             ini** (PATCH di tahap Penerimaan → **200**, 450.000 → 500.000; sesudahnya →
+>             **422 `INTAKE_ESTIMATE_LOCKED`**). Yang tak pernah dibuat: **kontrolnya**.
+>             **Ini kali KETIGA bentuk cacat yang sama** — R1 (izin ada, baris menu tidak),
+>             R1.7-T1 (komentar menyebut pengecualian, barisnya tidak ditulis), sekarang T4.
+>             Ketiganya lolos karena sebab yang sama: **tesnya memanggil API, bukan menekan
+>             tombol** (`e2e/r1-9-perbaikan.spec.ts:435` memakai `page.request.patch`).
+>             **Aturan baru yang mengikat mulai R1.10:** kalau aturannya tentang sesuatu yang
+>             ORANG harus lakukan, tesnya **wajib menekan tombolnya** — panggilan API boleh
+>             menemani, tidak boleh menggantikan.
+>       - [ ] **T2 — daftar pelanggan tidak menyegarkan diri + tidak ada toast.** Poin uji
+>             B4. `invalidateAll()` sudah dipanggil dan datanya memang datang; halamannya
+>             yang memegang **salinan** `data` dari saat pertama dibuka. Pola
+>             `new XState(data)` + `// svelte-ignore state_referenced_locally` ada di **19
+>             halaman** — peringatan yang di-`ignore` itu justru yang akan menangkap bug ini,
+>             tapi **hanya halaman Pelanggan yang diperbaiki di sini**; sisanya kandidat
+>             audit **R4** (aturan "jangan refactor modul yang tidak sedang kau ubah").
+>       - [ ] **T3 — `/devices` hanya Super Admin.** Poin uji D10 (*"jangan biarkan di akses
+>             selain oleh super admin"*). Hari ini `/devices` **tidak terdaftar sama sekali**
+>             di `lib/auth/route-access.ts`, dan **membaca** katalog tak digerbangi di backend
+>             (hanya mutasinya). Backend dulu — tapi **intake kasir memakai autocomplete
+>             katalog**, jadi yang ditutup adalah halaman pengelolaannya, bukan endpoint yang
+>             dipakai form intake. Dibuktikan dengan menerima unit sebagai kasir **sesudah**
+>             perubahan.
+>       - [ ] **T4 — kategori pelanggan read-only untuk kasir.** Poin uji A1. Bentuknya
+>             **persis sama** dengan R1.9-T1b (hak tempo), jadi polanya disalin: backend
+>             menolak lebih dulu (kondisional, hanya saat nilainya berubah), layar
+>             menyembunyikan sesudahnya. Kasir tetap **melihat** kategorinya.
+>       - [ ] **T5 — pencarian katalog per kata.** Poin uji D2 (*"samsung a20 tidak di
+>             temukan, harus samsung galaxy a20"*). Sebabnya spesifik: dicocokkan sebagai
+>             **satu tulisan utuh** `"<merek> <model>"`, jadi kata yang dilompati ("Galaxy")
+>             menggagalkannya. Fungsi murni + tes unit di infrastruktur vitest frontend yang
+>             baru ada sejak R1.9 — ini kelas bug yang **tak memunculkan error apa pun**,
+>             cuma hasil yang keliru.
+>       - [ ] **T6 — uji manual pemilik** ← **gerbang R2**
+>
+>       **Yang sengaja didorong ke R2, bukan dilupakan:** poin uji **A3** — pilih device dari
+>       riwayat pelanggan **saat intake**, riwayat pekerjaan per device, dan **hapus fitur
+>       tambah device di halaman pelanggan** (*"agar alurnya lebih rapi dan tidak ada
+>       kebingungan"*). Itu perubahan **alur intake**, dan R2 memang membangun ulang form
+>       servis per tahap — mengerjakannya sekarang berarti mengerjakannya dua kali.
+>       Disetujui pemilik 2026-08-05. Bahannya sudah ada: `GET /v1/customers/:id/assets`
+>       jalan, dan intake sudah menerima `?customerId=&assetId=`. Pemilik sendiri menaruh
+>       E4/E5 ke R2 (*"sepertinya itu thap R2 ya"*).
+>
+>       **Satu catatan pemilik ternyata BUKAN bug:** poin **E1** ditandai `X`, tapi diuji
+>       lewat API sungguhan → intake dengan `intakeEstimatedCost: 450000` **201**, tersimpan
+>       `450000.00`, dibaca balik utuh. `X`-nya luapan dari E2 di bawahnya. Dan **B6** (hak
+>       tempo hanya manager/pemilik) **sudah persis** seperti yang R1.9-T1b bangun — nol
+>       pekerjaan, keputusannya tinggal dicatat final.
 >
 > - [x] **R1.9 — Perbaikan hasil uji manual R1.8** (2026-08-04, kode selesai).
 >       Rencana + bukti: [`plan/R1.9-perbaikan-hasil-uji-R1.8.md`](plan/R1.9-perbaikan-hasil-uji-R1.8.md).
@@ -138,8 +195,12 @@
 >             disisipkan ke fase perbaikan:** ia butuh tabel sesi kas, saldo awal, penutupan
 >             dengan selisih, dan setiap pembayaran POS terhubung ke sesi — menyisipkannya
 >             akan mengulangi persis kesalahan yang membuat aplikasi ini "terlalu rumit".
->       - [ ] **R1.9-T7 — uji manual pemilik**
->             ([`plan/uji-R1.9-perbaikan.md`](plan/uji-R1.9-perbaikan.md)) ← **gerbang R2**
+>       - [x] **R1.9-T7 — uji manual pemilik** (2026-08-05, commit `21c8bbc`). Ketujuh
+>             bagian (A–G) dijalankan. **Alur lama utuh** (G1–G5 lulus) dan bagian C
+>             (piutang per pelanggan) lulus bersih **delapan poin berturut-turut**, termasuk
+>             kedua poin regresi yang sengaja diulang. Kesimpulan pemilik diserahkan kembali:
+>             *"ini tergantung keputusan anda apakah sebaiknya lanjut ke R2 atau perbaiki
+>             dulu catatan di atas"* → diputuskan **R1.10 kecil dulu**, lihat di bawah.
 >
 >       **Bukti R1.9:** **304 unit backend** · **12 unit frontend (infrastruktur BARU)** ·
 >       **21 e2e API** · **Playwright 229/234** (22 baru di `e2e/r1-9-perbaikan.spec.ts`) ·
