@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '../lib/validator';
 import { db } from '../db/connection';
-import { deviceBrands, deviceModels, customerAssets, customers } from '../db/schema';
-import { eq, and, sql, isNull } from 'drizzle-orm';
+import { deviceBrands, deviceModels, customerAssets, customers, productCompatibility } from '../db/schema';
+import { eq, and, sql, isNull, count } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
 import { requirePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
@@ -242,5 +242,133 @@ deviceCatalogRouter.patch('/models/:id', requirePermission('inventory.manage_ite
     return successResponse(c, updated);
   } catch (err: any) {
     return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update device model', [err.message], 500);
+  }
+});
+
+// ===========================================================================
+// R1.9-T3 — ubah & hapus. Pemilik (uji R1.8 D1): "sebaiknya ada tombol hapus di
+// bagian katalog devicenya dan untuk UI dan UXnya juga harus di perbaiki".
+//
+// Digerbangi `inventory.manage_items`, BUKAN `catalog.manage` seperti tertulis
+// di rencana. Alasannya konkret: seluruh mutasi katalog device yang sudah ada
+// (POST /brands, POST /models, PATCH /models) memakai `inventory.manage_items`.
+// Memakai kode berbeda hanya untuk DELETE akan menghasilkan peran yang boleh
+// MEMBUAT tapi tidak boleh MENGHAPUS — bukan keputusan yang disengaja siapa
+// pun, cuma akibat pemilihan kode. Keduanya sama-sama dimiliki Manager +
+// Super Admin, jadi tidak ada perbedaan wewenang nyata.
+// ===========================================================================
+
+const updateBrandSchema = z.object({ name: z.string().min(1).max(100) });
+
+// Sebelum ini merek hanya bisa DIBUAT — salah ketik "Smasung" tidak bisa
+// dibetulkan sama sekali dari layar mana pun.
+deviceCatalogRouter.patch('/brands/:id', requirePermission('inventory.manage_items'), zValidator('json', updateBrandSchema), auditMiddleware({ action: 'device_brand.update', entityType: 'device_brand', entityIdParam: 'id', bodyFields: ['name'] }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const id = c.req.param('id');
+  const { name } = c.req.valid('json');
+
+  try {
+    const existing = await db.query.deviceBrands.findFirst({
+      where: and(eq(deviceBrands.id, id), eq(deviceBrands.tenantId, tenantId)),
+    });
+    if (!existing) return errorResponse(c, 'NOT_FOUND', 'Device brand not found', [], 404);
+
+    const [updated] = await db.update(deviceBrands).set({ name }).where(eq(deviceBrands.id, id)).returning();
+    return successResponse(c, updated);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to update device brand', [err.message], 500);
+  }
+});
+
+/**
+ * DELETE /v1/device-catalog/models/:id
+ *
+ * Menolak dengan ALASAN YANG DISEBUT, bukan 500 dari foreign key — pola yang
+ * sudah dipakai `TEMPLATE_IN_USE` (printer) dan `NODE_IN_USE` (alur). Dua tabel
+ * menunjuk ke sini: `customer_assets.device_model_id` (unit pelanggan yang
+ * pernah masuk) dan `product_compatibility.device_model_id` (kecocokan
+ * sparepart). Menghapus tanpa penjagaan bukan cuma error jelek — ia menghapus
+ * jejak "unit apa yang pernah kami tangani".
+ */
+deviceCatalogRouter.delete('/models/:id', requirePermission('inventory.manage_items'), auditMiddleware({ action: 'device_model.delete', entityType: 'device_model', entityIdParam: 'id' }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const id = c.req.param('id');
+
+  try {
+    // Tenant-scoping lewat join ke merek — deviceModels tak punya tenantId.
+    const owned = await db
+      .select({ id: deviceModels.id })
+      .from(deviceModels)
+      .innerJoin(deviceBrands, eq(deviceModels.deviceBrandId, deviceBrands.id))
+      .where(and(eq(deviceModels.id, id), eq(deviceBrands.tenantId, tenantId)));
+    if (owned.length === 0) return errorResponse(c, 'NOT_FOUND', 'Device model not found', [], 404);
+
+    const [{ jumlah: dipakaiUnit }] = await db
+      .select({ jumlah: count() })
+      .from(customerAssets)
+      .where(eq(customerAssets.deviceModelId, id));
+
+    const [{ jumlah: dipakaiSparepart }] = await db
+      .select({ jumlah: count() })
+      .from(productCompatibility)
+      .where(eq(productCompatibility.deviceModelId, id));
+
+    if (dipakaiUnit > 0 || dipakaiSparepart > 0) {
+      const sebab: string[] = [];
+      if (dipakaiUnit > 0) sebab.push(`${dipakaiUnit} unit pelanggan`);
+      if (dipakaiSparepart > 0) sebab.push(`${dipakaiSparepart} kecocokan sparepart`);
+      return errorResponse(
+        c,
+        'DEVICE_MODEL_IN_USE',
+        `Model ini masih dipakai oleh ${sebab.join(' dan ')}, jadi tidak bisa dihapus.`,
+        [{ customerAssets: dipakaiUnit, productCompatibility: dipakaiSparepart }],
+        422,
+      );
+    }
+
+    await db.delete(deviceModels).where(eq(deviceModels.id, id));
+    return c.body(null, 204);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete device model', [err.message], 500);
+  }
+});
+
+/**
+ * DELETE /v1/device-catalog/brands/:id
+ *
+ * Sengaja TIDAK menghapus model-modelnya sekalian. Menghapus satu merek yang
+ * berisi ratusan model (katalog di mesin ini punya 1.784) lewat satu klik
+ * adalah kerusakan yang tak bisa dibatalkan; menolaknya sambil menyebut
+ * jumlahnya memaksa keputusan itu diambil sadar, model demi model.
+ */
+deviceCatalogRouter.delete('/brands/:id', requirePermission('inventory.manage_items'), auditMiddleware({ action: 'device_brand.delete', entityType: 'device_brand', entityIdParam: 'id' }), async (c) => {
+  const { tenantId } = getAuthContext(c);
+  const id = c.req.param('id');
+
+  try {
+    const existing = await db.query.deviceBrands.findFirst({
+      where: and(eq(deviceBrands.id, id), eq(deviceBrands.tenantId, tenantId)),
+    });
+    if (!existing) return errorResponse(c, 'NOT_FOUND', 'Device brand not found', [], 404);
+
+    const [{ jumlah }] = await db
+      .select({ jumlah: count() })
+      .from(deviceModels)
+      .where(eq(deviceModels.deviceBrandId, id));
+
+    if (jumlah > 0) {
+      return errorResponse(
+        c,
+        'DEVICE_BRAND_HAS_MODELS',
+        `Merek ini masih punya ${jumlah} model. Hapus model-modelnya dulu.`,
+        [{ deviceModels: jumlah }],
+        422,
+      );
+    }
+
+    await db.delete(deviceBrands).where(eq(deviceBrands.id, id));
+    return c.body(null, 204);
+  } catch (err: any) {
+    return errorResponse(c, 'INTERNAL_ERROR', 'Failed to delete device brand', [err.message], 500);
   }
 });
