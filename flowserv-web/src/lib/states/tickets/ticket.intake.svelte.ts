@@ -372,4 +372,41 @@ export class TicketIntakeState {
       this.printMessage = 'Tiket tersimpan, tapi cetak label gagal. Cetak manual dari halaman tiket.';
     }
   }
+
+  /**
+   * R1.9-T5 — kasir MEMILIH sendiri apa yang dicetak.
+   *
+   * Pemilik (uji R1.8 F5): "biarkan ini kasir yang memilih ada opsi cetak
+   * nota". Sebelum ini halaman Terima Unit tidak punya tombol cetak sama sekali
+   * — yang ada hanya cetak otomatis mengikuti `flow_nodes.autoPrintDocuments`,
+   * dan tombol manual di halaman DETAIL tiket, padahal sejak R1.5D kasir
+   * sengaja tidak lagi dilempar ke sana. Jadi kasir memang tak punya cara
+   * memilih.
+   *
+   * Memakai helper `autoPrint()` yang SAMA — bukan jalur cetak kedua. Aturan
+   * ini sudah menyelamatkan R1.5D dan R1.6-T2: begitu ada dua jalur, salah
+   * satunya akan kehilangan sesuatu (dulu `Idempotency-Key`; di sini pemilihan
+   * template per cabang).
+   *
+   * Cetak otomatis TIDAK dicabut — pemilik memang meminta label otomatis
+   * (uji R1.5 A7), jadi mematikannya diam-diam justru membatalkan permintaan
+   * sebelumnya. Pertanyaan "masih perlu otomatis?" ada di checklist uji R1.9.
+   */
+  cetakSedangJalan = $state<string | null>(null);
+
+  async cetakDokumen(ticketId: string, documentType: AutoPrintDocumentType) {
+    this.cetakSedangJalan = `${ticketId}:${documentType}`;
+    this.printMessage = '';
+    try {
+      const label = DOCUMENT_LABELS[documentType] ?? documentType;
+      const result = await autoPrint(this.token, documentType, ticketId);
+      // `autoPrint` tidak pernah melempar; agen mati menghasilkan status
+      // 'agent-offline' berikut pesan yang bisa dibaca, bukan halaman
+      // menggantung.
+      this.printMessage =
+        summarizeAutoPrint([{ label, result }]) ?? `${label} terkirim ke printer.`;
+    } finally {
+      this.cetakSedangJalan = null;
+    }
+  }
 }

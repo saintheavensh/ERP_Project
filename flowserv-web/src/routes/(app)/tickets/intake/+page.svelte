@@ -44,6 +44,31 @@
             {#if state.printMessage}
               <p class="text-sm mt-1 text-amber-700" data-testid="intake-print-status">{state.printMessage}</p>
             {/if}
+
+            <!-- R1.9-T5 — kasir memilih sendiri apa yang dicetak (uji R1.8 F5).
+                 Jalur cetaknya SAMA dengan cetak otomatis (`autoPrint()`), jadi
+                 pemilihan printer & template per cabang tak bisa berbeda antara
+                 keduanya. -->
+            <div class="flex flex-wrap gap-2 mt-3">
+              <button
+                type="button"
+                class="text-xs font-medium border border-green-300 text-green-900 bg-white rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors disabled:opacity-50"
+                disabled={state.cetakSedangJalan !== null}
+                onclick={() => state.cetakDokumen(state.sukses!.id, 'label')}
+                data-testid="intake-cetak-label"
+              >
+                {state.cetakSedangJalan === `${state.sukses.id}:label` ? 'Mencetak…' : 'Cetak Label'}
+              </button>
+              <button
+                type="button"
+                class="text-xs font-medium border border-green-300 text-green-900 bg-white rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors disabled:opacity-50"
+                disabled={state.cetakSedangJalan !== null}
+                onclick={() => state.cetakDokumen(state.sukses!.id, 'tanda_terima')}
+                data-testid="intake-cetak-tanda-terima"
+              >
+                {state.cetakSedangJalan === `${state.sukses.id}:tanda_terima` ? 'Mencetak…' : 'Cetak Tanda Terima'}
+              </button>
+            </div>
           </div>
         </div>
         <a href="/tickets/{state.sukses.id}"
@@ -90,6 +115,31 @@
             <span class="shrink-0 font-mono text-xs text-slate-500">{item.ticketNumber}</span>
           </a>
         {/each}
+      </div>
+      <!-- R1.9-T5 — cetak ulang untuk unit yang sudah lewat: label copot, atau
+           pelanggan minta tanda terimanya lagi. Baris di atas adalah TAUTAN ke
+           halaman tiket, jadi tombolnya di luar tautan (tombol di dalam <a>
+           adalah HTML yang tak sah dan klik-nya ikut membuka tautannya). -->
+      <div class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+        <span class="text-xs text-slate-500">Cetak ulang untuk unit terakhir:</span>
+        <button
+          type="button"
+          class="text-xs font-medium border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          disabled={state.cetakSedangJalan !== null}
+          onclick={() => state.cetakDokumen(state.riwayat[0].id, 'label')}
+          data-testid="riwayat-cetak-label"
+        >
+          Cetak Label
+        </button>
+        <button
+          type="button"
+          class="text-xs font-medium border border-slate-200 text-slate-700 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors disabled:opacity-50"
+          disabled={state.cetakSedangJalan !== null}
+          onclick={() => state.cetakDokumen(state.riwayat[0].id, 'tanda_terima')}
+          data-testid="riwayat-cetak-tanda-terima"
+        >
+          Cetak Tanda Terima
+        </button>
       </div>
     </div>
   {/if}
