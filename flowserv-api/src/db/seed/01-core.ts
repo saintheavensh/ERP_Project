@@ -70,6 +70,12 @@ const PERMISSIONS = [
   // Admin-only, pola sama dengan permPrinterManage: ini mengubah cara SELURUH
   // tiket berjalan, jadi bukan wewenang manajer cabang.
   { id: IDS.permFlowManage, code: 'flow.manage', description: 'Design service flow templates: stages, branching, and per-stage capabilities' },
+  // R1.10-T3 — katalog device (merek & model HP). Super Admin saja atas
+  // keputusan pemilik (uji-R1.9 D10), jadi sengaja TIDAK ada di daftar grant
+  // mana pun di bawah — pola sama dengan permAuditView/permPrinterManage.
+  // Membaca katalog (GET brands/models) tetap terbuka: form Terima Unit milik
+  // kasir memakainya untuk autocomplete.
+  { id: IDS.permDeviceCatalogManage, code: 'device_catalog.manage', description: 'Manage the device catalog (phone brands and models)' },
   { id: IDS.permTicketQc, code: 'ticket.qc', description: 'Fill in a stage checklist (QC) on a ticket' },
   // R1.9-T1b — memberi seorang pelanggan hak berutang. Manager + Super Admin,
   // BUKAN kasir. Ditegakkan kondisional (hanya saat allowTempo benar-benar

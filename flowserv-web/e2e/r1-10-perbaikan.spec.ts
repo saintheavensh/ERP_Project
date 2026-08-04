@@ -238,3 +238,54 @@ test.describe('R1.10-T2 — daftar pelanggan menyegarkan diri sendiri', () => {
     await expect(toast).not.toContainText('berhasil ditambahkan');
   });
 });
+
+// ---------------------------------------------------------------------------
+// T3 — /devices hanya Super Admin (uji-R1.9 D10)
+// ---------------------------------------------------------------------------
+
+test.describe('R1.10-T3 — katalog device hanya untuk Super Admin', () => {
+  test('kasir mengetik /devices dan DIPENTALKAN', async ({ page }) => {
+    await login(page, 'cashier@demo.com');
+    await page.goto('/devices');
+    await expect(page).not.toHaveURL(/\/devices/);
+    await expect(page.getByRole('heading', { name: 'Katalog Device' })).toHaveCount(0);
+  });
+
+  test('manager juga dipentalkan — ia punya inventory.manage_items, tapi bukan izin ini', async ({ page }) => {
+    await login(page, 'manager@demo.com');
+    await page.goto('/devices');
+    await expect(page).not.toHaveURL(/\/devices/);
+  });
+
+  test('Super Admin tetap masuk dan halamannya utuh', async ({ page }) => {
+    await login(page, 'admin@demo.com');
+    await page.goto('/devices');
+    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(/\/devices$/);
+    await expect(page.getByRole('heading', { name: 'Katalog Device' })).toBeVisible();
+    await expect(page.getByTestId('device-search')).toBeVisible();
+  });
+
+  test('REGRESI — kasir tetap bisa menerima unit, autocomplete device tetap hidup', async ({ page }) => {
+    // Ini tes yang membuat T3 boleh ditandai selesai. GET brands/models sengaja
+    // TIDAK ikut digerbangi justru karena form ini memanggilnya; menutup
+    // endpoint bacanya akan mematikan Terima Unit untuk kasir, dan kerusakan itu
+    // baru terlihat saat toko sedang ramai.
+    await login(page, 'cashier@demo.com');
+    await page.goto('/tickets/intake');
+    await page.waitForLoadState('networkidle');
+
+    await page.locator('#name').fill('Uji T3 Layar ' + Date.now());
+    await page.locator('#type').selectOption('Smartphone');
+
+    // Mengetik di sini memicu GET /device-catalog/brands — endpoint yang
+    // sengaja TIDAK ikut digerbangi T3. Kalau ia ikut ditutup, autocomplete-nya
+    // mati diam-diam dan yang tersisa cuma form yang terasa "kadang jalan".
+    await page.locator('#brand').fill('Samsung');
+    await page.locator('#model').fill('Galaxy A10');
+    await page.locator('#complaint').fill('mati total');
+
+    await page.getByRole('button', { name: /Simpan & Terima Unit/i }).click();
+    await expect(page.getByText(/berhasil dibuat/i)).toBeVisible({ timeout: 20_000 });
+  });
+});

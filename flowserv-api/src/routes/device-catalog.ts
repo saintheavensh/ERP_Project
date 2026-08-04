@@ -39,7 +39,7 @@ deviceCatalogRouter.use('*', requireAuth);
  * Dikelompokkan per (merek, model) dan diurutkan dari yang paling sering
  * muncul — yang sering datang itulah yang paling layak dimasukkan katalog.
  */
-deviceCatalogRouter.get('/uncatalogued', requirePermission('catalog.manage'), async (c) => {
+deviceCatalogRouter.get('/uncatalogued', requirePermission('device_catalog.manage'), async (c) => {
   const { tenantId } = getAuthContext(c);
 
   try {
@@ -118,7 +118,7 @@ deviceCatalogRouter.get('/brands', async (c) => {
 
 const createBrandSchema = z.object({ name: z.string().min(1).max(100) });
 
-deviceCatalogRouter.post('/brands', requirePermission('inventory.manage_items'), zValidator('json', createBrandSchema), auditMiddleware({ action: 'device_brand.create', entityType: 'device_brand', bodyFields: ['name'] }), async (c) => {
+deviceCatalogRouter.post('/brands', requirePermission('device_catalog.manage'), zValidator('json', createBrandSchema), auditMiddleware({ action: 'device_brand.create', entityType: 'device_brand', bodyFields: ['name'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const { name } = c.req.valid('json');
 
@@ -186,7 +186,7 @@ const createModelSchema = z.object({
   specs: specsSchema,
 });
 
-deviceCatalogRouter.post('/models', requirePermission('inventory.manage_items'), zValidator('json', createModelSchema), auditMiddleware({ action: 'device_model.create', entityType: 'device_model', bodyFields: ['deviceBrandId', 'name', 'imageUrl'] }), async (c) => {
+deviceCatalogRouter.post('/models', requirePermission('device_catalog.manage'), zValidator('json', createModelSchema), auditMiddleware({ action: 'device_model.create', entityType: 'device_model', bodyFields: ['deviceBrandId', 'name', 'imageUrl'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
 
@@ -215,7 +215,7 @@ const updateModelSchema = z.object({
   specs: specsSchema,
 });
 
-deviceCatalogRouter.patch('/models/:id', requirePermission('inventory.manage_items'), zValidator('json', updateModelSchema), auditMiddleware({ action: 'device_model.update', entityType: 'device_model', entityIdParam: 'id' }), async (c) => {
+deviceCatalogRouter.patch('/models/:id', requirePermission('device_catalog.manage'), zValidator('json', updateModelSchema), auditMiddleware({ action: 'device_model.update', entityType: 'device_model', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
   const data = c.req.valid('json');
@@ -262,7 +262,7 @@ const updateBrandSchema = z.object({ name: z.string().min(1).max(100) });
 
 // Sebelum ini merek hanya bisa DIBUAT — salah ketik "Smasung" tidak bisa
 // dibetulkan sama sekali dari layar mana pun.
-deviceCatalogRouter.patch('/brands/:id', requirePermission('inventory.manage_items'), zValidator('json', updateBrandSchema), auditMiddleware({ action: 'device_brand.update', entityType: 'device_brand', entityIdParam: 'id', bodyFields: ['name'] }), async (c) => {
+deviceCatalogRouter.patch('/brands/:id', requirePermission('device_catalog.manage'), zValidator('json', updateBrandSchema), auditMiddleware({ action: 'device_brand.update', entityType: 'device_brand', entityIdParam: 'id', bodyFields: ['name'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
   const { name } = c.req.valid('json');
@@ -290,7 +290,7 @@ deviceCatalogRouter.patch('/brands/:id', requirePermission('inventory.manage_ite
  * sparepart). Menghapus tanpa penjagaan bukan cuma error jelek — ia menghapus
  * jejak "unit apa yang pernah kami tangani".
  */
-deviceCatalogRouter.delete('/models/:id', requirePermission('inventory.manage_items'), auditMiddleware({ action: 'device_model.delete', entityType: 'device_model', entityIdParam: 'id' }), async (c) => {
+deviceCatalogRouter.delete('/models/:id', requirePermission('device_catalog.manage'), auditMiddleware({ action: 'device_model.delete', entityType: 'device_model', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 
@@ -341,7 +341,7 @@ deviceCatalogRouter.delete('/models/:id', requirePermission('inventory.manage_it
  * adalah kerusakan yang tak bisa dibatalkan; menolaknya sambil menyebut
  * jumlahnya memaksa keputusan itu diambil sadar, model demi model.
  */
-deviceCatalogRouter.delete('/brands/:id', requirePermission('inventory.manage_items'), auditMiddleware({ action: 'device_brand.delete', entityType: 'device_brand', entityIdParam: 'id' }), async (c) => {
+deviceCatalogRouter.delete('/brands/:id', requirePermission('device_catalog.manage'), auditMiddleware({ action: 'device_brand.delete', entityType: 'device_brand', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const id = c.req.param('id');
 

@@ -94,6 +94,23 @@ export const IDS = {
   // kondisional (hanya saat nilai allowTempo berubah) — pola sama dengan
   // permPosApplyDiscount di atas.
   permCustomerAllowTempo: 'd1000000-0000-4000-8000-000000000031',
+  // R1.10-T3 — mengelola KATALOG DEVICE (merek & model HP). Super Admin saja,
+  // pola sama dengan permPrinterManage/permFlowManage.
+  //
+  // Kenapa izin sendiri, bukan memakai `inventory.manage_items` yang sudah
+  // menggerbanginya: pemilik memutuskan halaman ini "jangan biarkan di akses
+  // selain oleh super admin" (uji-R1.9 D10), sedangkan Manager MEMANG memegang
+  // `inventory.manage_items` dan membutuhkannya untuk mengelola sparepart.
+  // Mencabut izin itu dari Manager akan mematikan pengelolaan stok sekalian;
+  // menahan halamannya di frontend saja akan membuat tabel `route-access.ts`
+  // lebih ketat daripada backend — persis yang dilarang aturan mengikat di
+  // berkas itu ("kalau aturan di sini tak punya padanan backend, perbaiki
+  // backend-nya, bukan tabel ini").
+  //
+  // Yang TIDAK ikut digerbangi: `GET /device-catalog/brands` dan `/models`.
+  // Keduanya dipakai autocomplete di form Terima Unit, jadi kasir wajib tetap
+  // bisa memanggilnya — yang ditutup adalah pengelolaannya, bukan pemakaiannya.
+  permDeviceCatalogManage: 'd1000000-0000-4000-8000-000000000032',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',

@@ -77,6 +77,24 @@ const RESTRICTED: { prefix: string; permission: string; roles: readonly string[]
     roles: ['Super Admin'],
   },
   {
+    // R1.10-T3 — pemilik (uji-R1.9 D10): "jangan biarkan di akses selain oleh
+    // super admin". Sebelum ini `/devices` tidak terdaftar di sini sama sekali,
+    // jadi siapa pun yang tahu alamatnya bisa membukanya.
+    //
+    // Backend: `device_catalog.manage`, izin BARU yang dibuat justru supaya
+    // baris ini punya padanan nyata (aturan mengikat di kepala berkas ini).
+    // Memakai `inventory.manage_items` yang lama tidak bisa: Manager
+    // memegangnya dan memang membutuhkannya untuk sparepart, jadi barisnya akan
+    // lebih ketat daripada backend — kebohongan yang persis dilarang di sini.
+    //
+    // Membaca katalog TIDAK ikut ditutup: form Terima Unit milik kasir memanggil
+    // GET /device-catalog/brands|models untuk autocomplete. Yang ditutup adalah
+    // halaman pengelolaannya.
+    prefix: '/devices',
+    permission: 'device_catalog.manage',
+    roles: ['Super Admin'],
+  },
+  {
     // R1.5B — intake belongs to the counter, not the bench. Backend:
     // requirePermission('ticket.create') on POST /v1/tickets/intake, which
     // Technician no longer holds. The button is hidden on /tickets too; this
