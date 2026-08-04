@@ -122,11 +122,11 @@ R1.6  Perbaikan hasil uji R1.5    ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.7  Perbaikan hasil uji R1.6    ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.8  Perbaikan hasil uji R1.7    ✅ SELESAI 2026-08-03 — sudah diuji pemilik, TAK ADA yang gagal
 R1.9  Perbaikan hasil uji R1.8    🔴 SEDANG DIKERJAKAN — R1.9-perbaikan-hasil-uji-R1.8.md
-R2    Halaman tiket per peran     ⛔ terkunci: butuh aturan per tahap dari pemilik
+R2    Halaman tiket per peran     🔓 TERBUKA 2026-08-04 — aturan per tahap sudah dijawab
 R3    QC jadi modul sendiri       🔴 besar, sentuh DB + BE + FE
 R4    Bersih-bersih hasil audit   🟢 kecil, bisa disisipkan kapan saja
 R5    Retur / tukar barang        ⏸️  tunggu pilot
-R6    Buka/Tutup Kasir (FIN-002)  🆕 diminta pemilik 2026-08-04; urutan belum diputuskan
+R6    Buka/Tutup Kasir (FIN-002)  🆕 diminta pemilik 2026-08-04 — dikerjakan SETELAH R2
 ```
 
 **R1 melahirkan lima fase perbaikan, dan itu bukan kegagalan rencana — itu rencananya
@@ -375,9 +375,42 @@ Bagian yang ada sekarang (dari pembacaan berkas):
 - [ ] Jalankan ulang `p4-ticket-detail-polish`, `intake-to-close`, `tahap-b-qc-checklist`,
       `tahap-a-change-order`, `tahap-b-pos-service-flow`
 
+## Task R2.4 — Form per tahap + gerbang "data tahapnya lengkap" 🔓
+
+**Terbuka sejak 2026-08-04** — aturannya akhirnya dijawab pemilik setelah ditanyakan empat
+kali. Ini yang pemilik sebut tiga kali dengan kata berbeda: *"buat per step jadi tiap step
+itu ada requirement data yang harus di isi, nanti si teknisinya tinggal next next next jadi
+tidak bingung"*.
+
+| Tahap | Wajib sebelum tombol lanjut boleh ditekan | Status |
+|---|---|---|
+| **Terima Unit** (kasir) | nama, no. HP, jenis+merek+model, **keluhan**. Sandi/pola **tidak** | ✅ sudah dibangun R1.8-T1, sudah diuji lulus |
+| **Diagnosa** (teknisi) | hasil diagnosa **+ perkiraan biaya**. Lama pengerjaan **tidak** | ⏳ |
+| **Pengerjaan** (teknisi) | **tidak ada yang wajib** | ⏳ |
+| **QC** | **semua** baris checklist terjawab | ⏳ |
+| **Selesai / Serah Terima** (kasir) | nota sudah dibuat. **Boleh ada sisa** (tempo) | ⏳ |
+
+- [ ] Gerbang ditegakkan di **`POST /v1/tickets/:id/transition`**, bersebelahan dengan
+      `assertStageAllows()` milik S5 → **422 `STAGE_REQUIREMENTS_NOT_MET`** yang **menyebut
+      apa yang kurang**, bukan penolakan bisu
+- [ ] Aturannya **diturunkan dari `stage_kind`**, bukan sakelar bebas per tahap — supaya
+      tahap yang disisipkan lewat editor alur ikut benar tanpa dikonfigurasi ulang (pola
+      yang sama dengan S5; tiga sakelar bebas = ~260.000 bentuk alur yang tak pernah diuji)
+- [ ] Fungsi murni + tes unit **sebelum** disambungkan ke HTTP, satu tes per baris tabel
+- [ ] Layar per tahap ("sekarang tahap apa, isi apa", bisa **next & prev**) dibangun di atas
+      gerbang yang sudah jalan — **bukan sebaliknya**
+
+**⚠️ Perhatian ekstra — satu baris tabel ini belum bisa berarti apa-apa hari ini:**
+"QC: semua baris terjawab" menuntut jawaban bisa dibedakan antara *belum diperiksa* dan
+*diperiksa, hasilnya jelek*. Sekarang keduanya sama-sama `checked: false` (lihat temuan T4
+di bagian 0). Sampai **R3** memisahkannya, gerbang QC hanya bisa menuntut "tiap baris sudah
+disentuh" — dan itu **harus dikatakan apa adanya ke pemilik**, tidak boleh dilaporkan
+sebagai "QC lulus". Ini juga alasan tambahan kenapa R3 mengikuti R2 langsung.
+
 **Definition of Done R2:**
 tampilan Super Admin tak berubah (dibuktikan spec lama lulus tanpa diedit) · spec per-peran
-lulus · `svelte-check` 0 error · **checklist uji manual R2 dijalankan pemilik**
+lulus · gerbang tahap ditolak **via curl**, bukan cuma tombolnya mati · `svelte-check` 0
+error · **checklist uji manual R2 dijalankan pemilik**
 
 ---
 
@@ -618,9 +651,10 @@ tabel, endpoint, maupun layar.
    **Jangan disentuh sebelum R6 benar-benar ada** — mengganti pemicu tanggal dengan pemicu
    sesi yang belum dibangun akan membuat nomor antrian berhenti jalan sama sekali.
 
-**Urutannya belum diputuskan** — sebelum atau sesudah R2 adalah pilihan pemilik. Yang jelas
-ini **bukan tambalan**: ia menyentuh POS, piutang, dan buku kas sekaligus, jadi tidak boleh
-disisipkan ke fase perbaikan.
+**Urutannya: SETELAH R2** (keputusan pemilik 2026-08-04). Alasannya konsisten dengan yang
+pemilik sebut tiga kali — form servis per langkah adalah yang paling mengganggu pemakaian
+harian, jadi ia lebih dulu. Ini juga **bukan tambalan**: R6 menyentuh POS, piutang, dan buku
+kas sekaligus, jadi tidak boleh disisipkan ke fase perbaikan mana pun.
 
 ---
 
@@ -681,13 +715,13 @@ arah.
 R1 … R1.8  Peran, akses, dan lima putaran perbaikan  ✅ semuanya sudah diuji pemilik
 R1.9       Perbaikan hasil uji R1.8   ← SEDANG DIKERJAKAN
     └─ uji manual R1.9 → catatan Anda
-R2  Halaman tiket per peran  ← butuh jawaban K1, K2 + aturan wajib per tahap
+R2  Halaman tiket per peran  ← aturan wajib per tahap SUDAH dijawab (2026-08-04)
     └─ uji manual R2 → catatan Anda
 R3  QC modul sendiri         ← butuh jawaban K3, K4 + jawaban pertanyaan QC
     └─ uji manual R3 → catatan Anda
 R4  Bersih-bersih audit      ← butuh jawaban K5 (kecil, bisa kapan saja)
 R5  Retur / tukar            ⏸️ setelah pilot menunjukkan bentuk nyatanya
-R6  Buka/Tutup Kasir         🆕 urutannya keputusan Anda: sebelum atau sesudah R2
+R6  Buka/Tutup Kasir         🆕 setelah R2 (keputusan pemilik 2026-08-04)
 
 Paralel, dijalankan Anda, tak perlu kode:
     · 6D.1  Test cetak fisik

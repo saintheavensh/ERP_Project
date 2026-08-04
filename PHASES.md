@@ -154,16 +154,22 @@
 >       `p6b-print:71`, `printer-scan:36`, `pos-service-flow:80` semuanya menguji perilaku
 >       **saat agen printer MATI**, sedangkan di mesin ini agennya menyala.
 >
->       **⛔ R2 terkunci, bukan sekadar menunggu.** Isinya sudah lengkap (form per tahap,
->       alur "setelah diagnosis kembali ke kasir", minta pindah teknisi, laporan bulanan
->       teknisi), tapi satu butir — *"tiket tidak boleh maju sebelum data tahapnya lengkap"* —
+>       **🔓 R2 TIDAK LAGI TERKUNCI — dijawab pemilik 2026-08-04.** Ia terkunci lima fase
+>       lamanya oleh satu butir: *"tiket tidak boleh maju sebelum data tahapnya lengkap"*
 >       menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**. Pertanyaannya
->       **sudah diajukan empat kali** (dua kali sebagai tabel kosong, dua kali sebagai
->       usul-tinggal-dicoret) dan belum dijawab. Menebaknya lalu menegakkan tebakan itu
->       persis kesalahan yang S5 sudah pernah buat dan cabut.
->       **Yang tersisa tinggal empat baris:** baris pertama (Terima Unit) sudah ditegakkan
->       R1.8-T1 **dan** sudah pemilik uji lulus di R1.8 poin A — jadi tinggal Diagnosa,
->       Pengerjaan, QC, dan Serah Terima.
+>       diajukan **empat kali** — dua kali sebagai tabel kosong (tak pernah diisi), dua kali
+>       sebagai usul-tinggal-dicoret. Yang akhirnya berhasil: menanyakannya **langsung, satu
+>       pertanyaan, dengan usul yang sudah jadi**, bukan sebagai tabel di berkas.
+>       Aturan yang disetujui tanpa koreksi: **Diagnosa** = hasil diagnosa + perkiraan biaya
+>       (lama pengerjaan tidak wajib) · **Pengerjaan** = tidak ada yang wajib ·
+>       **QC** = semua baris terjawab · **Serah Terima** = nota sudah dibuat, boleh ada sisa.
+>       Baris **Terima Unit** sudah ditegakkan R1.8-T1 dan sudah diuji lulus.
+>       Rinciannya + tiga aturan yang mengikat pembangunnya (backend dulu; diturunkan dari
+>       `stage_kind`, bukan sakelar bebas; baris QC baru berarti setelah R3 memisahkan
+>       "belum diperiksa" dari "diperiksa, jelek") di `plan/tahap-b-peran-dan-qc.md` Task R2.4.
+>       **Dua keputusan pemilik lain di hari yang sama:** perkiraan biaya konter **tidak boleh
+>       ditimpa** teknisi (keduanya tampil berdampingan + selisihnya → R1.9-T4), dan
+>       **Fase R6 (Buka/Tutup Kasir, FIN-002) dikerjakan SETELAH R2.**
 >
 > - [x] **R1.6 — Perbaikan hasil uji manual R1.5** (2026-08-01, kode selesai).
 >       Pemilik menjalankan [`plan/riwayat-R1-sampai-R1.7.md`](plan/riwayat-R1-sampai-R1.7.md) dan

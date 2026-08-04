@@ -73,11 +73,11 @@ R1.6 Perbaikan hasil uji R1.5     ✅ SELESAI 2026-08-01 — sudah diuji pemilik
 R1.7 Perbaikan hasil uji R1.6     ✅ SELESAI 2026-08-01 — sudah diuji pemilik (14/18 lulus bersih)
 R1.8 Perbaikan hasil uji R1.7     ✅ SELESAI 2026-08-03 — sudah diuji pemilik (A-G, TAK ADA yang gagal)
 R1.9 Perbaikan hasil uji R1.8     🔴 SEDANG DIKERJAKAN — R1.9-perbaikan-hasil-uji-R1.8.md
-R2   Halaman tiket per peran      ⛔ TERKUNCI - butuh aturan per tahap dari pemilik
+R2   Halaman tiket per peran      🔓 TERBUKA 2026-08-04 — aturan per tahap sudah dijawab pemilik
 R3   QC jadi modul sendiri        ⏳ menunggu catatan uji R2
 R4   Bersih-bersih hasil audit    🟢 kecil, bisa disisipkan kapan saja
 R5   Retur (pelanggan + supplier) ⏸️  menunggu bentuk retur nyata dari pilot
-R6   Buka/Tutup Kasir (FIN-002)   🆕 diminta pemilik 2026-08-04 — urutannya belum diputuskan
+R6   Buka/Tutup Kasir (FIN-002)   🆕 diminta pemilik 2026-08-04 — dikerjakan SETELAH R2
 ```
 
 **R1.8 adalah putaran pertama tanpa satu pun poin GAGAL.** Keenam catatan pemilik yang jadi
@@ -85,31 +85,36 @@ R1.9 berbunyi *"sudah benar, dan sekarang saya butuh …"* — kecuali satu yang
 (**A6**: kasir punya izin `customer.manage` tapi tak punya baris menu ke halaman
 Pelanggan — bentuknya persis bug R1 yang memulai cara kerja fase-demi-fase ini).
 
-**⛔ Kenapa R2 TERKUNCI, bukan sekadar "menunggu".** Daftar isinya sudah lengkap dan
-terkumpul dari tiga putaran uji (rinciannya di
-[`riwayat-R1-sampai-R1.7.md`](riwayat-R1-sampai-R1.7.md) bagian akhir): form per tahap,
-alur "setelah diagnosis kembali ke kasir", tombol minta pindah teknisi, laporan bulanan
-teknisi, teknisi tidak melihat harga modal.
+**🔓 R2 sudah TERBUKA (2026-08-04).** Ia terkunci lima fase lamanya oleh satu butir —
+*"tiket tidak boleh maju sebelum data tahapnya lengkap"* — yang menuntut pemilik menentukan
+**apa yang wajib terisi di tiap tahap**. Pertanyaannya diajukan **empat kali**: dua kali
+sebagai tabel kosong (tak pernah diisi), lalu dua kali sebagai usul-tinggal-dicoret setelah
+disimpulkan bahwa tabel kosong menuntut pemilik merancang aturan dari nol. Yang akhirnya
+berhasil: **menanyakannya langsung, satu pertanyaan, dengan usul yang sudah jadi.**
 
-Satu butir menghalangi sisanya: **"tiket tidak boleh maju sebelum data tahapnya lengkap"**
-menuntut pemilik menentukan **apa yang wajib terisi di tiap tahap**.
+Aturan yang disetujui pemilik tanpa koreksi:
 
-**Pertanyaannya diubah bentuk 2026-08-02** setelah dua kali diajukan sebagai tabel kosong
-dan tak pernah diisi. Itu kesalahan cara bertanya, bukan kelalaian pemilik: tabel kosong
-menuntut merancang aturan dari nol, sementara pemilik menjawabnya dengan mudah begitu
-pertanyaannya konkret dan sedang dipakai — poin D1 di uji R1.7 (*"buat keluhan / kerusakan
-jadi kolom wajib di isi"*) sebenarnya adalah jawaban baris pertama tabel itu, ditulis
-sambil menguji. Bentuk barunya (agent mengusulkan, pemilik tinggal mencoret) juga belum
-terjawab di uji R1.8 — jadi **empat kali diajukan**.
+| Tahap | Wajib sebelum tombol lanjut boleh ditekan |
+|---|---|
+| **Terima Unit** (kasir) | nama, no. HP, jenis+merek+model, **keluhan** — ✅ sudah dibangun R1.8-T1 & sudah diuji lulus |
+| **Diagnosa** (teknisi) | hasil diagnosa **+ perkiraan biaya** |
+| **Pengerjaan** (teknisi) | **tidak ada yang wajib** |
+| **QC** | **semua** baris checklist terjawab |
+| **Selesai / Serah Terima** (kasir) | nota sudah dibuat; **boleh ada sisa** (tempo) |
 
-**Kabar baiknya: yang tersisa tinggal empat baris.** Baris pertama (Terima Unit) sudah
-ditegakkan R1.8-T1 **dan** sudah pemilik uji lulus di R1.8 poin A. Sisa yang butuh jawaban:
-Diagnosa, Pengerjaan, QC, Serah Terima — tabelnya di
-[`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) bagian paling bawah.
+Rinciannya + tiga aturan yang mengikat pembangunnya (backend dulu, diturunkan dari
+`stage_kind`, dan kenapa baris QC baru berarti setelah R3) ada di
+[`R1.9-perbaikan-hasil-uji-R1.8.md`](R1.9-perbaikan-hasil-uji-R1.8.md) dan
+[`tahap-b-peran-dan-qc.md`](tahap-b-peran-dan-qc.md) Task R2.4.
 
-Menebaknya lalu menegakkan tebakan itu **persis kesalahan yang S5 sudah pernah buat dan
-cabut** — gerbang penagihan dipasang berdasarkan `allowsInvoicing` hasil backfill, lalu
-dicabut setelah 2 tes e2e menabraknya dan ternyata tes-nya yang benar.
+**Kenapa tidak ditebak saja dari dulu:** menegakkan tebakan lalu mencabutnya **persis
+kesalahan yang S5 sudah pernah buat** — gerbang penagihan dipasang berdasarkan
+`allowsInvoicing` hasil backfill, lalu dicabut setelah 2 tes e2e menabraknya dan ternyata
+tes-nya yang benar. Menunggu lima fase untuk satu jawaban tetap lebih murah daripada itu.
+
+**Sisa isi R2** (tak perlu dijawab lagi, terkumpul dari empat putaran uji): alur "setelah
+diagnosis kembali ke kasir", tombol minta pindah teknisi, laporan bulanan teknisi, teknisi
+tidak melihat harga modal.
 
 ### Dikerjakan pemilik, tanpa kode
 
