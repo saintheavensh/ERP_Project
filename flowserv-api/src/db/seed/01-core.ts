@@ -71,6 +71,10 @@ const PERMISSIONS = [
   // tiket berjalan, jadi bukan wewenang manajer cabang.
   { id: IDS.permFlowManage, code: 'flow.manage', description: 'Design service flow templates: stages, branching, and per-stage capabilities' },
   { id: IDS.permTicketQc, code: 'ticket.qc', description: 'Fill in a stage checklist (QC) on a ticket' },
+  // R1.9-T1b — memberi seorang pelanggan hak berutang. Manager + Super Admin,
+  // BUKAN kasir. Ditegakkan kondisional (hanya saat allowTempo benar-benar
+  // berubah), jadi kasir tetap bisa mengubah nama/telepon/email seperti biasa.
+  { id: IDS.permCustomerAllowTempo, code: 'customer.allow_tempo', description: 'Grant or revoke a customer\'s permission to pay on credit (tempo)' },
 ] as const;
 
 // Role -> permission codes, mapped from the same matrix (✅ and ➕ both
@@ -92,6 +96,7 @@ const ROLE_PERMISSION_CODES: Record<string, string[]> = {
     'ticket.cancel',
     'pos.apply_discount', // D2 — manager may discount; cashier may not
     'ticket.qc', // QC akhir sering dikontrol atasan, bukan teknisi yang mengerjakan
+    'customer.allow_tempo', // R1.9-T1b — memberi hak utang; kasir tidak boleh
   ],
   [IDS.roleTechnician]: [
     // R1.5B (2026-08-01) — `ticket.create` DICABUT dari teknisi setelah uji

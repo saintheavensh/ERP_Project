@@ -1,11 +1,17 @@
 <script lang="ts">
   import { CustomerDetailState } from '$lib/states/customers/customer.detail.svelte';
   import CustomerAssetModal from '$lib/components/customers/CustomerAssetModal.svelte';
+  import { roleCan } from '$lib/auth/capabilities';
 
   let { data } = $props();
 
   // svelte-ignore state_referenced_locally
   const state = new CustomerDetailState(data, data.token);
+
+  // R1.9-T1b — kasir kini punya jalan ke halaman ini (T1), tapi memberi hak
+  // utang bukan wewenangnya. Backend sudah menolaknya dengan 403; ini hanya
+  // supaya tombolnya tidak dipampangkan sebagai kontrol yang hidup.
+  let bolehUbahTempo = $derived(roleCan(data.user?.roleName, 'customer.allow_tempo'));
 </script>
 
 <svelte:head>
@@ -61,13 +67,22 @@
           <span class="text-slate-400 text-xs block mt-0.5">Menentukan apakah pelanggan ini boleh checkout dengan metode Tempo.</span>
         </p>
       </div>
-      <button
-        onclick={() => state.setAllowTempo(!state.customer?.allowTempo)}
-        disabled={state.tempoSaving}
-        data-testid="tempo-toggle"
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 {state.customer?.allowTempo ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-blue-600 hover:bg-blue-700 text-white'}">
-        {state.tempoSaving ? 'Menyimpan…' : state.customer?.allowTempo ? 'Cabut izin tempo' : 'Izinkan tempo'}
-      </button>
+      {#if bolehUbahTempo}
+        <button
+          onclick={() => state.setAllowTempo(!state.customer?.allowTempo)}
+          disabled={state.tempoSaving}
+          data-testid="tempo-toggle"
+          class="px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 {state.customer?.allowTempo ? 'border border-slate-200 text-slate-600 hover:bg-slate-50' : 'bg-blue-600 hover:bg-blue-700 text-white'}">
+          {state.tempoSaving ? 'Menyimpan…' : state.customer?.allowTempo ? 'Cabut izin tempo' : 'Izinkan tempo'}
+        </button>
+      {:else}
+        <!-- Statusnya tetap TERLIHAT — kasir memang perlu tahu pelanggan ini
+             boleh utang atau tidak sebelum menawarkan Tempo di kasir. Yang
+             hilang hanya kemampuan mengubahnya. -->
+        <span class="text-xs text-slate-400 border border-slate-200 rounded-lg px-3 py-2" data-testid="tempo-readonly">
+          Hanya manajer/pemilik yang dapat mengubah ini.
+        </span>
+      {/if}
     </div>
     {#if state.errorMsg}
       <div class="px-4 sm:px-6 pb-3 text-sm text-red-600">{state.errorMsg}</div>

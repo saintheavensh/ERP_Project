@@ -86,6 +86,14 @@ export const IDS = {
   // Super Admin, NOT Cashier: the pilot rule is "only a manager may discount".
   // Enforced only when discountAmount > 0 (a zero-discount sale needs no grant).
   permPosApplyDiscount: 'd1000000-0000-4000-8000-000000000028',
+  // R1.9-T1b — memberi seorang pelanggan hak berutang (tempo). Dipisah dari
+  // `customer.manage` justru karena T1 baru saja memberi kasir jalan ke halaman
+  // pelanggan: tanpa pemisahan ini, satu baris menu diam-diam menyerahkan
+  // wewenang memberi utang ke kasir, menabrak keputusan D1 ("pelanggan baru tak
+  // boleh utang sampai diizinkan"). Manager + Super Admin saja, ditegakkan
+  // kondisional (hanya saat nilai allowTempo berubah) — pola sama dengan
+  // permPosApplyDiscount di atas.
+  permCustomerAllowTempo: 'd1000000-0000-4000-8000-000000000031',
 
   userSuperAdmin: 'e0000000-0000-4000-8000-000000000001',
   userManager: 'e0000000-0000-4000-8000-000000000002',
@@ -200,6 +208,14 @@ export const IDS = {
   posInvoicePartialPayment: 'a2000000-0000-4000-8000-000000000005',
   ledgerRevenueTempoUnpaid: 'a2000000-0000-4000-8000-000000000006',
   ledgerRevenuePartial: 'a2000000-0000-4000-8000-000000000007',
+  // R1.9-T2 — nota KEDUA milik Budi Santoso. Tanpa ini pengelompokan per
+  // pelanggan yang pemilik minta tidak bisa dilihat sama sekali saat diuji:
+  // dua faktur ter-seed sebelumnya milik dua orang BERBEDA (Budi & Siti), jadi
+  // tiap grup selalu berisi satu nota. Sebab yang sama persis dengan R1.6-T3
+  // (kartu Piutang selalu 0 karena seed tak pernah membuat faktur POS).
+  posInvoiceBudiKedua: 'a2000000-0000-4000-8000-000000000008',
+  posInvoiceBudiKeduaLine: 'a2000000-0000-4000-8000-000000000009',
+  ledgerRevenueBudiKedua: 'a2000000-0000-4000-8000-000000000010',
   ticketInProgress: 'a1000000-0000-4000-8000-000000000006',
   ticketStageIntake: 'a1000000-0000-4000-8000-000000000007',
   ticketStageDiagnosis: 'a1000000-0000-4000-8000-000000000008',

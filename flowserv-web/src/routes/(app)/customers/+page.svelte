@@ -1,11 +1,16 @@
 <script lang="ts">
   import { CustomerListState } from '$lib/states/customers/customer.list.svelte';
   import CustomerListModal from '$lib/components/customers/CustomerListModal.svelte';
+  import { roleCan } from '$lib/auth/capabilities';
 
   let { data } = $props();
 
   // svelte-ignore state_referenced_locally
   const state = new CustomerListState(data, data.token);
+
+  // R1.9-T1b — lihat komentar di `/customers/[id]`. Membuat pelanggan LANGSUNG
+  // dengan hak tempo adalah pintu yang sama, jadi ditutup di tempat yang sama.
+  let bolehUbahTempo = $derived(roleCan(data.user?.roleName, 'customer.allow_tempo'));
 </script>
 
 <svelte:head>
@@ -73,4 +78,4 @@
   </div>
 </div>
 
-<CustomerListModal {state} />
+<CustomerListModal {state} {bolehUbahTempo} />

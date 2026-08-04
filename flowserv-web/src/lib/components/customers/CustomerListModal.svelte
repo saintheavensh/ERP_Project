@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { CustomerListState } from '$lib/states/customers/customer.list.svelte';
 
-  let { state } = $props<{ state: CustomerListState }>();
+  // `bolehUbahTempo` datang sebagai prop, bukan sebagai field di state:
+  // nilainya turunan dari peran pengguna, bukan bagian dari keadaan form.
+  let { state, bolehUbahTempo = false } = $props<{ state: CustomerListState; bolehUbahTempo?: boolean }>();
 </script>
 
 {#if state.showModal}
@@ -38,15 +40,20 @@
           <input id="email" type="email" bind:value={state.newCustomer.email} class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="john@example.com">
         </div>
         <!-- D1 — izin utang (tempo). Default mati: pelanggan baru tak bisa utang
-             sampai owner/manager mencentang ini. -->
-        <label class="flex items-start gap-2 cursor-pointer" for="allow-tempo">
-          <input id="allow-tempo" type="checkbox" bind:checked={state.newCustomer.allowTempo}
-            class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-          <span class="text-sm text-slate-700">
-            Boleh bayar tempo (utang)
-            <span class="block text-xs text-slate-400">Pelanggan ini boleh checkout dengan metode Tempo.</span>
-          </span>
-        </label>
+             sampai owner/manager mencentang ini.
+             R1.9-T1b — hanya ditampilkan bagi peran yang backend memang izinkan
+             (`customer.allow_tempo`). Kasir kini bisa membuka halaman ini (T1),
+             dan mencentangnya akan dijawab 403. -->
+        {#if bolehUbahTempo}
+          <label class="flex items-start gap-2 cursor-pointer" for="allow-tempo">
+            <input id="allow-tempo" type="checkbox" bind:checked={state.newCustomer.allowTempo}
+              class="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+            <span class="text-sm text-slate-700">
+              Boleh bayar tempo (utang)
+              <span class="block text-xs text-slate-400">Pelanggan ini boleh checkout dengan metode Tempo.</span>
+            </span>
+          </label>
+        {/if}
       </div>
       
       <div class="mt-6 flex gap-3 justify-end">

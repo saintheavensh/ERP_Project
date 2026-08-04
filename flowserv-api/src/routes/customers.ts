@@ -5,7 +5,7 @@ import { db } from '../db/connection';
 import { customers, customerAssets } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
-import { requirePermission } from '../middleware/rbac';
+import { requirePermission, enforcePermission } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse } from '../lib/response';
 
@@ -56,7 +56,16 @@ customersRouter.get('/:id', async (c) => {
 customersRouter.post('/', requirePermission('customer.manage'), zValidator('json', createCustomerSchema), auditMiddleware({ action: 'customer.create', entityType: 'customer', bodyFields: ['name', 'phone', 'email', 'allowTempo', 'customerType'] }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const data = c.req.valid('json');
-  
+
+  // R1.9-T1b — memberi hak utang butuh `customer.allow_tempo`, bukan sekadar
+  // `customer.manage`. Kondisional (pola D2 `pos.apply_discount`): hanya
+  // diperiksa saat pelanggan benar-benar dibuat DENGAN hak tempo, jadi kasir
+  // tetap bisa mendaftarkan pelanggan walk-in seperti biasa.
+  if (data.allowTempo === true) {
+    const blocked = await enforcePermission(c, 'customer.allow_tempo');
+    if (blocked) return blocked;
+  }
+
   const result = await db.insert(customers).values({
     tenantId,
     name: data.name,
@@ -83,11 +92,21 @@ customersRouter.put('/:id', requirePermission('customer.manage'), zValidator('js
   const customerId = c.req.param('id');
   const data = c.req.valid('json');
   
-  const cust = await db.select({ id: customers.id }).from(customers).where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)));
+  const cust = await db.select({ id: customers.id, allowTempo: customers.allowTempo }).from(customers).where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId)));
   if (cust.length === 0) {
     return errorResponse(c, 'NOT_FOUND', 'Customer not found', [], 404);
   }
-  
+
+  // R1.9-T1b — diperiksa hanya bila nilainya BENAR-BENAR berubah. Form
+  // pelanggan mengirim seluruh objek tiap simpan, jadi memeriksa
+  // "allowTempo ada di payload" akan memblokir kasir yang cuma membetulkan
+  // nomor telepon. Membandingkan ke nilai tersimpan yang baru saja diambil di
+  // atas membuat gerbangnya persis sesempit wewenang yang dimaksud.
+  if (data.allowTempo !== undefined && data.allowTempo !== cust[0].allowTempo) {
+    const blocked = await enforcePermission(c, 'customer.allow_tempo');
+    if (blocked) return blocked;
+  }
+
   const result = await db.update(customers).set({
     name: data.name,
     phone: data.phone || null,
