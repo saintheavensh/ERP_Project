@@ -50,12 +50,12 @@
 > diganti supaya 8 tautan di berkas ini tidak putus). **Tautan `plan/uji-R1.*.md` di bawah
 > yang mengarah ke berkas tak ada lagi itu wajar — penanda sejarah, bukan tautan rusak.**
 >
-> - [ ] **R1.10 — Perbaikan hasil uji manual R1.9** (rencana ditulis 2026-08-05) —
+> - [/] **R1.10 — Perbaikan hasil uji manual R1.9** (kode selesai 2026-08-05) —
 >       [`plan/R1.10-perbaikan-hasil-uji-R1.9.md`](plan/R1.10-perbaikan-hasil-uji-R1.9.md).
 >       Putaran **kecil**: 5 tugas, dua di antaranya bug nyata dan empat sisanya keputusan
 >       pemilik yang tinggal diterapkan. **Dua catatan berubah artinya setelah diperiksa ke
 >       kode & API dulu** — kebiasaan yang sudah menyelamatkan empat fase berturut-turut.
->       - [ ] **T1 🔴 — Perkiraan Konter tidak bisa diubah dari layar mana pun.** Poin uji
+>       - [x] **T1 🔴 — Perkiraan Konter tidak bisa diubah dari layar mana pun.** Poin uji
 >             E2: *"di bagian mana saya bisa merubahnya, untuk saat ini masih belum bisa di
 >             ubah nominalnya"*. **Backend R1.9-T4 sudah benar dan dibuktikan ulang hari
 >             ini** (PATCH di tahap Penerimaan → **200**, 450.000 → 500.000; sesudahnya →
@@ -67,31 +67,81 @@
 >             **Aturan baru yang mengikat mulai R1.10:** kalau aturannya tentang sesuatu yang
 >             ORANG harus lakukan, tesnya **wajib menekan tombolnya** — panggilan API boleh
 >             menemani, tidak boleh menggantikan.
->       - [ ] **T2 — daftar pelanggan tidak menyegarkan diri + tidak ada toast.** Poin uji
+>       - [x] **T2 — daftar pelanggan tidak menyegarkan diri + tidak ada toast.** Poin uji
 >             B4. `invalidateAll()` sudah dipanggil dan datanya memang datang; halamannya
 >             yang memegang **salinan** `data` dari saat pertama dibuka. Pola
 >             `new XState(data)` + `// svelte-ignore state_referenced_locally` ada di **19
 >             halaman** — peringatan yang di-`ignore` itu justru yang akan menangkap bug ini,
 >             tapi **hanya halaman Pelanggan yang diperbaiki di sini**; sisanya kandidat
 >             audit **R4** (aturan "jangan refactor modul yang tidak sedang kau ubah").
->       - [ ] **T3 — `/devices` hanya Super Admin.** Poin uji D10 (*"jangan biarkan di akses
+>       - [x] **T3 — `/devices` hanya Super Admin.** Poin uji D10 (*"jangan biarkan di akses
 >             selain oleh super admin"*). Hari ini `/devices` **tidak terdaftar sama sekali**
 >             di `lib/auth/route-access.ts`, dan **membaca** katalog tak digerbangi di backend
 >             (hanya mutasinya). Backend dulu — tapi **intake kasir memakai autocomplete
 >             katalog**, jadi yang ditutup adalah halaman pengelolaannya, bukan endpoint yang
 >             dipakai form intake. Dibuktikan dengan menerima unit sebagai kasir **sesudah**
 >             perubahan.
->       - [ ] **T4 — kategori pelanggan read-only untuk kasir.** Poin uji A1. Bentuknya
+>       - [x] **T4 — kategori pelanggan read-only untuk kasir.** Poin uji A1. Bentuknya
 >             **persis sama** dengan R1.9-T1b (hak tempo), jadi polanya disalin: backend
 >             menolak lebih dulu (kondisional, hanya saat nilainya berubah), layar
 >             menyembunyikan sesudahnya. Kasir tetap **melihat** kategorinya.
->       - [ ] **T5 — pencarian katalog per kata.** Poin uji D2 (*"samsung a20 tidak di
+>       - [x] **T5 — pencarian katalog per kata.** Poin uji D2 (*"samsung a20 tidak di
 >             temukan, harus samsung galaxy a20"*). Sebabnya spesifik: dicocokkan sebagai
 >             **satu tulisan utuh** `"<merek> <model>"`, jadi kata yang dilompati ("Galaxy")
 >             menggagalkannya. Fungsi murni + tes unit di infrastruktur vitest frontend yang
 >             baru ada sejak R1.9 — ini kelas bug yang **tak memunculkan error apa pun**,
 >             cuma hasil yang keliru.
->       - [ ] **T6 — uji manual pemilik** ← **gerbang R2**
+>       - [ ] **T6 — uji manual pemilik**
+>             ([`plan/uji-R1.10-perbaikan.md`](plan/uji-R1.10-perbaikan.md)) ← **gerbang R2**
+>
+>       **Dua izin BARU, keduanya Super Admin/Manager saja dan keduanya dibuat justru agar
+>       aturan frontend punya padanan backend yang nyata** (aturan mengikat
+>       `lib/auth/route-access.ts`): `device_catalog.manage` (T3) dan
+>       `customer.set_category` (T4). Yang kedua sengaja **tidak** menumpang
+>       `customer.allow_tempo` walau daftar perannya sama persis — menggerbangi perubahan
+>       kategori di balik izin bernama "allow_tempo" membuat kode berbunyi satu hal sambil
+>       melakukan hal lain, kesalahan yang R1.7-T1 sudah bayar mahal.
+>
+>       **Yang paling mudah dirusak T3, dan karena itu diuji tersendiri:** `GET
+>       /device-catalog/brands|models` **tidak** ikut digerbangi, karena autocomplete di form
+>       Terima Unit memanggilnya. Menutupnya akan mematikan Terima Unit untuk kasir — dan
+>       kerusakan seperti itu baru ketahuan saat toko ramai. Ada tes Playwright yang
+>       menerima unit lewat layar sebagai kasir setelah gerbang dipasang.
+>
+>       **Satu tes R1.8 sengaja dipersempit, dan itu menimpa perilaku yang pemilik sudah uji
+>       lulus — jadi tidak dilakukan diam-diam.** `r1-8-perbaikan:412` menuntut kotak
+>       perkiraan **tidak muncul sama sekali** bila kasir tak menyebut harga di depan
+>       (keputusan R1.8-T7: jangan pampangkan baris kosong). T1 memunculkannya — berisi
+>       "Belum disebutkan" + tombol Isi — **selama tiket masih di tahap Penerimaan**, karena
+>       kasir yang LUPA mengisi sebelumnya tak punya cara apa pun menambahkannya, dan itu
+>       separuh dari keluhan E2 pemilik. Maksud asli tesnya tetap dijaga: ia sekarang
+>       memajukan tiket dulu, lalu menuntut barisnya hilang. Preseden **S5** berlaku di sini
+>       (saat tes menabrak perubahan, yang benar belum tentu kodenya), jadi alasannya ditulis
+>       panjang di atas tesnya **dan** disebutkan terbuka di checklist uji poin A5 berikut
+>       cara pemilik menolaknya.
+>
+>       **Bukti R1.10:** **304 unit backend** · **24 unit frontend** (dari 12, +13 di
+>       `lib/devices/__tests__/match-device.test.ts`) · **Playwright 252/252 di DB bersih**
+>       (dari 229/234), termasuk **18 tes baru** di `e2e/r1-10-perbaikan.spec.ts` · `tsc`
+>       bersih · `svelte-check` **783 berkas 0 error 0 warning** · matriks izin T3 & T4
+>       terekam via curl.
+>
+>       **🟢 Untuk pertama kalinya sejak R1.6, suite Playwright hijau SELURUHNYA — 0 gagal.**
+>       Kelima kegagalan yang R1.6/R1.7/R1.8/R1.9 dokumentasikan sebagai "bukan regresi"
+>       ikut lulus, dan sebabnya jujur: tiga di antaranya (`p6b-print:71`,
+>       `printer-scan:36`, `tahap-b-pos-service-flow:80`) menguji perilaku **saat agen
+>       printer MATI**, dan di sesi ini agennya memang **tidak dinyalakan** — bukan karena
+>       diperbaiki. Dua sisanya (`tahap-a-flow-templates:158`, `tahap-a-payment-methods:34`)
+>       lulus di DB yang baru di-reset. **Jadi angka 252 ini tidak boleh dibaca sebagai
+>       "kelemahan rancangan tes itu sudah beres"** — ia masih ada dan tetap kandidat R4.
+>
+>       **Dua kegagalan di putaran pertama, keduanya diperiksa satu per satu, bukan
+>       diulang sampai hijau:** `r1-8-perbaikan:412` adalah tabrakan **nyata** dari T1
+>       (dibahas di atas, tesnya dipersempit dengan alasan tertulis);
+>       `p5-finance-dashboard:39` **lulus 4/4 saat dijalankan sendiri** → polusi antar-tes,
+>       dan **tidak mungkin ulah R1.10** karena Playwright menjalankan berkas urut abjad
+>       sehingga `p5…` selalu berjalan **sebelum** `r1-10…`. Bentuknya sama persis dengan
+>       `tahap-a-payment-methods:34` yang R1.9 sudah catat.
 >
 >       **Yang sengaja didorong ke R2, bukan dilupakan:** poin uji **A3** — pilih device dari
 >       riwayat pelanggan **saat intake**, riwayat pekerjaan per device, dan **hapus fitur
