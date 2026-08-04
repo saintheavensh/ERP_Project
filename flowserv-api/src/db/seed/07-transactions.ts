@@ -200,6 +200,27 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
       createdAt: yesterday,
       createdBy: IDS.userCashier,
     },
+    // R1.9-T2 — nota KEDUA milik Budi Santoso, supaya pengelompokan piutang per
+    // pelanggan benar-benar bisa dilihat. Dua faktur di atas milik dua orang
+    // berbeda, jadi sebelum baris ini setiap grup selalu berisi satu nota dan
+    // fitur yang pemilik minta tak tampak apa-apa saat diuji. Jasa saja, alasan
+    // sama dengan komentar di atas.
+    {
+      id: IDS.posInvoiceBudiKedua,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      invoiceNumber: 'INV-SEED-0003',
+      customerName: 'Budi Santoso',
+      customerId: IDS.customerBudi,
+      subtotal: '275000',
+      grandTotal: '275000',
+      status: 'active',
+      paymentStatus: 'unpaid',
+      amountPaid: '0',
+      paymentMethod: 'tempo',
+      createdAt: yesterday,
+      createdBy: IDS.userCashier,
+    },
   ]).onConflictDoNothing();
 
   await tx.insert(posInvoiceLines).values([
@@ -222,6 +243,16 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
       quantity: 1,
       unitPrice: '800000',
       subtotal: '800000',
+    },
+    {
+      id: IDS.posInvoiceBudiKeduaLine,
+      tenantId: IDS.tenantMain,
+      posInvoiceId: IDS.posInvoiceBudiKedua,
+      sourceType: 'labor',
+      description: 'Jasa servis — ganti speaker',
+      quantity: 1,
+      unitPrice: '275000',
+      subtotal: '275000',
     },
   ]).onConflictDoNothing();
 
@@ -271,6 +302,19 @@ export async function seedTransactions(tx: SeedTx): Promise<void> {
       // ketahuan dari tes e2e, bukan dari membaca ulang kode.
       referenceType: 'pos_sale',
       referenceId: IDS.posInvoicePartial,
+      postedAt: yesterday,
+    },
+    {
+      id: IDS.ledgerRevenueBudiKedua,
+      tenantId: IDS.tenantMain,
+      branchId: IDS.branchPusat,
+      entryType: 'revenue',
+      amount: '275000',
+      // 'pos_sale' — lihat catatan di dua baris di atas. Melewatkan baris ini
+      // akan membuat GET /v1/finance/ledger/reconcile melaporkan faktur ketiga
+      // sebagai belum dibukukan, dan e2e H15 gagal dengan `isClean: false`.
+      referenceType: 'pos_sale',
+      referenceId: IDS.posInvoiceBudiKedua,
       postedAt: yesterday,
     },
   ]).onConflictDoNothing();

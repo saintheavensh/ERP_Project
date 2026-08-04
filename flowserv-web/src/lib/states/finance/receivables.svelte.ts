@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { API_BASE } from '$lib/api/config';
+import { groupReceivablesByCustomer } from '$lib/finance/group-receivables';
 
 // H14/FIN-003 — mirrors PayablesState exactly (customer-side symmetry with
 // supplier-side), pointed at pos_invoices instead of supplier_invoices.
@@ -27,8 +28,31 @@ export class ReceivablesState {
     this.data = data;
   }
 
+  // R1.9-T2 — baris utama = pelanggan, bukan nota. Pemilik (uji R1.8 B1):
+  // "misalnya pelanggan itu mempunyai dua nota yang belum di bayar jadi
+  // rinciannya lebih jelas di bagian tagihan di lihat sub totalnya nanti bisa
+  // di klik lagi untuk melihat detail per notanya".
+  expandedKeys = $state(new Set<string>());
+
   get receivables() {
     return this.data.receivables || [];
+  }
+
+  /** Pengelompokan sungguhannya ada di fungsi murni yang diuji terpisah. */
+  get groups() {
+    return groupReceivablesByCustomer(this.receivables);
+  }
+
+  isExpanded(key: string) {
+    return this.expandedKeys.has(key);
+  }
+
+  toggleGroup(key: string) {
+    // Set diganti (bukan dimutasi) supaya Svelte melihat perubahannya.
+    const next = new Set(this.expandedKeys);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    this.expandedKeys = next;
   }
 
   /**
