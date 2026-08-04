@@ -140,13 +140,40 @@
            melihatnya sebelum menyebut angkanya sendiri: pelanggan sudah terlanjur
            mendengar yang ini. Hanya tampil bila memang disebutkan; tidak semua
            unit dikutip harga di depan. -->
-      {#if state.ticket?.intakeEstimatedCost !== null && state.ticket?.intakeEstimatedCost !== undefined}
+      {#if state.perkiraanKonter !== null}
+        {@const rp = (n: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(n)}
         <div class="mt-3 pt-3 border-t border-slate-100" data-testid="intake-estimate">
-          <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perkiraan Biaya (Konter)</span>
-          <p class="text-sm text-slate-900 mt-1 font-medium">
-            {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(state.ticket.intakeEstimatedCost))}
-          </p>
-          <p class="text-xs text-slate-500">Disebutkan kasir saat unit diterima, belum melewati pemeriksaan.</p>
+          <!-- R1.9-T4 — keduanya berdampingan beserta selisihnya. Perkiraan
+               konter BACA-SAJA bagi semua peran (backend menolak perubahannya
+               dengan 422 INTAKE_ESTIMATE_LOCKED begitu tiket lewat Penerimaan);
+               estimasi teknisi diubah lewat baris biaya, bukan di sini. -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perkiraan Konter</span>
+              <p class="text-sm text-slate-900 mt-1 font-medium" data-testid="perkiraan-konter">{rp(state.perkiraanKonter)}</p>
+              <p class="text-xs text-slate-500">Disebutkan kasir saat unit diterima.</p>
+            </div>
+            <div>
+              <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Estimasi Teknisi</span>
+              {#if state.estimasiTeknisi !== null}
+                <p class="text-sm text-slate-900 mt-1 font-medium" data-testid="estimasi-teknisi">{rp(state.estimasiTeknisi)}</p>
+                <p class="text-xs text-slate-500">Jumlah sparepart &amp; jasa yang dicatat.</p>
+              {:else}
+                <p class="text-sm text-slate-400 mt-1" data-testid="estimasi-teknisi">Belum ada</p>
+                <p class="text-xs text-slate-500">Terisi sendiri saat teknisi mencatat biaya.</p>
+              {/if}
+            </div>
+          </div>
+
+          {#if state.selisihEstimasi !== null && state.selisihEstimasi !== 0}
+            <p
+              class="mt-2 text-xs font-medium {state.selisihEstimasi > 0 ? 'text-amber-700' : 'text-emerald-700'}"
+              data-testid="selisih-estimasi"
+            >
+              {state.selisihEstimasi > 0 ? 'Lebih mahal' : 'Lebih murah'} {rp(Math.abs(state.selisihEstimasi))}
+              dari yang disebutkan di konter — sampaikan ke pelanggan sebelum dikerjakan.
+            </p>
+          {/if}
         </div>
       {/if}
     </div>

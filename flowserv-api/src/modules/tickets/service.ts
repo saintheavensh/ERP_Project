@@ -1019,6 +1019,42 @@ export async function updateIntakeDetails(
   if ('diagnosis' in input) patch.diagnosis = input.diagnosis;
   if ('estimatedDurationMinutes' in input) patch.estimatedDurationMinutes = input.estimatedDurationMinutes;
 
+  // R1.9-T4 — perkiraan konter boleh DIBETULKAN selagi unitnya masih di meja
+  // penerimaan, lalu terkunci untuk selamanya.
+  //
+  // Pemilik memilih tafsir (b) di rencana R1.9: teknisi memasukkan estimasinya
+  // SENDIRI (lewat ticket_charges -> kuotasi), dan kedua angka tampil
+  // berdampingan. Yang membuat itu ada artinya adalah angka konter tidak boleh
+  // berubah — justru selisih "dijanjikan 450rb, ternyata 700rb" itulah yang
+  // jadi percakapan dengan pelanggan. Kalau bisa ditimpa, buktinya hilang.
+  //
+  // Ditegakkan DI SINI, bukan dengan mengunci form: mengunci layar adalah kunci
+  // semu, dan proyek ini sudah membayar pelajaran itu tiga kali (S5, R1.5C,
+  // R1.8-T1).
+  if ('intakeEstimatedCost' in input) {
+    const [stage] = await db
+      .select({ stageKind: flowNodes.stageKind, stageName: flowNodes.name })
+      .from(serviceTickets)
+      .innerJoin(flowNodes, eq(serviceTickets.currentNodeId, flowNodes.id))
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+
+    // Tiket tanpa tahap aktif (data lama) tidak diblokir — aturan yang sama
+    // dengan `assertStageAllows`: mengunci tiket berjalan lebih merusak
+    // daripada aturan yang belum berlaku untuknya.
+    if (stage && stage.stageKind !== 'penerimaan') {
+      throw new BusinessError(
+        'INTAKE_ESTIMATE_LOCKED',
+        `Perkiraan biaya konter tidak bisa diubah lagi di tahap "${stage.stageName}". Estimasi teknisi dicatat terpisah sebagai baris biaya.`,
+        422
+      );
+    }
+
+    patch.intakeEstimatedCost =
+      input.intakeEstimatedCost === null || input.intakeEstimatedCost === undefined
+        ? null
+        : String(input.intakeEstimatedCost);
+  }
+
   // Drizzle melempar pada `.set({})`. Body tanpa satu pun field yang dikenali
   // adalah no-op, bukan error 500 — kembalikan keadaan tiket apa adanya.
   if (Object.keys(patch).length === 0) {
@@ -1029,6 +1065,7 @@ export async function updateIntakeDetails(
         reportedComplaint: serviceTickets.reportedComplaint,
         diagnosis: serviceTickets.diagnosis,
         estimatedDurationMinutes: serviceTickets.estimatedDurationMinutes,
+        intakeEstimatedCost: serviceTickets.intakeEstimatedCost,
       })
       .from(serviceTickets)
       .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
@@ -1046,6 +1083,7 @@ export async function updateIntakeDetails(
       reportedComplaint: serviceTickets.reportedComplaint,
       diagnosis: serviceTickets.diagnosis,
       estimatedDurationMinutes: serviceTickets.estimatedDurationMinutes,
+      intakeEstimatedCost: serviceTickets.intakeEstimatedCost,
     });
   if (!updated) {
     throw new BusinessError('NOT_FOUND', 'Ticket not found', 404);

@@ -417,6 +417,39 @@ export class TicketDetailState {
   // A quote has already been requested once the ticket carries an approved total.
   get isQuoted() { return this.ticket?.approvedTotal != null; }
 
+  // -------------------------------------------------------------------------
+  // R1.9-T4 — perkiraan KONTER vs estimasi TEKNISI, berdampingan.
+  //
+  // Pemilik memilih tafsir (b): keduanya disimpan, angka konter tidak bisa
+  // diubah. Yang berguna bukan salah satunya, melainkan SELISIHNYA —
+  // "dijanjikan 450rb, ternyata 700rb" adalah percakapan yang harus dilakukan
+  // kasir dengan pelanggan, dan ia hanya bisa melakukannya kalau melihat
+  // keduanya di satu layar.
+  //
+  // Estimasi teknisi TIDAK disimpan di kolom baru: ia sudah hidup sebagai
+  // jumlah baris `ticket_charges` (-> kuotasi), mesin yang sudah dibangun dan
+  // sudah diuji. Menambah kolom kedua yang berisi angka yang sama adalah dua
+  // sumber kebenaran untuk satu nilai.
+  // -------------------------------------------------------------------------
+
+  /** Angka yang disebut kasir di konter, atau null bila memang tak disebutkan. */
+  get perkiraanKonter(): number | null {
+    const nilai = this.ticket?.intakeEstimatedCost;
+    return nilai === null || nilai === undefined ? null : Number(nilai);
+  }
+
+  /** Estimasi teknisi = total baris biaya. 0 berarti belum ada baris sama sekali. */
+  get estimasiTeknisi(): number | null {
+    const total = Number(this.chargeTotals.estimated || 0);
+    return total > 0 ? total : null;
+  }
+
+  /** Positif = lebih mahal dari yang dijanjikan. Null bila salah satunya belum ada. */
+  get selisihEstimasi(): number | null {
+    if (this.perkiraanKonter === null || this.estimasiTeknisi === null) return null;
+    return this.estimasiTeknisi - this.perkiraanKonter;
+  }
+
   resetChargeForm() {
     this.chargeForm = { sourceType: 'part', inventoryItemId: '', description: '', quantity: 1, unitPrice: '' };
   }

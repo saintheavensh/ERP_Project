@@ -110,6 +110,16 @@ export const updateIntakeDetailsInput = z.object({
   // field di atas (lihat catatan endpoint di routes/tickets.ts).
   diagnosis: z.string().nullable().optional(),
   estimatedDurationMinutes: z.coerce.number().int().positive().nullable().optional(),
+  // R1.9-T4 — perkiraan biaya yang disebut KASIR di konter (R1.8-T7).
+  //
+  // Sebelum ini kolomnya tidak diterima di sini sama sekali, jadi salah ketik
+  // di konter (450.000 jadi 4.500.000) tidak bisa dibetulkan dari mana pun —
+  // dan pengiriman kuncinya DIBUANG DIAM-DIAM oleh Zod, jadi pemanggil bahkan
+  // tak tahu tulisannya tidak tersimpan. Diterima di sini supaya bisa
+  // dibetulkan, lalu DIKUNCI di service begitu tiket melewati tahap
+  // Penerimaan: setelah teknisi memegangnya, angka yang dijanjikan ke pelanggan
+  // adalah bukti, bukan draf.
+  intakeEstimatedCost: z.coerce.number().min(0).nullable().optional(),
 });
 
 export type UpdateIntakeDetailsInput = z.infer<typeof updateIntakeDetailsInput>;
