@@ -66,6 +66,9 @@
         { label: 'Servis', path: '/tickets' },
         { label: 'Kasir', path: '/pos' },
         { label: 'Stok', path: '/inventory' },
+        // R1.9-T1 — Manager punya `customer.manage` sejak H12 tapi tak pernah
+        // punya barisnya; sama persis bentuknya dengan bug kasir di bawah.
+        { label: 'Pelanggan', path: '/customers' },
         {
           label: 'Lainnya',
           open: false,
@@ -96,6 +99,15 @@
         beranda,
         { label: 'Servis', path: '/tickets' },
         { label: 'Kasir', path: '/pos' },
+        // R1.9-T1 — bug yang bentuknya PERSIS sama dengan R1 ("izin diberikan,
+        // jalannya tidak pernah dibuat"): kasir sudah punya `customer.manage`
+        // sejak H12 dan `GET /v1/customers` tak digerbangi izin apa pun, tapi
+        // tanpa baris ini halaman pelanggan tak terjangkau sama sekali — poin
+        // uji A6 (R1.8) jadi tak bisa dijalankan siapa pun.
+        //
+        // Teknisi sengaja TIDAK dapat: ia tidak mendaftarkan pelanggan, dan
+        // menu teknisi sengaja tetap 3 baris.
+        { label: 'Pelanggan', path: '/customers' },
         { label: 'Katalog Produk', path: '/catalog' }
       ];
     }
