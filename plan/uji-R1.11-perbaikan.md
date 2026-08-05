@@ -42,22 +42,22 @@ Anda tabrak**:
 > izin yang sama. Sebaliknya, **kasir justru bisa menulis hasil diagnosa**.
 
 Persis terbalik, empat hari, dan **tidak satu tes pun gagal**. Bagian **A** di bawah adalah
-pembuktiannya — dan ia juga yang memblokir R2, karena aturan Anda *"Diagnosa = hasil
-diagnosa + perkiraan biaya wajib sebelum lanjut"* tak mungkin ditegakkan kalau teknisi tak
+pembuktiannya — dan ia juga yang memblokir R2, karena aturan Anda _"Diagnosa = hasil
+diagnosa + perkiraan biaya wajib sebelum lanjut"_ tak mungkin ditegakkan kalau teknisi tak
 bisa menyimpan diagnosa.
 
 ---
 
 ## A — Teknisi akhirnya bisa menyimpan hasil diagnosa 🔴
 
-| #   | Yang dilakukan                                                                       | Yang seharusnya terjadi                                        | Hasil |
-| --- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- | ----- |
-| A1  | Login **kasir** → Terima Unit → buat tiket biasa                                     | Tiket jadi                                                     |       |
-| A2  | Login **teknisi** → Beranda → ambil tiket itu dari antrian → buka tiketnya           | Terbuka                                                        |       |
-| A3  | Majukan tiket ke tahap **Diagnosa**                                                  | Kotak **Hasil Diagnosa & Estimasi Waktu** muncul               |       |
-| A4  | 🔴 Tekan **Isi Diagnosa**, tulis hasilnya, tekan **Simpan**                          | **Tersimpan.** Inilah yang sebelumnya gagal diam-diam          |       |
-| A5  | Muat ulang halamannya (F5)                                                           | Tulisannya masih ada — benar-benar tersimpan                   |       |
-| A6  | Isi juga **estimasi waktu** (mis. 120 menit), Simpan                                 | Tersimpan dan tampil                                           |       |
+| #   | Yang dilakukan                                                             | Yang seharusnya terjadi                               | Hasil |
+| --- | -------------------------------------------------------------------------- | ----------------------------------------------------- | ----- |
+| A1  | Login **kasir** → Terima Unit → buat tiket biasa                           | Tiket jadi                                            | OK    |
+| A2  | Login **teknisi** → Beranda → ambil tiket itu dari antrian → buka tiketnya | Terbuka                                               | OK    |
+| A3  | Majukan tiket ke tahap **Diagnosa**                                        | Kotak **Hasil Diagnosa & Estimasi Waktu** muncul      | OK    |
+| A4  | 🔴 Tekan **Isi Diagnosa**, tulis hasilnya, tekan **Simpan**                | **Tersimpan.** Inilah yang sebelumnya gagal diam-diam | OK    |
+| A5  | Muat ulang halamannya (F5)                                                 | Tulisannya masih ada — benar-benar tersimpan          | OK    |
+| A6  | Isi juga **estimasi waktu** (mis. 120 menit), Simpan                       | Tersimpan dan tampil                                  | OK    |
 
 ---
 
@@ -71,12 +71,12 @@ bisa menyimpan diagnosa.
 > sandinya untuk menguji unit, dan keluhan adalah alasan unit itu ada di mejanya. **Kalau
 > menurut Anda teknisi sebaiknya tidak melihat sandi sama sekali, tulis di B3.**
 
-| #   | Yang dilakukan                                                | Yang seharusnya terjadi                                            | Hasil |
-| --- | ------------------------------------------------------------- | ------------------------------------------------------------------- | ----- |
-| B1  | Sebagai **teknisi**, buka tiket → lihat kotak **Keluhan**     | **Tidak ada tombol Ubah.** Isinya tetap terbaca                     |       |
-| B2  | Lihat kotak **Sandi / Pola**                                  | **Tidak ada tombol Ubah.** Sandi/polanya tetap terlihat             |       |
-| B3  | **Pendapat Anda:** teknisi tetap boleh MELIHAT sandi/pola?    | (jawab bebas)                                                       |       |
-| B4  | Lihat kotak **Perkiraan Konter** sebagai teknisi              | Angkanya terlihat, tapi **tidak ada tombol Ubah/Isi**               |       |
+| #   | Yang dilakukan                                             | Yang seharusnya terjadi                                 | Hasil               |
+| --- | ---------------------------------------------------------- | ------------------------------------------------------- | ------------------- |
+| B1  | Sebagai **teknisi**, buka tiket → lihat kotak **Keluhan**  | **Tidak ada tombol Ubah.** Isinya tetap terbaca         | OK                  |
+| B2  | Lihat kotak **Sandi / Pola**                               | **Tidak ada tombol Ubah.** Sandi/polanya tetap terlihat | OK                  |
+| B3  | **Pendapat Anda:** teknisi tetap boleh MELIHAT sandi/pola? | (jawab bebas)                                           | ya tentu saja boleh |
+| B4  | Lihat kotak **Perkiraan Konter** sebagai teknisi           | Angkanya terlihat, tapi **tidak ada tombol Ubah/Isi**   | OK                  |
 
 ---
 
@@ -84,11 +84,11 @@ bisa menyimpan diagnosa.
 
 > Sebelum R1.11 kasir benar-benar bisa menulis hasil diagnosa teknisi.
 
-| #   | Yang dilakukan                                                    | Yang seharusnya terjadi                                  | Hasil |
-| --- | ----------------------------------------------------------------- | ---------------------------------------------------------- | ----- |
-| C1  | Login **kasir** → buka tiket yang sudah didiagnosa teknisi        | Hasil diagnosanya **terbaca** (kasir perlu tahu)           |       |
-| C2  | Cari tombol Ubah/Edit di kotak Hasil Diagnosa                     | **Tidak ada**                                              |       |
-| C3  | Kasir mengubah **keluhan** di tiket yang sama                     | **Tetap bisa** — hanya diagnosa yang dibatasi              |       |
+| #   | Yang dilakukan                                             | Yang seharusnya terjadi                          | Hasil |
+| --- | ---------------------------------------------------------- | ------------------------------------------------ | ----- |
+| C1  | Login **kasir** → buka tiket yang sudah didiagnosa teknisi | Hasil diagnosanya **terbaca** (kasir perlu tahu) | OK    |
+| C2  | Cari tombol Ubah/Edit di kotak Hasil Diagnosa              | **Tidak ada**                                    | OK    |
+| C3  | Kasir mengubah **keluhan** di tiket yang sama              | **Tetap bisa** — hanya diagnosa yang dibatasi    | OK    |
 
 ---
 
@@ -101,15 +101,15 @@ bisa menyimpan diagnosa.
 > dan satu jendela **penyamaran/incognito** (teknisi), supaya dua login tidak saling
 > menimpa.
 
-| #   | Yang dilakukan                                                                                       | Yang seharusnya terjadi                                            | Hasil |
-| --- | ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | ----- |
-| D1  | Jendela 1: login **kasir**, buka sebuah tiket. Biarkan terbuka                                       | Terbuka, tahapnya mis. "Intake"                                      |       |
-| D2  | Jendela 2 (incognito): login **teknisi**, buka tiket yang sama, **majukan tahapnya**                 | Tahapnya berubah di jendela 2                                        |       |
-| D3  | 🔴 Kembali ke jendela 1 (klik jendelanya). **Jangan tekan F5**                                       | Tahapnya **ikut berubah sendiri** dalam beberapa detik               |       |
-| D4  | Biarkan jendela 1 terbuka tanpa disentuh, lalu ubah sesuatu lagi dari jendela 2, tunggu ±20–30 detik | Ikut berubah sendiri juga, tanpa diklik                              |       |
-| D5  | Di jendela 1, tekan **Ubah** pada Keluhan, ketik sesuatu, **jangan simpan**. Klik jendela 2 lalu balik | Tulisan Anda **masih utuh**, kotaknya masih terbuka                  |       |
-| D6  | Buka daftar **Servis** (antrian) dan **Beranda**, lakukan hal serupa                                 | Keduanya juga menyusul sendiri                                       |       |
-| D7  | **Pendapat Anda:** 20 detik itu terlalu cepat, terlalu lambat, atau pas?                             | (jawab bebas)                                                        |       |
+| #   | Yang dilakukan                                                                                         | Yang seharusnya terjadi                                | Hasil          |
+| --- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | -------------- |
+| D1  | Jendela 1: login **kasir**, buka sebuah tiket. Biarkan terbuka                                         | Terbuka, tahapnya mis. "Intake"                        | OK             |
+| D2  | Jendela 2 (incognito): login **teknisi**, buka tiket yang sama, **majukan tahapnya**                   | Tahapnya berubah di jendela 2                          | OK             |
+| D3  | 🔴 Kembali ke jendela 1 (klik jendelanya). **Jangan tekan F5**                                         | Tahapnya **ikut berubah sendiri** dalam beberapa detik | OK             |
+| D4  | Biarkan jendela 1 terbuka tanpa disentuh, lalu ubah sesuatu lagi dari jendela 2, tunggu ±20–30 detik   | Ikut berubah sendiri juga, tanpa diklik                | OK             |
+| D5  | Di jendela 1, tekan **Ubah** pada Keluhan, ketik sesuatu, **jangan simpan**. Klik jendela 2 lalu balik | Tulisan Anda **masih utuh**, kotaknya masih terbuka    | OK             |
+| D6  | Buka daftar **Servis** (antrian) dan **Beranda**, lakukan hal serupa                                   | Keduanya juga menyusul sendiri                         | OK             |
+| D7  | **Pendapat Anda:** 20 detik itu terlalu cepat, terlalu lambat, atau pas?                               | (jawab bebas)                                          | terlalu lambat |
 
 ---
 
@@ -122,30 +122,30 @@ bisa menyimpan diagnosa.
 > **Kuncinya tetap** (pilihan Anda 2026-08-05), karena alasan aslinya tidak bergantung pada
 > premis yang salah itu: angka itu sudah terlanjur didengar pelanggan, jadi ia bukti.
 
-| #   | Yang dilakukan                                                              | Yang seharusnya terjadi                                                                 | Hasil |
-| --- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----- |
-| E1  | Buat tiket dengan Perkiraan Biaya `450000`, majukan ke Diagnosa, buka lagi | Tertulis **"terkunci sejak tiket masuk pemeriksaan, karena angka ini sudah disebutkan ke pelanggan"** |       |
-| E2  | **Pendapat Anda:** kalimat itu sudah sesuai cara kerja toko?                | (jawab bebas)                                                                             |       |
+| #   | Yang dilakukan                                                             | Yang seharusnya terjadi                                                                               | Hasil |
+| --- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----- |
+| E1  | Buat tiket dengan Perkiraan Biaya `450000`, majukan ke Diagnosa, buka lagi | Tertulis **"terkunci sejak tiket masuk pemeriksaan, karena angka ini sudah disebutkan ke pelanggan"** | OK    |
+| E2  | **Pendapat Anda:** kalimat itu sudah sesuai cara kerja toko?               | (jawab bebas)                                                                                         | OK    |
 
 ---
 
 ## F — Regresi: yang lama harus tetap jalan
 
-| #   | Yang dilakukan                                              | Yang seharusnya terjadi | Hasil |
-| --- | ----------------------------------------------------------- | ----------------------- | ----- |
-| F1  | Kasir → Terima Unit lengkap (pelanggan baru)                | Tetap jalan             |       |
-| F2  | Kasir → betulkan Perkiraan Konter selagi tahap Penerimaan   | Tetap jalan             |       |
-| F3  | Kasir → transaksi POS tunai                                 | Tetap jalan             |       |
-| F4  | Kasir ketik `/finance/ledger` dan `/devices`                | Tetap **ditolak**       |       |
-| F5  | Manager → buka tiket, ubah keluhan **dan** diagnosa         | **Keduanya bisa**       |       |
+| #   | Yang dilakukan                                            | Yang seharusnya terjadi | Hasil |
+| --- | --------------------------------------------------------- | ----------------------- | ----- |
+| F1  | Kasir → Terima Unit lengkap (pelanggan baru)              | Tetap jalan             | OK    |
+| F2  | Kasir → betulkan Perkiraan Konter selagi tahap Penerimaan | Tetap jalan             | OK    |
+| F3  | Kasir → transaksi POS tunai                               | Tetap jalan             | OK    |
+| F4  | Kasir ketik `/finance/ledger` dan `/devices`              | Tetap **ditolak**       | OK    |
+| F5  | Manager → buka tiket, ubah keluhan **dan** diagnosa       | **Keduanya bisa**       | OK    |
 
 ---
 
 ## G — Pertanyaan yang belum terjawab dua putaran
 
-| #   | Pertanyaan                                                                                                                                                                 | Jawaban Anda |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| G1  | **Cetak otomatis saat simpan** — Anda minta sendiri di uji R1.5 (A7), tapi belum sempat mencobanya di R1.9 maupun R1.10. Masih diinginkan, atau sebaiknya jadi tombol saja? |              |
+| #   | Pertanyaan                                                                                                                                                                  | Jawaban Anda          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| G1  | **Cetak otomatis saat simpan** — Anda minta sendiri di uji R1.5 (A7), tapi belum sempat mencobanya di R1.9 maupun R1.10. Masih diinginkan, atau sebaiknya jadi tombol saja? | jadi tombol saja dulu |
 
 ---
 
@@ -159,7 +159,7 @@ Pilih salah satu, lalu tulis alasannya:
 - [ ] **Masih ada yang harus diperbaiki dulu** →
 
 ```
-
+Spertinya kita lanjut ke R2
 ```
 
 ---
@@ -171,7 +171,7 @@ Pilih salah satu, lalu tulis alasannya:
    adalah isi R2, dan mengerjakannya sekarang berarti mengerjakannya dua kali.
 2. **Device dipilih dari riwayat pelanggan saat intake** (poin A3 uji R1.9) — **R2**,
    Anda sendiri sudah menyetujuinya.
-3. **Lempar-lempar data kasir ↔ teknisi** — **R2**, kalimat Anda: *"sepertinya itu thap R2 ya"*.
+3. **Lempar-lempar data kasir ↔ teknisi** — **R2**, kalimat Anda: _"sepertinya itu thap R2 ya"_.
 4. **Layar berubah seketika (realtime/WebSocket)** — tidak dibangun. Anda memilih
    penyegaran berkala, dan realtime penuh ukurannya satu fase sendiri.
 5. **Buka/Tutup Kasir** — tetap **Fase R6**, setelah R2.
