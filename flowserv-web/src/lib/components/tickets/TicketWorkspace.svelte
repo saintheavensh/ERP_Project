@@ -83,8 +83,10 @@
       <div class="mt-3 pt-3 border-t border-slate-100">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sandi / Pola</span>
-          {#if !state.passcodeEditing}
-            <button onclick={() => state.openPasscodeEdit()} class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ubah</button>
+          <!-- R1.11-T2 — dicatat konter, jadi hanya konter yang mengubahnya.
+               Teknisi tetap MELIHAT isinya: ia butuh sandinya untuk menguji unit. -->
+          {#if !state.passcodeEditing && state.bolehUbahDataKonter}
+            <button onclick={() => state.openPasscodeEdit()} data-testid="ubah-sandi" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ubah</button>
           {/if}
         </div>
         {#if state.passcodeEditing}
@@ -112,8 +114,10 @@
       <div class="mt-3 pt-3 border-t border-slate-100">
         <div class="flex items-center justify-between">
           <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Keluhan / Kerusakan</span>
-          {#if !state.complaintEditing}
-            <button onclick={() => state.openComplaintEdit()} class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ubah</button>
+          <!-- R1.11-T2 — apa yang DIBAWA pelanggan dicatat konter. Teknisi
+               membacanya (itu alasan unit ini ada di mejanya), tidak mengubahnya. -->
+          {#if !state.complaintEditing && state.bolehUbahDataKonter}
+            <button onclick={() => state.openComplaintEdit()} data-testid="ubah-keluhan" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Ubah</button>
           {/if}
         </div>
         {#if state.complaintEditing}
@@ -157,7 +161,11 @@
             <div>
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Perkiraan Konter</span>
-                {#if state.perkiraanBolehDiubah && !state.perkiraanEditing}
+                <!-- R1.11-T2 — dua syarat yang BERBEDA jenisnya, sengaja
+                     ditulis terpisah: `perkiraanBolehDiubah` aturan tahap
+                     (bukti, berlaku juga untuk Super Admin), yang kedua aturan
+                     wewenang (siapa yang mencatat di konter). -->
+                {#if state.perkiraanBolehDiubah && state.bolehUbahDataKonter && !state.perkiraanEditing}
                   <button
                     onclick={() => state.openPerkiraanEdit()}
                     data-testid="ubah-perkiraan-konter"
@@ -192,14 +200,24 @@
                 <p class="text-xs text-slate-500 mt-1">Kosongkan bila tidak jadi menyebut angka.</p>
               {:else if state.perkiraanKonter !== null}
                 <p class="text-sm text-slate-900 mt-1 font-medium" data-testid="perkiraan-konter">{rp(state.perkiraanKonter)}</p>
+                <!-- R1.11-T4 — kalimat lamanya berbunyi "terkunci setelah unit
+                     lepas dari konter". Pemilik mengoreksinya di uji R1.10 A8:
+                     "unit masih ada di konter cuman statusnya berubah yang
+                     tadinya menunggu menjadi sudah di diagnosa". Betul — tak ada
+                     perpindahan barang, yang berpindah cuma tahapnya.
+                     Kuncinya TETAP (keputusan pemilik 2026-08-05): alasan asli
+                     R1.9-T4 tidak bergantung pada premis yang salah itu. Angka
+                     ini sudah terlanjur didengar pelanggan, jadi ia bukti. -->
                 <p class="text-xs text-slate-500">
                   {state.perkiraanBolehDiubah
                     ? 'Disebutkan kasir saat unit diterima.'
-                    : 'Disebutkan kasir saat unit diterima — terkunci setelah unit lepas dari konter.'}
+                    : 'Disebutkan kasir saat unit diterima — terkunci sejak tiket masuk pemeriksaan, karena angka ini sudah disebutkan ke pelanggan.'}
                 </p>
               {:else}
                 <p class="text-sm text-slate-400 mt-1" data-testid="perkiraan-konter">Belum disebutkan</p>
-                <p class="text-xs text-slate-500">Isi selagi unit masih di konter.</p>
+                <!-- R1.11-T4 — premis yang sama dibetulkan: bukan "selagi unit
+                     masih di konter", tapi selagi tiket belum diperiksa teknisi. -->
+                <p class="text-xs text-slate-500">Isi sebelum teknisi mulai memeriksa.</p>
               {/if}
             </div>
             <div>
@@ -266,8 +284,13 @@
     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm" data-testid="diagnosis-panel">
       <div class="flex items-center justify-between mb-2">
         <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Hasil Diagnosa &amp; Estimasi Waktu</h3>
-        {#if !state.diagnosisEditing && state.ticket?.status !== 'closed' && state.ticket?.status !== 'cancelled'}
-          <button onclick={() => state.openDiagnosisEdit()} class="text-blue-600 hover:text-blue-800 text-xs font-medium">
+        <!-- R1.11-T2 — arah sebaliknya dari sandi/keluhan: ini yang teknisi
+             TEMUKAN, jadi kasir membacanya dan tidak menulisnya. Sebelum R1.11
+             kasir benar-benar bisa menulis hasil diagnosa (terverifikasi: 200),
+             menabrak komentar di db/seed/01-core.ts yang sudah menyatakan
+             sebaliknya sejak awal. -->
+        {#if !state.diagnosisEditing && state.bolehUbahDiagnosa && state.ticket?.status !== 'closed' && state.ticket?.status !== 'cancelled'}
+          <button onclick={() => state.openDiagnosisEdit()} data-testid="ubah-diagnosa" class="text-blue-600 hover:text-blue-800 text-xs font-medium">
             {state.ticket?.diagnosis ? 'Edit' : 'Isi Diagnosa'}
           </button>
         {/if}

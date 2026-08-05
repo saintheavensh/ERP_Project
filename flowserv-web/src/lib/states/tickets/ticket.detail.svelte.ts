@@ -3,6 +3,7 @@ import { invalidateAll } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
 import { autoPrint, summarizeAutoPrint, DOCUMENT_LABELS } from '$lib/api/auto-print';
 import { claimTicket } from '$lib/api/tickets';
+import { roleCan } from '$lib/auth/capabilities';
 
 export class TicketDetailState {
   // $state so every getter that reads `this.data` (ticket, currentNode, charges…)
@@ -59,6 +60,36 @@ export class TicketDetailState {
    */
   get canAssignOthers() {
     return this.data.roleName === 'Super Admin' || this.data.roleName === 'Manager';
+  }
+
+  // -------------------------------------------------------------------------
+  // R1.11-T2 — halaman tiket punya kolom milik DUA peran, dan sampai sekarang
+  // ia menampilkan tombol Ubah untuk semuanya ke semua orang.
+  //
+  // Pemilik (uji-R1.10 A6): "teknisi masih bisa edit keluhan Pola dan lainnya
+  // di halaman detail seharusnya tidak bisa". Yang ia lihat adalah TOMBOLNYA —
+  // backend sudah menolak (403). Tombol yang pasti gagal adalah anti-pattern
+  // yang Track F dan R1.7-T3 sudah berantas dua kali.
+  //
+  // ⚠️ Ini BUKAN gerbang keamanan; gerbangnya `intakePermissionsNeeded` di
+  // backend (R1.11-T1), per kolom. Yang di sini hanya menyembunyikan tepat apa
+  // yang backend memang tolak.
+  //
+  // Yang TIDAK ikut disembunyikan, dan itu disengaja: teknisi tetap MELIHAT
+  // isi sandi/pola dan keluhan. Ia butuh sandinya untuk menguji unit, dan
+  // keluhan adalah alasan unit itu ada di mejanya. Yang hilang cuma tombol
+  // Ubah — sesuai tabel per-peran di plan/tahap-b-peran-dan-qc.md ("Sandi/pola:
+  // teknisi baca", "Keluhan: teknisi baca").
+  // -------------------------------------------------------------------------
+
+  /** Kolom yang dicatat KONTER: sandi/pola, keluhan, perkiraan konter. */
+  get bolehUbahDataKonter(): boolean {
+    return roleCan(this.data.roleName, 'ticket.create');
+  }
+
+  /** Kolom yang dicatat TEKNISI: hasil diagnosa + lama pengerjaan. */
+  get bolehUbahDiagnosa(): boolean {
+    return roleCan(this.data.roleName, 'ticket.diagnose');
   }
   assignLoading = $state(false);
 

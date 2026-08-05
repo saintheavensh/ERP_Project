@@ -21,6 +21,21 @@ const ROLES_WITH: Record<string, readonly string[]> = {
   // Kasir tetap MELIHAT kategorinya — ia perlu tahu — hanya tidak bisa
   // mengubahnya, persis perlakuan tempo yang pemilik sudah setujui di B1/B2.
   'customer.set_category': ['Super Admin', 'Manager'],
+  // R1.11-T2 — kolom halaman tiket punya DUA pemilik, dan sampai R1.11 layar
+  // tidak membedakannya sama sekali: teknisi melihat tombol Ubah pada Keluhan
+  // dan Sandi/Pola yang backend PASTI tolak. Pemilik menemukannya di uji R1.10
+  // A6: "teknisi masih bisa edit keluhan Pola dan lainnya di halaman detail
+  // seharusnya tidak bisa".
+  //
+  // Padanannya di backend nyata dan per-kolom sejak R1.11-T1
+  // (`intakePermissionsNeeded` di flowserv-api/src/lib/intake-fields.ts) —
+  // jadi kedua baris ini menyembunyikan tepat apa yang backend tolak, tidak
+  // lebih dan tidak kurang.
+  //
+  // Kasir mencatat apa yang DIBAWA pelanggan; teknisi mencatat apa yang ia
+  // TEMUKAN.
+  'ticket.create': ['Super Admin', 'Manager', 'Cashier'],
+  'ticket.diagnose': ['Super Admin', 'Manager', 'Technician'],
 };
 
 /**
