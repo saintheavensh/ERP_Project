@@ -20,11 +20,16 @@
 > antaranya**. Rencana aktifnya
 > **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R6), indeksnya
 > [`plan/README.md`](plan/README.md). Fase yang sedang dikerjakan:
-> **[`plan/R1.11-perbaikan-hasil-uji-R1.10.md`](plan/R1.11-perbaikan-hasil-uji-R1.10.md)** —
-> dibuka 2026-08-05 dari catatan uji R1.10 pemilik. **Putaran paling bersih sejauh ini: 20
-> dari 21 poin `OK`**, dan seluruh sisanya ada di **satu kotak** (poin **A7**) plus satu
-> koreksi istilah (**A8**). Gerbang R2 sekarang `plan/uji-R1.11-perbaikan.md`, ditulis
-> setelah kode R1.11 selesai.
+> **[`plan/R2-halaman-tiket-per-peran.md`](plan/R2-halaman-tiket-per-peran.md)**.
+>
+> **🔓 R1.11 ditutup 2026-08-06 dan gerbang R2 akhirnya terbuka.** Pemilik menjalankan
+> `plan/uji-R1.11-perbaikan.md`: **18 dari 18 poin `OK`, tidak ada satu pun yang gagal** —
+> putaran kedua yang seperti itu setelah R1.8 — dengan kesimpulan *"Spertinya kita lanjut ke
+> R2"*. Dua jawaban yang bukan `OK` (**D7** penyegaran terlalu lambat, **G1** cetak otomatis)
+> **ditutup sebagai R1.11-T7, bukan dibawa masuk ke R2**: memulai fase besar sambil menyeret
+> sisa fase sebelumnya persis cara dua fase berjalan sekaligus, yang aturan `plan/README.md`
+> larang. Rinciannya di bawah — termasuk **G1 yang berakhir nol pekerjaan kode karena
+> pemilik mengoreksi jawabannya sendiri di tengah pengerjaan.**
 >
 > **🔴 Bug yang ditemukan saat MERENCANAKAN R1.11, dan pemilik belum pernah menabraknya.**
 > `PATCH /v1/tickets/:id/intake-details` menampung **empat kolom milik dua peran** tapi
@@ -75,11 +80,13 @@
 > diganti supaya 8 tautan di berkas ini tidak putus). **Tautan `plan/uji-R1.*.md` di bawah
 > yang mengarah ke berkas tak ada lagi itu wajar — penanda sejarah, bukan tautan rusak.**
 >
-> - [/] **R1.11 — Perbaikan hasil uji manual R1.10** (rencana ditulis 2026-08-05) —
+> - [x] **R1.11 — Perbaikan hasil uji manual R1.10** (kode 2026-08-05; **diuji pemilik
+>       2026-08-06, 18/18 `OK`**) —
 >       [`plan/R1.11-perbaikan-hasil-uji-R1.10.md`](plan/R1.11-perbaikan-hasil-uji-R1.10.md).
 >       Uji R1.10 adalah **putaran paling bersih sejauh ini — 20 dari 21 poin `OK`**, dan
 >       seluruh sisanya ada di **satu kotak**. Kesimpulan pemilik: *"masih ada perbaikan
->       sedikit lagi"*.
+>       sedikit lagi"*. **Fase R1.x berakhir di sini** — sebelas putaran perbaikan sejak
+>       2026-07-31, dan yang menutupnya adalah uji tanpa satu pun kegagalan.
 >       - [x] **R1.11-T1 🔴 — izin per-KOLOM di `/intake-details`.** Satu endpoint, empat
 >             kolom, **dua pemilik**, satu gerbang. Terbukti terbalik ke dua arah lewat curl:
 >             teknisi **403** menyimpan diagnosanya sendiri, kasir **200** menulis diagnosa.
@@ -126,8 +133,38 @@
 >       (perintahnya diblokir izin), jadi kesimpulan ini bersandar pada set yang tidak
 >       stabil + ketiganya lulus saat dijalankan sendiri + nol irisan dengan permukaan
 >       yang R1.11 ubah.
->       - [ ] **R1.11-T6 — uji manual pemilik**
->             ([`plan/uji-R1.11-perbaikan.md`](plan/uji-R1.11-perbaikan.md)) ← **gerbang R2**
+>       - [x] **R1.11-T6 — uji manual pemilik** (2026-08-06, commit `d83dc44`). Ketujuh
+>             bagian (A–G) dijalankan. **18 dari 18 poin `OK` — tidak ada satu pun yang
+>             gagal**, putaran kedua yang seperti itu setelah R1.8. Termasuk **A4**, bug
+>             yang empat hari terbalik (teknisi tak bisa menyimpan diagnosa, kasir justru
+>             bisa) dan tak satu tes pun menangkapnya. Kesimpulan pemilik: *"Spertinya kita
+>             lanjut ke R2"*.
+>       - [x] **R1.11-T7 — dua jawaban yang BUKAN `OK`, ditutup di sini bukan dibawa ke R2**
+>             (2026-08-06, commit `90384cc`).
+>             **D7 — *"terlalu lambat"*:** jeda penyegaran **20 detik → 5 detik**
+>             (`lib/utils/refresh-policy.ts`). Pemilik ditawari 5 detik / 2–3 detik /
+>             realtime WebSocket, memilih 5. Alasan angka lama **tidak salah, hanya salah
+>             timbangannya** — "jangan membebani API" dihitung untuk toko dengan banyak
+>             layar, padahal nyatanya 3–4. **Batas atas tesnya ikut diperketat 60 → 10
+>             detik**, karena 20 detik LULUS batas lama: batas itu membiarkan persis angka
+>             yang ditolak pemakainya.
+>             **G1 — cetak otomatis: NOL pekerjaan kode, dan itu karena pemilik mengoreksi
+>             dirinya sendiri di tengah pengerjaan.** Jawaban di checklist *"jadi tombol saja
+>             dulu"* sudah mulai dikerjakan (pemicu dicabut, metodenya dihapus) ketika beliau
+>             menulis *"print otomatisnya jangan di matikan tetap ada tetapi trigger manual
+>             juga ada"* — dan bentuk itu **persis yang sudah berjalan sejak R1.9-T5**.
+>             Perubahannya dikembalikan utuh; yang ditulis hanya keputusannya, supaya
+>             pertanyaan yang sudah diajukan tiga putaran (R1.9, R1.10, R1.11-G1) berhenti.
+>             **Jebakan yang nyaris kena dan sekarang ditulis di kodenya:** mematikan cetak
+>             otomatis dengan mengosongkan `flow_nodes.autoPrintDocuments` akan **menghapus
+>             tombol cetaknya sekalian**, karena `printableTicketDocuments` diturunkan dari
+>             kolom yang sama — kebalikan persis dari "jadi tombol saja". Bentuk cacat yang
+>             sama dengan R1.5D (lemparan halaman yang ternyata ITU pemicu cetaknya).
+>             **Bukti:** 35 unit frontend hijau · `svelte-check` **788 berkas 0 error**.
+>       - [x] **B3 & E2 — pertanyaan pendapat, dijawab dan ditutup.** Teknisi **boleh**
+>             melihat sandi/pola (*"ya tentu saja boleh"*) — rancangan R1.11-T2 dikonfirmasi,
+>             bukan sekadar tidak ditolak. Kalimat kunci perkiraan konter dinyatakan sudah
+>             sesuai cara kerja toko.
 >
 > - [x] **R1.10 — Perbaikan hasil uji manual R1.9** (kode selesai 2026-08-05; **diuji
 >       pemilik 2026-08-05, 20/21 `OK`**) —
