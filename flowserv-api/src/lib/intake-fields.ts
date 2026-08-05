@@ -134,3 +134,118 @@ export function checkCustomerName(value: string | null | undefined): FieldCheck 
   }
   return ok;
 }
+
+// ---------------------------------------------------------------------------
+// R1.11-T1 — izin per-KOLOM untuk PATCH /v1/tickets/:id/intake-details.
+//
+// Endpoint itu menampung lima kolom milik DUA peran, tapi selama ini
+// digerbangi SATU izin di tingkat route (`ticket.create`). Akibatnya terbalik
+// ke dua arah sekaligus, dan dibuktikan lewat curl ke API sungguhan sebelum
+// perbaikan ini ditulis:
+//
+//   teknisi -> diagnosis   403  (padahal itu pekerjaan intinya)
+//   kasir   -> diagnosis   200  (padahal ia tidak mendiagnosis)
+//
+// Rusak sejak R1.5B (2026-08-01) mencabut `ticket.create` dari teknisi atas
+// permintaan pemilik. Alasan pencabutannya benar; yang luput adalah bahwa satu
+// route lain kebetulan menumpang izin yang sama, jadi ia ikut mati tanpa satu
+// tes pun gagal — nol e2e backend menyentuh endpoint ini, dan setiap tes
+// diagnosa berjalan sebagai Super Admin, yang MELEWATI seluruh RBAC.
+//
+// Gerbang tingkat-route tak bisa menyatakan "kolom ini milik A, kolom itu
+// milik B" — itu persis alasan `enforcePermission()` ada (lihat komentarnya di
+// middleware/rbac.ts). Pola yang sama sudah dipakai tiga kali: D2
+// `pos.apply_discount`, R1.9-T1b `customer.allow_tempo`, R1.10-T4
+// `customer.set_category`.
+//
+// ATURAN berkas ini tetap berlaku: murni, tanpa DB/HTTP/Zod.
+// ---------------------------------------------------------------------------
+
+/**
+ * Kolom `/intake-details` → izin yang benar-benar memilikinya.
+ *
+ * Konter (kasir) mencatat apa yang dibawa pelanggan; teknisi mencatat apa yang
+ * ia temukan. `intakeEstimatedCost` milik konter — dan ia PUNYA kunci kedua
+ * yang tidak ada hubungannya dengan izin (`INTAKE_ESTIMATE_LOCKED` di
+ * `modules/tickets/service.ts`, aturan bukti yang berlaku juga untuk Super
+ * Admin). Dua hal berbeda yang kebetulan mengenai kolom yang sama.
+ */
+export const INTAKE_FIELD_PERMISSIONS = {
+  devicePasscode: 'ticket.create',
+  reportedComplaint: 'ticket.create',
+  intakeEstimatedCost: 'ticket.create',
+  diagnosis: 'ticket.diagnose',
+  estimatedDurationMinutes: 'ticket.diagnose',
+} as const;
+
+export type IntakeDetailField = keyof typeof INTAKE_FIELD_PERMISSIONS;
+
+/** Nilai kolom-kolom di atas, apa adanya dari DB maupun dari payload. */
+export type IntakeDetailValues = Partial<
+  Record<IntakeDetailField, string | number | null | undefined>
+>;
+
+/**
+ * Menyamakan bentuk sebelum dibandingkan.
+ *
+ * Dua hal yang wajib ditangani, dan keduanya akan menghasilkan penolakan
+ * PALSU kalau dilewatkan:
+ *
+ * 1. Angka datang sebagai `number` dari payload tapi tersimpan sebagai
+ *    `"450000.00"` (numeric Postgres). `450000 !== "450000.00"`, jadi
+ *    membandingkan mentah-mentah membuat "menyimpan ulang nilai yang sama"
+ *    terlihat seperti perubahan.
+ * 2. Kosong punya tiga wajah — `null`, `undefined`, dan `''`. Form mengirim
+ *    `null` saat dikosongkan, DB menyimpan `null`, tapi sebuah input teks yang
+ *    disentuh lalu dibiarkan kosong bisa mengirim `''`.
+ */
+function normalizeValue(value: string | number | null | undefined): string | number | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return Number.isNaN(value) ? null : value;
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+  // Hanya angka murni yang dinumerikkan. Keluhan "0812..." adalah teks dan
+  // harus tetap teks — `Number()` atas teks bebas mengembalikan NaN, dan
+  // NaN !== NaN akan membuat setiap penyimpanan tampak seperti perubahan.
+  const asNumber = Number(trimmed);
+  return Number.isFinite(asNumber) && trimmed !== '' && /^-?\d+(\.\d+)?$/.test(trimmed)
+    ? asNumber
+    : trimmed;
+}
+
+/**
+ * Izin apa saja yang harus dipegang pemanggil untuk menyimpan `input` ini.
+ *
+ * **Kondisional terhadap nilai yang BENAR-BENAR BERUBAH, bukan terhadap "ada
+ * di payload".** Alasannya sudah dibayar sekali di R1.10-T4: sebuah form bisa
+ * mengirim seluruh objek tiap kali menyimpan, jadi memeriksa keberadaan kunci
+ * akan memblokir orang yang tidak sedang menyentuh kolom itu sama sekali —
+ * kasir yang membetulkan keluhan tidak boleh tersandung aturan diagnosa.
+ *
+ * Menyimpan ulang nilai yang sama persis karena itu tidak menuntut izin apa
+ * pun. Itu memang bukan perubahan, dan tak ada yang perlu dijaga.
+ *
+ * @returns kode izin unik, urutannya stabil (mengikuti urutan kolom di
+ *          `INTAKE_FIELD_PERMISSIONS`) supaya pesan 403 yang diterima pemakai
+ *          tidak berubah-ubah antar permintaan yang sama.
+ */
+export function intakePermissionsNeeded(
+  current: IntakeDetailValues,
+  input: IntakeDetailValues
+): string[] {
+  const needed: string[] = [];
+
+  for (const field of Object.keys(INTAKE_FIELD_PERMISSIONS) as IntakeDetailField[]) {
+    // Kunci yang tidak dikirim adalah no-op di service, jadi ia juga bukan
+    // urusan izin. `in` (bukan `!== undefined`) supaya `{ diagnosis: undefined }`
+    // diperlakukan sama dengan tidak mengirim apa-apa.
+    if (!(field in input)) continue;
+
+    if (normalizeValue(input[field]) === normalizeValue(current[field])) continue;
+
+    const permission = INTAKE_FIELD_PERMISSIONS[field];
+    if (!needed.includes(permission)) needed.push(permission);
+  }
+
+  return needed;
+}

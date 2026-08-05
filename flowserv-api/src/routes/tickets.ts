@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { checkPasscode } from '../lib/passcode';
-import { checkComplaint, checkUnitIdentity, checkCustomerName } from '../lib/intake-fields';
+import { checkComplaint, checkUnitIdentity, checkCustomerName, intakePermissionsNeeded } from '../lib/intake-fields';
 import { zValidator } from '../lib/validator';
 import { db } from '../db/connection';
 import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, flowTransitions, ticketStageHistory, branches, users, deviceModels, deviceBrands, userRoleAssignments, roles } from '../db/schema';
@@ -475,11 +475,49 @@ ticketsRouter.post('/intake', requirePermission('ticket.create'), zValidator('js
 // kind of value that shouldn't sit in cleartext in a second place (the audit
 // log); the complaint text is excluded too, for consistency with one
 // endpoint covering both fields.
-ticketsRouter.patch('/:id/intake-details', requirePermission('ticket.create'), zValidator('json', updateIntakeDetailsInput), auditMiddleware({ action: 'ticket.update_intake_details', entityType: 'service_ticket', entityIdParam: 'id' }), async (c) => {
+// R1.11-T1 — gerbang tingkat-route DILEPAS di sini, dan itu bukan pelonggaran.
+//
+// Endpoint ini menampung lima kolom milik DUA peran. Satu izin untuk semuanya
+// terbukti salah ke dua arah sekaligus (curl, API sungguhan, sebelum perbaikan):
+// teknisi 403 saat menyimpan diagnosanya sendiri, kasir 200 saat menulis
+// diagnosa. Penegakannya pindah ke bawah, PER KOLOM, lewat `enforcePermission`
+// — mekanisme yang memang dibuat untuk gerbang kondisional di dalam handler.
+// Peta kolom→izin ada di `lib/intake-fields.ts`, murni dan berteS unit.
+//
+// Yang menutup celah "route jadi tanpa gerbang": setiap kolom yang benar-benar
+// BERUBAH menuntut izinnya masing-masing, jadi peran tanpa izin apa pun tidak
+// bisa mengubah apa pun. Yang lolos hanyalah body tanpa perubahan — dan itu
+// memang tidak menulis apa-apa.
+ticketsRouter.patch('/:id/intake-details', zValidator('json', updateIntakeDetailsInput), auditMiddleware({ action: 'ticket.update_intake_details', entityType: 'service_ticket', entityIdParam: 'id' }), async (c) => {
   const { tenantId } = getAuthContext(c);
   const ticketId = c.req.param('id');
   const input = c.req.valid('json');
   try {
+    // Keadaan sekarang dibaca lebih dulu: izin ditentukan oleh apa yang
+    // BERUBAH, bukan oleh apa yang dikirim (pelajaran R1.10-T4).
+    const [current] = await db
+      .select({
+        devicePasscode: serviceTickets.devicePasscode,
+        reportedComplaint: serviceTickets.reportedComplaint,
+        diagnosis: serviceTickets.diagnosis,
+        estimatedDurationMinutes: serviceTickets.estimatedDurationMinutes,
+        intakeEstimatedCost: serviceTickets.intakeEstimatedCost,
+      })
+      .from(serviceTickets)
+      .where(and(eq(serviceTickets.id, ticketId), eq(serviceTickets.tenantId, tenantId)));
+
+    // 404 mendahului 403: tiket milik tenant lain tidak boleh dibedakan dari
+    // tiket yang tidak ada, dan itu aturan yang sudah dipakai di seluruh
+    // repo ini (lihat H12 — token tenant kedua dapat 404, bukan 403).
+    if (!current) {
+      return errorResponse(c, 'NOT_FOUND', 'Ticket not found', undefined, 404);
+    }
+
+    for (const permission of intakePermissionsNeeded(current, input)) {
+      const blocked = await enforcePermission(c, permission);
+      if (blocked) return blocked;
+    }
+
     const result = await updateIntakeDetails(tenantId, ticketId, input);
     return successResponse(c, result);
   } catch (err) {

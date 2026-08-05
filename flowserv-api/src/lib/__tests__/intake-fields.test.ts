@@ -3,6 +3,8 @@ import {
   checkComplaint,
   checkUnitIdentity,
   checkCustomerName,
+  intakePermissionsNeeded,
+  INTAKE_FIELD_PERMISSIONS,
   MIN_COMPLAINT_LENGTH,
 } from '../intake-fields';
 
@@ -91,5 +93,150 @@ describe('checkCustomerName', () => {
 
   it('menerima nama yang wajar', () => {
     expect(checkCustomerName('Budi').valid).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R1.11-T1 — izin per-kolom di PATCH /:id/intake-details.
+//
+// Kelas bug yang tes ini jaga TIDAK memunculkan error apa pun: ia cuma
+// menggerbangi orang yang salah. Sebelum perbaikan ini, teknisi 403 saat
+// menyimpan diagnosanya sendiri dan kasir 200 saat menulis diagnosa — dan
+// suite lengkap tetap hijau selama lima fase.
+// ---------------------------------------------------------------------------
+
+describe('intakePermissionsNeeded', () => {
+  const kosong = {
+    devicePasscode: null,
+    reportedComplaint: null,
+    diagnosis: null,
+    estimatedDurationMinutes: null,
+    intakeEstimatedCost: null,
+  };
+
+  it('tidak menuntut apa pun untuk body kosong', () => {
+    expect(intakePermissionsNeeded(kosong, {})).toEqual([]);
+  });
+
+  it('kolom konter menuntut ticket.create', () => {
+    expect(intakePermissionsNeeded(kosong, { reportedComplaint: 'LCD pecah' }))
+      .toEqual(['ticket.create']);
+    expect(intakePermissionsNeeded(kosong, { devicePasscode: '1234' }))
+      .toEqual(['ticket.create']);
+    expect(intakePermissionsNeeded(kosong, { intakeEstimatedCost: 450000 }))
+      .toEqual(['ticket.create']);
+  });
+
+  it('kolom teknisi menuntut ticket.diagnose', () => {
+    expect(intakePermissionsNeeded(kosong, { diagnosis: 'IC charging rusak' }))
+      .toEqual(['ticket.diagnose']);
+    expect(intakePermissionsNeeded(kosong, { estimatedDurationMinutes: 120 }))
+      .toEqual(['ticket.diagnose']);
+  });
+
+  // Inilah bug yang R1.11 ada untuk memperbaikinya, ditulis sebagai tes.
+  it('teknisi menyimpan diagnosa TIDAK menuntut ticket.create', () => {
+    const perlu = intakePermissionsNeeded(kosong, {
+      diagnosis: 'IC charging rusak',
+      estimatedDurationMinutes: 120,
+    });
+    expect(perlu).toEqual(['ticket.diagnose']);
+    expect(perlu).not.toContain('ticket.create');
+  });
+
+  // Dan ini arah sebaliknya, yang sama-sama salah sebelum perbaikan.
+  it('kasir menulis diagnosa TETAP menuntut ticket.diagnose', () => {
+    expect(intakePermissionsNeeded(kosong, { diagnosis: 'ditulis kasir' }))
+      .toContain('ticket.diagnose');
+  });
+
+  it('body campuran menuntut kedua izin, urutannya stabil', () => {
+    const perlu = intakePermissionsNeeded(kosong, {
+      reportedComplaint: 'mati total',
+      diagnosis: 'IC rusak',
+    });
+    expect(perlu).toEqual(['ticket.create', 'ticket.diagnose']);
+  });
+
+  it('tidak mengulang izin yang sama untuk dua kolom sekelompok', () => {
+    expect(intakePermissionsNeeded(kosong, {
+      reportedComplaint: 'mati total',
+      devicePasscode: '1234',
+      intakeEstimatedCost: 450000,
+    })).toEqual(['ticket.create']);
+  });
+
+  // --- Kondisional terhadap PERUBAHAN, bukan terhadap keberadaan kunci ---
+  // Pelajaran R1.10-T4: form bisa mengirim seluruh objek tiap simpan, jadi
+  // memeriksa "ada di payload" memblokir orang yang tak menyentuh kolom itu.
+
+  it('menyimpan ulang nilai yang sama tidak menuntut izin apa pun', () => {
+    const sekarang = { ...kosong, reportedComplaint: 'LCD pecah', diagnosis: 'IC rusak' };
+    expect(intakePermissionsNeeded(sekarang, {
+      reportedComplaint: 'LCD pecah',
+      diagnosis: 'IC rusak',
+    })).toEqual([]);
+  });
+
+  it('kasir mengirim seluruh objek tapi hanya mengubah keluhan → cuma ticket.create', () => {
+    const sekarang = { ...kosong, reportedComplaint: 'LCD pecah', diagnosis: 'IC rusak' };
+    expect(intakePermissionsNeeded(sekarang, {
+      reportedComplaint: 'LCD pecah + tidak mengisi daya',
+      diagnosis: 'IC rusak', // tidak diubah
+    })).toEqual(['ticket.create']);
+  });
+
+  it('kunci yang bernilai undefined diperlakukan seperti tidak dikirim', () => {
+    expect(intakePermissionsNeeded(kosong, { diagnosis: undefined })).toEqual([]);
+  });
+
+  // --- Penyamaan bentuk. Tanpa ini, penolakan PALSU. ---
+
+  it('angka dari payload sama dengan numeric string dari DB', () => {
+    // Postgres numeric mengembalikan "450000.00"; payload mengirim 450000.
+    expect(intakePermissionsNeeded(
+      { intakeEstimatedCost: '450000.00' },
+      { intakeEstimatedCost: 450000 }
+    )).toEqual([]);
+  });
+
+  it('angka yang benar-benar berubah tetap menuntut izin', () => {
+    expect(intakePermissionsNeeded(
+      { intakeEstimatedCost: '450000.00' },
+      { intakeEstimatedCost: 500000 }
+    )).toEqual(['ticket.create']);
+  });
+
+  it('kosong punya tiga wajah dan ketiganya dianggap sama', () => {
+    expect(intakePermissionsNeeded({ devicePasscode: null }, { devicePasscode: '' })).toEqual([]);
+    expect(intakePermissionsNeeded({ devicePasscode: '' }, { devicePasscode: null })).toEqual([]);
+    expect(intakePermissionsNeeded({ diagnosis: null }, { diagnosis: '   ' })).toEqual([]);
+  });
+
+  it('mengosongkan nilai yang tadinya terisi tetap menuntut izin', () => {
+    expect(intakePermissionsNeeded({ devicePasscode: '1234' }, { devicePasscode: null }))
+      .toEqual(['ticket.create']);
+  });
+
+  // Teks yang kebetulan diawali angka tidak boleh dinumerikkan — kalau ia
+  // jadi NaN, NaN !== NaN membuat SETIAP penyimpanan tampak berubah.
+  it('keluhan berupa teks tetap dibandingkan sebagai teks', () => {
+    expect(intakePermissionsNeeded(
+      { reportedComplaint: '0812 tidak bisa telepon' },
+      { reportedComplaint: '0812 tidak bisa telepon' }
+    )).toEqual([]);
+  });
+
+  it('peta kolom→izin memuat tepat lima kolom yang endpoint terima', () => {
+    // Menjaga agar kolom baru di updateIntakeDetailsInput tidak lolos tanpa
+    // izin: kalau seseorang menambah kolom di types.ts dan lupa di sini,
+    // jumlahnya berubah dan tes ini yang bersuara lebih dulu.
+    expect(Object.keys(INTAKE_FIELD_PERMISSIONS).sort()).toEqual([
+      'devicePasscode',
+      'diagnosis',
+      'estimatedDurationMinutes',
+      'intakeEstimatedCost',
+      'reportedComplaint',
+    ]);
   });
 });
