@@ -80,31 +80,54 @@
 >       Uji R1.10 adalah **putaran paling bersih sejauh ini — 20 dari 21 poin `OK`**, dan
 >       seluruh sisanya ada di **satu kotak**. Kesimpulan pemilik: *"masih ada perbaikan
 >       sedikit lagi"*.
->       - [ ] **R1.11-T1 🔴 — izin per-KOLOM di `/intake-details`.** Satu endpoint, empat
+>       - [x] **R1.11-T1 🔴 — izin per-KOLOM di `/intake-details`.** Satu endpoint, empat
 >             kolom, **dua pemilik**, satu gerbang. Terbukti terbalik ke dua arah lewat curl:
 >             teknisi **403** menyimpan diagnosanya sendiri, kasir **200** menulis diagnosa.
 >             Gerbang route dilepas; penegakan pindah ke `enforcePermission` per kolom,
 >             **kondisional terhadap nilai yang benar-benar berubah** (pelajaran R1.10-T4),
 >             lewat fungsi murni `intakePermissionsNeeded()` + tes unit. Kunci tahap
 >             `INTAKE_ESTIMATE_LOCKED` **tidak** disentuh — itu aturan bukti, bukan wewenang.
->       - [ ] **R1.11-T2 — tombol yang pasti gagal disembunyikan.** Yang pemilik sebenarnya
+>       - [x] **R1.11-T2 — tombol yang pasti gagal disembunyikan.** Yang pemilik sebenarnya
 >             lihat di A7. Teknisi **tetap melihat** sandi/pola & keluhan (ia butuh sandinya
 >             untuk menguji unit) — yang hilang cuma tombol Ubah. Dibangun di atas
 >             `lib/auth/capabilities.ts` yang sudah ada, supaya R2.2 **menumpanginya**, bukan
 >             menggantinya.
->       - [ ] **R1.11-T3 — halaman menyusul keadaan terbaru.** Keluhan kedua di A7: layar
+>       - [x] **R1.11-T3 — halaman menyusul keadaan terbaru.** Keluhan kedua di A7: layar
 >             kasir memuat tiket **sekali** dan tak pernah tahu teknisi sudah bekerja.
 >             Keputusan pemilik: menyegarkan saat tab kembali dipakai + berkala ±20 detik,
 >             **bukan** WebSocket (PLT-013 tetap belum dibangun). **Jebakan yang wajib
 >             ditangani:** menyegarkan saat pemakai sedang mengetik akan menghapus tulisannya
 >             — penyegaran ditunda selagi ada form Ubah terbuka, dan itu wajib punya tesnya.
->       - [ ] **R1.11-T4 — kalimat kunci perkiraan konter (A8).** Pemilik mengoreksi
+>       - [x] **R1.11-T4 — kalimat kunci perkiraan konter (A8).** Pemilik mengoreksi
 >             premisnya: *"unit masih ada di konter cuman statusnya berubah"*. Betul —
 >             kalimat *"setelah unit lepas dari konter"* menggambarkan perpindahan fisik yang
 >             tidak terjadi. **Kuncinya tetap** (keputusan pemilik 2026-08-05): alasan asli
 >             R1.9-T4 tidak bergantung pada premis yang salah itu — angka konter sudah
 >             terlanjur didengar pelanggan, jadi ia bukti. Kata-katanya saja yang diganti.
->       - [ ] **R1.11-T5 — tes + checklist uji manual pemilik** ← **gerbang R2**
+>       - [x] **R1.11-T5 — tes.** 15 unit backend baru + 6 unit frontend + **9 Playwright
+>             baru** di `e2e/r1-11-perbaikan.spec.ts`, semuanya **ditekan sebagai peran yang
+>             benar**. Dibuktikan bukan lulus karena kebetulan: bug T1 & T3 dikembalikan
+>             sementara → **5 dari 9 GAGAL**; dikembalikan lagi → 9/9.
+>
+>       **Bukti R1.11:** **320 unit backend** (dari 304) · **35 unit frontend** (dari 24) ·
+>       **21 e2e API** · **Playwright 254/261**, `tsc` bersih, `svelte-check` **786 berkas
+>       0 error 0 warning**.
+>
+>       **7 kegagalan Playwright, TIDAK SATU PUN regresi — dan dibuktikan secara
+>       kuantitatif, bukan diklaim.** Suite penuh dijalankan **dua kali** pada kode
+>       identik dengan DB sama-sama baru di-reset: **254 lulus di kedua kali, tapi daftar
+>       yang gagal BERUBAH** (`p6b1-printer-settings:87` & `p72-template-editor:88` gagal
+>       hanya di run 1; `device-catalog:65` & `payment-methods:34` hanya di run 2). Set
+>       yang tidak stabil pada kode yang sama **adalah** polusi antar-tes. Tiga lainnya
+>       (`p6b-print:71`, `printer-scan:36`, `pos-service-flow:80`) menguji perilaku **saat
+>       agen printer MATI** — di sesi ini agennya menyala, yang juga menjelaskan kenapa
+>       R1.10 melaporkan 252/252: agennya waktu itu tidak dinyalakan.
+>       **Batas kejujurannya:** kontrol penuh di kode pra-R1.11 tak bisa dijalankan
+>       (perintahnya diblokir izin), jadi kesimpulan ini bersandar pada set yang tidak
+>       stabil + ketiganya lulus saat dijalankan sendiri + nol irisan dengan permukaan
+>       yang R1.11 ubah.
+>       - [ ] **R1.11-T6 — uji manual pemilik**
+>             ([`plan/uji-R1.11-perbaikan.md`](plan/uji-R1.11-perbaikan.md)) ← **gerbang R2**
 >
 > - [x] **R1.10 — Perbaikan hasil uji manual R1.9** (kode selesai 2026-08-05; **diuji
 >       pemilik 2026-08-05, 20/21 `OK`**) —
