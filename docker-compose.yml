@@ -1,0 +1,122 @@
+# FlowServ — satu perintah untuk menjalankan seluruh aplikasi.
+#
+#   cp .env.example .env      # lalu isi kata sandi & JWT_SECRET
+#   docker compose up -d --build
+#
+# Berkas yang SAMA dipakai di komputer lokal dan di VPS. Itu inti pemakaian
+# Docker di sini: kalau lokal jalan, VPS jalan, karena yang dijalankan memang
+# gambar yang sama persis — bukan "mirip".
+#
+# Disusun untuk VPS 1 GB. Batas memori tiap layanan ditulis eksplisit di bawah,
+# dan totalnya sengaja disisakan ruang untuk OS.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-flowserv}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi di .env}
+      POSTGRES_DB: ${POSTGRES_DB:-flowserv}
+      TZ: ${TZ:-Asia/Jakarta}
+    # Disetel untuk mesin kecil. Bawaan Postgres mengasumsikan server yang jauh
+    # lebih besar; `shared_buffers` 128MB + koneksi 100 adalah pemborosan nyata
+    # di VPS 1 GB yang cuma melayani satu toko.
+    command: >
+      postgres
+      -c shared_buffers=64MB
+      -c max_connections=30
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
+      -c effective_cache_size=256MB
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    # TIDAK ada `ports:` — database hanya dijangkau dari jaringan internal
+    # Compose. Membuka 5432 ke internet adalah cara paling umum sebuah database
+    # kecil berakhir di berita, dan tak ada yang membutuhkannya di sini.
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-flowserv} -d ${POSTGRES_DB:-flowserv}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/api.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Nama host `db` = nama service di atas. Inilah alasan alamat sisi server
+      # tidak boleh `localhost`: di dalam kontainer, localhost adalah kontainer
+      # itu sendiri.
+      DATABASE_URL: postgres://${POSTGRES_USER:-flowserv}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-flowserv}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET wajib diisi di .env — server menolak menyala tanpanya}
+      RBAC_MODE: ${RBAC_MODE:-enforce}
+      TZ: ${TZ:-Asia/Jakarta}
+      NODE_ENV: production
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/web.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # DUA alamat, dan bedanya penting (lihat lib/api/config.server.ts):
+      #   API_URL        → dipakai server SSR, lewat jaringan internal Docker
+      #   PUBLIC_API_URL → dipakai browser pemakai, lewat Nginx ke internet
+      API_URL: http://api:3001
+      PUBLIC_API_URL: ${PUBLIC_API_URL:?PUBLIC_API_URL wajib diisi, mis. https://toko-anda.com/api}
+      TZ: ${TZ:-Asia/Jakarta}
+      NODE_ENV: production
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Sertifikat HTTPS gratis. Dijalankan sesuai kebutuhan, bukan terus-menerus:
+  #   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d toko-anda.com
+  # lalu perbarui berkala dengan `docker compose run --rm certbot renew`.
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ['tools']
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+
+volumes:
+  db-data:
+  certbot-conf:
+  certbot-www:

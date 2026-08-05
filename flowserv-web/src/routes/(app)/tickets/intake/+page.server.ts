@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 // F7 — the customer-detail "Create Ticket" button links here with
 // ?customerId=&assetId=. Both are re-validated against the API (tenant-scoped,
@@ -9,7 +10,7 @@ async function resolvePrefill(token: string, customerId: string | null, assetId:
   if (!customerId) return null;
 
   try {
-    const custRes = await fetch(`http://localhost:3001/v1/customers/${customerId}`, {
+    const custRes = await fetch(`${API_BASE}/customers/${customerId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!custRes.ok) return null;
@@ -24,7 +25,7 @@ async function resolvePrefill(token: string, customerId: string | null, assetId:
     };
 
     if (assetId) {
-      const assetsRes = await fetch(`http://localhost:3001/v1/customers/${customerId}/assets`, {
+      const assetsRes = await fetch(`${API_BASE}/customers/${customerId}/assets`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (assetsRes.ok) {
@@ -56,7 +57,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   let customers = [];
 
   try {
-    const res = await fetch('http://localhost:3001/v1/flows', {
+    const res = await fetch(`${API_BASE}/flows`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
@@ -64,7 +65,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       templates = result.data || [];
     }
 
-    const custRes = await fetch('http://localhost:3001/v1/customers', {
+    const custRes = await fetch(`${API_BASE}/customers`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (custRes.ok) {
@@ -86,7 +87,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // skema yang tak dibutuhkan untuk tujuan aslinya: memastikan unit tercatat.
   let recentTickets = [];
   try {
-    const recentRes = await fetch('http://localhost:3001/v1/tickets?limit=5', {
+    const recentRes = await fetch(`${API_BASE}/tickets?limit=5`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (recentRes.ok) recentTickets = (await recentRes.json()).data || [];
@@ -101,7 +102,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   // persis perilaku sebelum T6 ada.
   let technicians = [];
   try {
-    const techRes = await fetch('http://localhost:3001/v1/users?role=Technician', {
+    const techRes = await fetch(`${API_BASE}/users?role=Technician`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (techRes.ok) technicians = (await techRes.json()).data || [];

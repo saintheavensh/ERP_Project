@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load = async ({ locals, params }) => {
   const token = locals.token;
@@ -10,7 +11,7 @@ export const load = async ({ locals, params }) => {
   let branches = [];
 
   try {
-    const res = await fetch(`http://localhost:3001/v1/inventory/${params.id}`, {
+    const res = await fetch(`${API_BASE}/inventory/${params.id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (res.ok) {
@@ -18,7 +19,7 @@ export const load = async ({ locals, params }) => {
       item = result.data;
     }
 
-    const modelsRes = await fetch('http://localhost:3001/v1/device-models', {
+    const modelsRes = await fetch(`${API_BASE}/device-models`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (modelsRes.ok) {
@@ -27,7 +28,7 @@ export const load = async ({ locals, params }) => {
     }
 
     // F4 — categories list, for the item edit form's category dropdown.
-    const categoriesRes = await fetch('http://localhost:3001/v1/categories', {
+    const categoriesRes = await fetch(`${API_BASE}/categories`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (categoriesRes.ok) {
@@ -38,7 +39,7 @@ export const load = async ({ locals, params }) => {
     // P6 — batch history shows which branch each batch was received into.
     // stockBatches has no `branch` relation (only a raw branchId), and with
     // just 2 branches in practice a lookup list is simpler than a schema change.
-    const branchesRes = await fetch('http://localhost:3001/v1/branches', {
+    const branchesRes = await fetch(`${API_BASE}/branches`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (branchesRes.ok) {

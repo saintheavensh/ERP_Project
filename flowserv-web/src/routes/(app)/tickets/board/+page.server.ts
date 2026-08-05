@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 // P2 — Kanban board load: the flow template's node/transition graph (for
 // columns + valid-move computation) plus the open tickets for that template,
@@ -12,7 +13,7 @@ export const load: PageServerLoad = async ({ locals, url, fetch }) => {
   const empty = { token, templates: [], selectedTemplateId: '', nodes: [], transitions: [], tickets: [] };
 
   try {
-    const templatesRes = await fetch('http://localhost:3001/v1/flows', { headers });
+    const templatesRes = await fetch(`${API_BASE}/flows`, { headers });
     if (!templatesRes.ok) return empty;
     const templatesResult = await templatesRes.json();
     // Board scope = one flow template's node set at a time (see plan/P2-ticket-kanban-board.md
@@ -29,7 +30,7 @@ export const load: PageServerLoad = async ({ locals, url, fetch }) => {
     let nodes: any[] = [];
     let transitions: any[] = [];
     if (selectedTemplateId) {
-      const detailRes = await fetch(`http://localhost:3001/v1/flows/${selectedTemplateId}`, { headers });
+      const detailRes = await fetch(`${API_BASE}/flows/${selectedTemplateId}`, { headers });
       if (detailRes.ok) {
         const detail = await detailRes.json();
         nodes = detail.data?.nodes || [];
@@ -44,7 +45,7 @@ export const load: PageServerLoad = async ({ locals, url, fetch }) => {
     // Same "My Jobs" scoping as the list page (F2).
     if (locals.user?.roleName === 'Technician') ticketParams.set('assignedTo', 'me');
 
-    const ticketsRes = await fetch(`http://localhost:3001/v1/tickets?${ticketParams.toString()}`, { headers });
+    const ticketsRes = await fetch(`${API_BASE}/tickets?${ticketParams.toString()}`, { headers });
     const ticketsResult = ticketsRes.ok ? await ticketsRes.json() : { data: [] };
 
     return {

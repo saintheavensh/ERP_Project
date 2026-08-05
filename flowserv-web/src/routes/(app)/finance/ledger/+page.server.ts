@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load: PageServerLoad = async ({ locals, fetch }) => {
   const token = locals.token;
@@ -7,10 +8,10 @@ export const load: PageServerLoad = async ({ locals, fetch }) => {
 
   try {
     const [entriesRes, reconcileRes] = await Promise.all([
-      fetch('http://localhost:3001/v1/finance/ledger', {
+      fetch(`${API_BASE}/finance/ledger`, {
         headers: { Authorization: `Bearer ${token}` }
       }),
-      fetch('http://localhost:3001/v1/finance/ledger/reconcile', {
+      fetch(`${API_BASE}/finance/ledger/reconcile`, {
         headers: { Authorization: `Bearer ${token}` }
       })
     ]);

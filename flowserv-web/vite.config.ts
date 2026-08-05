@@ -1,4 +1,11 @@
-import adapter from '@sveltejs/adapter-auto';
+// Phase 11 — `adapter-auto` diganti `adapter-node`.
+//
+// adapter-auto menebak lingkungannya (Vercel/Netlify/Cloudflare) dan, saat tak
+// mengenali apa pun, TIDAK menghasilkan server yang bisa dijalankan. VPS sendiri
+// bukan salah satu yang ia kenali. adapter-node menghasilkan `build/index.js`
+// biasa yang tinggal dijalankan `node build` — persis yang dibutuhkan di dalam
+// kontainer.
+import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 

@@ -1,12 +1,13 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load: PageServerLoad = async ({ locals }) => {
   const token = locals.token;
   if (!token) throw redirect(302, '/login');
 
   try {
-    const res = await fetch('http://localhost:3001/v1/customers', {
+    const res = await fetch(`${API_BASE}/customers`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

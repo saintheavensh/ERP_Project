@@ -1,7 +1,8 @@
 import type { Handle } from '@sveltejs/kit';
-import { env } from '$env/dynamic/private';
-
-const API_URL = env.API_URL ?? 'http://localhost:3001';
+// Definisi lokal `const API_URL = env.API_URL ?? 'http://localhost:3001'` dihapus
+// di Phase 11: berkas inilah yang dulu punya polanya dengan benar, lalu 33 berkas
+// lain menyalin alamatnya secara harfiah. Sekarang semuanya membaca satu sumber.
+import { API_URL } from '$lib/api/config.server';
 
 export const handle: Handle = async ({ event, resolve }) => {
   const token = event.cookies.get('flowserv_token');

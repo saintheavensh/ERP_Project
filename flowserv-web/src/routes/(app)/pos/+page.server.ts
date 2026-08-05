@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { fetchAllPages } from '$lib/api/pagination';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load = async ({ locals }) => {
   const token = locals.token;
@@ -11,19 +12,19 @@ export const load = async ({ locals }) => {
   let paymentMethods = [];
 
   try {
-    const brRes = await fetch('http://localhost:3001/v1/branches', {
+    const brRes = await fetch(`${API_BASE}/branches`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (brRes.ok) branches = (await brRes.json()).data || [];
 
-    const pmRes = await fetch('http://localhost:3001/v1/settings/payment-methods', {
+    const pmRes = await fetch(`${API_BASE}/settings/payment-methods`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (pmRes.ok) paymentMethods = (await pmRes.json()).data || [];
 
-    inventory = await fetchAllPages<any>('http://localhost:3001/v1/inventory', token);
+    inventory = await fetchAllPages<any>(`${API_BASE}/inventory`, token);
 
-    const custRes = await fetch('http://localhost:3001/v1/customers', {
+    const custRes = await fetch(`${API_BASE}/customers`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (custRes.ok) customers = (await custRes.json()).data || [];

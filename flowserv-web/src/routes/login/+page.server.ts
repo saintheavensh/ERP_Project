@@ -1,5 +1,6 @@
 import { fail, redirect, isRedirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load: PageServerLoad = async ({ locals }) => {
   if (locals.user) {
@@ -18,7 +19,7 @@ export const actions: Actions = {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/v1/auth/login', {
+      const response = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

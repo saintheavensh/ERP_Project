@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load: PageServerLoad = async ({ locals }) => {
   const token = locals.token;
@@ -8,7 +9,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   }
 
   try {
-    const res = await fetch('http://localhost:3001/v1/flows', {
+    const res = await fetch(`${API_BASE}/flows`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

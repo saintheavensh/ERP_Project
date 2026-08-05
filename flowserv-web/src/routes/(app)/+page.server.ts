@@ -1,13 +1,14 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { DITOLAK_COOKIE } from '$lib/auth/route-access';
+import { API_BASE } from '$lib/api/config.server';
 
 // P3 — per-role dashboards. Everything here is derived from existing endpoints
 // via server-side aggregation (no new backend route) — see
 // plan/P3-role-dashboards.md for why each widget is cheap enough to compute
 // this way at current data volumes.
 
-const API = 'http://localhost:3001/v1';
+const API = `${API_BASE}`;
 
 async function safeGet(fetchFn: typeof fetch, path: string, token: string): Promise<any[]> {
   try {

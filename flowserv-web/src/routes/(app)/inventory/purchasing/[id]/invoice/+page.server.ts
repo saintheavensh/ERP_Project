@@ -1,4 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load = async ({ params, locals }) => {
   const token = locals.token;
@@ -9,7 +10,7 @@ export const load = async ({ params, locals }) => {
   let order = null;
   
   try {
-    const res = await fetch(`http://localhost:3001/v1/purchasing/orders/${id}`, {
+    const res = await fetch(`${API_BASE}/purchasing/orders/${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     

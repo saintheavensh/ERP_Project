@@ -1,4 +1,5 @@
 import { redirect, error } from '@sveltejs/kit';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load = async ({ locals, params }) => {
   const token = locals.token;
@@ -11,10 +12,10 @@ export const load = async ({ locals, params }) => {
   
   try {
     const [supplierRes, brandsRes] = await Promise.all([
-      fetch(`http://localhost:3001/v1/suppliers/${id}`, {
+      fetch(`${API_BASE}/suppliers/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       }),
-      fetch('http://localhost:3001/v1/brands', {
+      fetch(`${API_BASE}/brands`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
     ]);

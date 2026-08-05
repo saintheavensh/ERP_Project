@@ -1,4 +1,5 @@
 import { redirect } from '@sveltejs/kit';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load = async ({ locals, url }) => {
   const token = locals.token;
@@ -11,12 +12,12 @@ export const load = async ({ locals, url }) => {
   const queryParam = branchId ? `?branchId=${branchId}` : '';
 
   try {
-    const brRes = await fetch('http://localhost:3001/v1/branches', {
+    const brRes = await fetch(`${API_BASE}/branches`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (brRes.ok) branches = (await brRes.json()).data || [];
 
-    const invRes = await fetch(`http://localhost:3001/v1/pos/invoices${queryParam}`, {
+    const invRes = await fetch(`${API_BASE}/pos/invoices${queryParam}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (invRes.ok) invoices = (await invRes.json()).data || [];

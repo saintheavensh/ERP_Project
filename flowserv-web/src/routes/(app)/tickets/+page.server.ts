@@ -1,7 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
-const API = 'http://localhost:3001/v1';
+const API = `${API_BASE}`;
 
 async function getTickets(token: string, query: string) {
   try {

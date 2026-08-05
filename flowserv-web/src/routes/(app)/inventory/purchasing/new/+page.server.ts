@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { fetchAllPages } from '$lib/api/pagination';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load = async ({ locals }) => {
   const token = locals.token;
@@ -12,10 +13,10 @@ export const load = async ({ locals }) => {
 
   try {
     const [supRes, branchRes, itemsResult, catRes] = await Promise.all([
-      fetch('http://localhost:3001/v1/suppliers', { headers: { 'Authorization': `Bearer ${token}` } }),
-      fetch('http://localhost:3001/v1/branches', { headers: { 'Authorization': `Bearer ${token}` } }),
-      fetchAllPages<any>('http://localhost:3001/v1/inventory', token),
-      fetch('http://localhost:3001/v1/categories', { headers: { 'Authorization': `Bearer ${token}` } })
+      fetch(`${API_BASE}/suppliers`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetch(`${API_BASE}/branches`, { headers: { 'Authorization': `Bearer ${token}` } }),
+      fetchAllPages<any>(`${API_BASE}/inventory`, token),
+      fetch(`${API_BASE}/categories`, { headers: { 'Authorization': `Bearer ${token}` } })
     ]);
 
     if (supRes.ok) suppliers = (await supRes.json()).data || [];

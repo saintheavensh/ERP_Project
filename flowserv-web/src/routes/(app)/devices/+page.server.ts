@@ -1,11 +1,12 @@
 import { redirect } from '@sveltejs/kit';
+import { API_BASE } from '$lib/api/config.server';
 
 // Tahap A — device catalog (image/specs/suggested services), reusing the
 // device_brands/device_models tables built for DEV-008 (sparepart
 // compatibility) which previously had zero CRUD routes at all — only
 // seed-created. See plan/tahap-a-device-catalog-invoice-mode.md.
 // Server-side fetch stays hardcoded per 3.5E.1 (server-side deferred to Phase 11).
-const API = 'http://localhost:3001/v1';
+const API = `${API_BASE}`;
 
 export const load = async ({ locals }) => {
   const token = locals.token;

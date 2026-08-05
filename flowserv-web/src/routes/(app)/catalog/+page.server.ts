@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { fetchAllPages } from '$lib/api/pagination';
+import { API_BASE } from '$lib/api/config.server';
 
 // Tahap-B — read-only product catalog for cashier & technician (and any role).
 // Same data source as the admin catalog (/inventory/catalog): GET /v1/inventory
@@ -14,9 +15,9 @@ export const load = async ({ locals }) => {
   let categories: any[] = [];
 
   try {
-    inventory = await fetchAllPages<any>('http://localhost:3001/v1/inventory', token);
+    inventory = await fetchAllPages<any>(`${API_BASE}/inventory`, token);
 
-    const catRes = await fetch('http://localhost:3001/v1/categories', {
+    const catRes = await fetch(`${API_BASE}/categories`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (catRes.ok) {

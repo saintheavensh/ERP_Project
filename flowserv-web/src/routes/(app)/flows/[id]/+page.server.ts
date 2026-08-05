@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 /**
  * Editor alur servis (Phase 7.1, dipindah ke /flows pada 2026-07-27).
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const headers = { Authorization: `Bearer ${token}` };
 
   try {
-    const res = await fetch(`http://localhost:3001/v1/flows/${params.id}`, { headers });
+    const res = await fetch(`${API_BASE}/flows/${params.id}`, { headers });
     if (res.ok) {
       const body = await res.json();
       return {

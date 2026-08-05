@@ -1,5 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 // P9 — Settings shell (5.10). One tab's data is fetched per request (the
 // same `?tab=` URL-param-driven pattern as the finance dashboard's
@@ -9,7 +10,7 @@ import type { PageServerLoad } from './$types';
 const VALID_TABS = ['company', 'branches', 'users', 'payment-methods', 'printers', 'sales'] as const;
 type Tab = (typeof VALID_TABS)[number];
 
-const API = 'http://localhost:3001/v1';
+const API = `${API_BASE}`;
 
 export const load: PageServerLoad = async ({ locals, url, fetch }) => {
   const token = locals.token;

@@ -1,12 +1,13 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 // P5 — Finance dashboard (DAS-004). Simple/Accountant mode selected via
 // ?mode=, same validated-query-param-with-fallback idiom as the Kanban
 // board's ?flowTemplateId=. Both modes read the same data — see
 // plan/P5-finance-dashboard.md "same data source, presentation differs".
 
-const API = 'http://localhost:3001/v1';
+const API = `${API_BASE}`;
 
 async function safeGetArray(fetchFn: typeof fetch, path: string, token: string): Promise<any[]> {
   try {

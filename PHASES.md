@@ -1998,13 +1998,69 @@ missing.
 > **Goal:** Deploy to VPS when ready to serve multiple clients.
 > **Only start when Phase 10 is stable and you want to expand.**
 
-- [ ] 11.1 Provision VPS (DigitalOcean/Hetzner/etc.)
-- [ ] 11.2 Setup PostgreSQL on VPS (or managed DB)
-- [ ] 11.3 Setup Nginx reverse proxy + HTTPS (Let's Encrypt)
+> **⚠️ Dimulai lebih awal 2026-08-05, atas permintaan pemilik.** Ia berencana menumpang
+> VPS temannya, dan temannya meminta "pakai MySQL saja, RAM sudah sisa sedikit". Migrasi
+> MySQL **diukur dulu, tidak langsung dikerjakan**: 46 tabel, **65 pemakaian `.returning()`
+> di 23 berkas** (MySQL tidak punya `RETURNING` sama sekali), 49 `onConflict`, plus
+> keharusan **membuktikan ulang jaminan stok** — isolasi transaksi bawaan MySQL
+> (`REPEATABLE READ` + gap lock) berbeda dari PostgreSQL (`READ COMMITTED`), dan seluruh
+> jaminan FIFO/reservasi H9/H10 bertumpu pada itu.
+>
+> Ditimbang bersama pemilik, lalu **diputuskan: VPS sendiri 1 GB, tetap PostgreSQL.**
+> Alasannya angka: aplikasi ini butuh ±350–550 MB (dua proses Node + database + Nginx +
+> OS), jadi menumpang VPS yang "sisa sedikit" kemungkinan besar tetap tidak muat
+> **walaupun** pakai MySQL. Selisih biayanya ±Rp 80rb/bulan; migrasinya beberapa hari kerja.
+> **Keputusan tech-stack di CLAUDE.md tidak berubah.**
+
+- [ ] 11.1 Provision VPS (DigitalOcean/Hetzner/etc.) — pemilik
+- [x] 11.2 PostgreSQL di Docker — `docker-compose.yml`, disetel untuk mesin kecil
+      (`shared_buffers=64MB`, `max_connections=30`), **tanpa `ports:`** sehingga port
+      5432 tak pernah terbuka ke internet
+- [/] 11.3 Nginx reverse proxy + HTTPS — `deploy/nginx.conf` ditulis (satu domain:
+      `/` → web, `/api/` → api), blok `listen 443` sengaja dibiarkan **dikomentari**
+      supaya `docker compose up` pertama tidak gagal karena sertifikat yang memang belum
+      terbit. Layanan `certbot` sudah ada di Compose. **`[/]` karena HTTPS sungguhan
+      butuh domain + IP publik yang belum ada**
 - [ ] 11.4 CI/CD pipeline (GitHub Actions → auto deploy)
-- [ ] 11.5 Domain setup (flowserv.yourdomain.com)
-- [ ] 11.6 Backup strategy (automated daily)
+- [ ] 11.5 Domain setup — pemilik
+- [x] 11.6 Cadangan harian — `deploy/backup.sh` (`pg_dump` dijalankan di dalam kontainer,
+      jadi VPS tak perlu klien Postgres). **Hasilnya diperiksa**: gzip rusak atau berkas
+      < 1 KB dihapus dan dilaporkan gagal — cadangan yang tak pernah diperiksa bukan cadangan
 - [ ] 11.7 Monitoring & alerting
+
+### Yang sudah dikerjakan 2026-08-05 (prasyarat yang selama ini dicatat "sampai Phase 11")
+
+- [x] **`JWT_SECRET` tak lagi punya cadangan di dalam kode.** Baris lamanya berbunyi
+      `process.env.JWT_SECRET || 'super-secret-fallback-key-do-not-use-in-prod'` — cadangan
+      itu **ter-commit**, jadi siapa pun yang bisa membaca repo ini dapat memalsukan token
+      untuk `tenantId` dan `roleName` mana pun. Sekarang **server menolak menyala** di
+      `NODE_ENV=production` bila kosong, dan tetap longgar di dev supaya `npm test`
+      berjalan tanpa `.env`. **Ketiga jalur diverifikasi live** (produksi tanpa kunci →
+      mati dengan pesan jelas; produksi dengan kunci → menyala; dev tanpa kunci → menyala
+      + peringatan)
+- [x] **34 berkas sisi server tak lagi menulis `localhost:3001`** (65 kemunculan). Utang
+      yang dicatat sejak 3.5E.1 dengan alasan "sisi server dibiarkan sampai Phase 11" —
+      dan itu bukan kerapian: **di dalam kontainer, `localhost` berarti kontainer itu
+      sendiri**, jadi tanpa ini tak satu halaman pun berhasil dirender. Baru
+      `lib/api/config.server.ts` (`$env/dynamic/private`, tak pernah sampai ke browser)
+      memisahkan alamat **internal** (`http://api:3001`, dipakai SSR) dari alamat
+      **publik** (`https://…/api`, dipakai browser). Tabrakan nama di `hooks.server.ts`
+      ditangkap `svelte-check`, bukan review
+- [x] **`adapter-auto` → `adapter-node`.** adapter-auto tidak mengenali "VPS sendiri" dan
+      tidak menghasilkan server yang bisa dijalankan. Build produksi terbukti berhasil
+- [x] **Node 24 (LTS aktif)** di kedua Dockerfile + `.nvmrc`. Ditulis sebagai mayor tanpa
+      patch supaya ikut menerima perbaikan keamanan tapi tak pernah melompat mayor diam-diam.
+      **Catatan untuk pemilik:** Node di komputer ini **v25.1.0**, dan nomor ganjil (23, 25)
+      adalah rilis "Current" yang tak pernah jadi LTS — itu kandidat kuat penyebab
+      `npm run dev` di root bermasalah
+- [ ] **Jalur kata sandi SHA-256 tanpa salt** (`routes/auth.ts`) — belum dicabut
+
+> **⚠️ Belum diuji end-to-end.** Docker Desktop tidak bisa menyala saat berkas-berkas ini
+> ditulis, jadi `docker compose up` **belum pernah benar-benar dijalankan**. Yang sudah
+> diverifikasi: `docker compose config` sah dan **menolak** `.env` yang belum diisi, build
+> `adapter-node` berhasil, gerbang `JWT_SECRET` terbukti di tiga mode, backend 320 unit +
+> `tsc` bersih, `svelte-check` 788 berkas 0 error. Daftar yang masih harus diuji ada di
+> `deploy/README.md` bagian terakhir — **jangan tandai `[x]` sebelum dijalankan.**
 
 > **Before VPS:** replace the hardcoded `JWT_SECRET` fallback in `middleware/auth.ts`
 > with a required env var that throws on startup if missing, and remove the legacy

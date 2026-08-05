@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { fetchAllPages } from '$lib/api/pagination';
 import type { PageServerLoad } from './$types';
+import { API_BASE } from '$lib/api/config.server';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
   const token = locals.token;
@@ -9,7 +10,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
   const ticketId = params.id;
   
   try {
-    const res = await fetch(`http://localhost:3001/v1/tickets/${ticketId}`, {
+    const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -18,7 +19,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       const ticketData = result.data;
       
       // Fetch flow template for this ticket
-      const tmplRes = await fetch(`http://localhost:3001/v1/flows/${ticketData.ticket.flowTemplateId}`, {
+      const tmplRes = await fetch(`${API_BASE}/flows/${ticketData.ticket.flowTemplateId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
@@ -33,11 +34,11 @@ export const load: PageServerLoad = async ({ params, locals }) => {
       // assignee picker (H8's POST /:id/assign was orphaned with no UI until now).
       // Fetched in parallel.
       const [chargesRes, inventoryItems, techniciansRes, salesRes] = await Promise.all([
-        fetch(`http://localhost:3001/v1/tickets/${ticketId}/charges`, {
+        fetch(`${API_BASE}/tickets/${ticketId}/charges`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetchAllPages(`http://localhost:3001/v1/inventory`, token),
-        fetch(`http://localhost:3001/v1/users?role=Technician`, {
+        fetchAllPages(`${API_BASE}/inventory`, token),
+        fetch(`${API_BASE}/users?role=Technician`, {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         // Tahap B — mode tampilan nota (Detailed/Summary/Flexible), supaya
@@ -45,7 +46,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
         // permissionnya admin-only (`settings.manage_company`), jadi ini
         // best-effort: peran lain dapat 403 dan petunjuknya sekadar tak muncul
         // — bukan error, dan tidak mengubah apa pun yang tercetak.
-        fetch(`http://localhost:3001/v1/settings/sales`, {
+        fetch(`${API_BASE}/settings/sales`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
