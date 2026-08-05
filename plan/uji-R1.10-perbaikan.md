@@ -45,14 +45,14 @@ rapi — kalimat apa adanya justru lebih berguna. Kalau ada yang tidak sempat di
 
 | #   | Yang dilakukan                                                                                        | Yang seharusnya terjadi                                                                       | Hasil |
 | --- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----- |
-| A1  | Login **kasir** → Terima Unit → isi **Perkiraan Biaya** `450000` → Simpan                              | Tiket jadi (ini yang kemarin Anda tandai `X` — mestinya jalan)                                   |       |
-| A2  | Buka tiket itu (masih tahap **Terima Unit**) → cari kotak **Perkiraan Konter**                        | Ada tombol **Ubah** di sebelah tulisan "PERKIRAAN KONTER"                                        |       |
-| A3  | Tekan **Ubah**, ganti jadi `500000`, tekan **Simpan**                                                 | Angkanya **langsung berubah** jadi Rp 500.000 di layar                                           |       |
-| A4  | Muat ulang halamannya (F5)                                                                            | Tetap Rp 500.000 — benar-benar tersimpan                                                        |       |
-| A5  | ⚠️ Terima unit **baru** tanpa mengisi Perkiraan Biaya sama sekali, lalu buka tiketnya                   | Tertulis **"Belum disebutkan"** dan ada tombol **Isi** — kemarin kotaknya tidak muncul sama sekali |       |
-| A6  | Tekan **Isi**, masukkan `300000`, Simpan                                                              | Tersimpan dan tampil                                                                            |       |
-| A7  | Majukan tiket ke tahap berikutnya (Diagnosa), lalu lihat lagi kotak Perkiraan Konter                   | Angkanya **masih ada**, tapi tombol Ubah **hilang**, diganti kalimat "terkunci setelah unit lepas dari konter" |       |
-| A8  | **Pendapat Anda:** apakah terkunci setelah lepas dari konter itu sudah benar menurut cara kerja toko? | (jawab bebas)                                                                                    |       |
+| A1  | Login **kasir** → Terima Unit → isi **Perkiraan Biaya** `450000` → Simpan                              | Tiket jadi (ini yang kemarin Anda tandai `X` — mestinya jalan)                                   | OK|
+| A2  | Buka tiket itu (masih tahap **Terima Unit**) → cari kotak **Perkiraan Konter**                        | Ada tombol **Ubah** di sebelah tulisan "PERKIRAAN KONTER"                                        |   OK    |
+| A3  | Tekan **Ubah**, ganti jadi `500000`, tekan **Simpan**                                                 | Angkanya **langsung berubah** jadi Rp 500.000 di layar                                           |   OK    |
+| A4  | Muat ulang halamannya (F5)                                                                            | Tetap Rp 500.000 — benar-benar tersimpan                                                        |   OK    |
+| A5  | ⚠️ Terima unit **baru** tanpa mengisi Perkiraan Biaya sama sekali, lalu buka tiketnya                   | Tertulis **"Belum disebutkan"** dan ada tombol **Isi** — kemarin kotaknya tidak muncul sama sekali |     OK  |
+| A6  | Tekan **Isi**, masukkan `300000`, Simpan                                                              | Tersimpan dan tampil                                                                            |  OK     |
+| A7  | Majukan tiket ke tahap berikutnya (Diagnosa), lalu lihat lagi kotak Perkiraan Konter                   | Angkanya **masih ada**, tapi tombol Ubah **hilang**, diganti kalimat "terkunci setelah unit lepas dari konter" |    OK tapi teknisi masih bisa edit keluhan Pola dan lainnya di halaman detail seharusnya tidak bisa dan ketika teknisi sudah melakukan diagnosa di halaman detail kasir masih intake posisinya jadi tidak up to date   |
+| A8  | **Pendapat Anda:** apakah terkunci setelah lepas dari konter itu sudah benar menurut cara kerja toko? | (jawab bebas)                                                                                    |       |bukan lepas setelah dari konter unit masih ada di konter cuman statusnya berubah yang tadinya menunggu menjadi sudah di diagnosa
 
 > ⚠️ **A5 mengubah sesuatu yang Anda sudah uji lulus di R1.8, jadi saya sebutkan terbuka
 > supaya bisa Anda tolak.** Dulu diputuskan: kotak perkiraan **tidak ditampilkan sama
@@ -78,10 +78,10 @@ rapi — kalimat apa adanya justru lebih berguna. Kalau ada yang tidak sempat di
 
 | #   | Yang dilakukan                                                            | Yang seharusnya terjadi                                                | Hasil |
 | --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----- |
-| B1  | Login **kasir** → ketik alamat `/devices` langsung di browser              | **Ditolak** — dipentalkan ke Beranda                                     |       |
-| B2  | Login **manager** → ketik `/devices`                                       | **Ditolak** juga                                                         |       |
-| B3  | Login **admin** (Anda) → **Lainnya → Katalog Device**                      | Terbuka seperti biasa, semua tombol jalan                                |       |
-| B4  | 🔴 **PENTING** — Login **kasir** → Terima Unit → ketik "Sam" di kolom Merek | Saran merek **tetap muncul** (autocomplete hidup). Lanjutkan sampai tiket jadi |       |
+| B1  | Login **kasir** → ketik alamat `/devices` langsung di browser              | **Ditolak** — dipentalkan ke Beranda                                     |    OK   |
+| B2  | Login **manager** → ketik `/devices`                                       | **Ditolak** juga                                                         |     OK  |
+| B3  | Login **admin** (Anda) → **Lainnya → Katalog Device**                      | Terbuka seperti biasa, semua tombol jalan                                |   OK    |
+| B4  | 🔴 **PENTING** — Login **kasir** → Terima Unit → ketik "Sam" di kolom Merek | Saran merek **tetap muncul** (autocomplete hidup). Lanjutkan sampai tiket jadi |    OK   |
 
 > **B4 adalah poin terpenting di bagian ini.** Mengunci katalog berisiko ikut mematikan
 > saran merek/model di form Terima Unit — dan kerusakan seperti itu baru ketahuan saat toko
@@ -96,11 +96,11 @@ rapi — kalimat apa adanya justru lebih berguna. Kalau ada yang tidak sempat di
 
 | #   | Yang dilakukan                                                    | Yang seharusnya terjadi                                                             | Hasil |
 | --- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----- |
-| C1  | Login **kasir** → buka satu pelanggan                             | Label kategori (**Pelanggan Servis / Sparepart**) **tetap terlihat** — kasir perlu tahu |       |
-| C2  | Di halaman yang sama, cari dropdown untuk menggantinya            | **Tidak ada.** Yang muncul: "Hanya manajer/pemilik yang dapat mengubah ini."           |       |
-| C3  | Masih sebagai kasir: **Tambah Pelanggan**                         | Formnya **tidak punya** pilihan Kategori (pelanggan baru otomatis "Servis")            |       |
-| C4  | Kasir mengubah **nama / nomor telepon** pelanggan lalu simpan     | **Tetap berhasil** — hanya kategorinya yang dibatasi, bukan seluruh halamannya         |       |
-| C5  | Login **manager** → buka pelanggan yang sama → ganti kategorinya  | Dropdown-nya **ada** dan label di atasnya ikut berubah                                 |       |
+| C1  | Login **kasir** → buka satu pelanggan                             | Label kategori (**Pelanggan Servis / Sparepart**) **tetap terlihat** — kasir perlu tahu |    OK   |
+| C2  | Di halaman yang sama, cari dropdown untuk menggantinya            | **Tidak ada.** Yang muncul: "Hanya manajer/pemilik yang dapat mengubah ini."           |      OK |
+| C3  | Masih sebagai kasir: **Tambah Pelanggan**                         | Formnya **tidak punya** pilihan Kategori (pelanggan baru otomatis "Servis")            |    OK   |
+| C4  | Kasir mengubah **nama / nomor telepon** pelanggan lalu simpan     | **Tetap berhasil** — hanya kategorinya yang dibatasi, bukan seluruh halamannya         |      OK |
+| C5  | Login **manager** → buka pelanggan yang sama → ganti kategorinya  | Dropdown-nya **ada** dan label di atasnya ikut berubah                                 |     OK  |
 
 ---
 
@@ -111,9 +111,9 @@ rapi — kalimat apa adanya justru lebih berguna. Kalau ada yang tidak sempat di
 
 | #   | Yang dilakukan                                                              | Yang seharusnya terjadi                                                     | Hasil |
 | --- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ----- |
-| D1  | Login **kasir** → Pelanggan → **Tambah Pelanggan** → isi nama & telepon → simpan | Barisnya **langsung muncul di tabel** tanpa Anda menekan refresh              |       |
-| D2  | Lihat bagian atas tabel                                                     | Ada pesan hijau **"Pelanggan ... berhasil ditambahkan."**, hilang sendiri     |       |
-| D3  | Coba menambah pelanggan dengan nama **satu huruf saja** (mis. `A`)          | Muncul pesan **merah** — gagalnya diberitahu, bukan diam saja                |       |
+| D1  | Login **kasir** → Pelanggan → **Tambah Pelanggan** → isi nama & telepon → simpan | Barisnya **langsung muncul di tabel** tanpa Anda menekan refresh              |   OK    |
+| D2  | Lihat bagian atas tabel                                                     | Ada pesan hijau **"Pelanggan ... berhasil ditambahkan."**, hilang sendiri     |     OK  |
+| D3  | Coba menambah pelanggan dengan nama **satu huruf saja** (mis. `A`)          | Muncul pesan **merah** — gagalnya diberitahu, bukan diam saja                |     OK  |
 
 ---
 
@@ -124,10 +124,10 @@ rapi — kalimat apa adanya justru lebih berguna. Kalau ada yang tidak sempat di
 
 | #   | Yang dilakukan                                          | Yang seharusnya terjadi                                    | Hasil |
 | --- | ------------------------------------------------------- | ------------------------------------------------------------ | ----- |
-| E1  | Login **admin** → Katalog Device → cari **`samsung a20`** | **Ketemu** Galaxy A20 (inilah yang kemarin gagal)            |       |
-| E2  | Cari **`a20 samsung`** (urutan dibalik)                  | Ketemu juga                                                  |       |
-| E3  | Cari **`sam a2`** (setengah kata)                        | Tetap ketemu — mengetik separuh sudah cukup                  |       |
-| E4  | Cari **`samsung iphone`**                                | **Kosong** — bukan malah menampilkan semua Samsung dan iPhone |       |
+| E1  | Login **admin** → Katalog Device → cari **`samsung a20`** | **Ketemu** Galaxy A20 (inilah yang kemarin gagal)            |    OK   |
+| E2  | Cari **`a20 samsung`** (urutan dibalik)                  | Ketemu juga                                                  |     OK  |
+| E3  | Cari **`sam a2`** (setengah kata)                        | Tetap ketemu — mengetik separuh sudah cukup                  |  OK     |
+| E4  | Cari **`samsung iphone`**                                | **Kosong** — bukan malah menampilkan semua Samsung dan iPhone |    OK   |
 
 ---
 
@@ -135,11 +135,11 @@ rapi — kalimat apa adanya justru lebih berguna. Kalau ada yang tidak sempat di
 
 | #   | Yang dilakukan                                          | Yang seharusnya terjadi | Hasil |
 | --- | ------------------------------------------------------- | ----------------------- | ----- |
-| F1  | Terima unit lengkap seperti biasa (pelanggan baru)      | Tetap jalan             |       |
-| F2  | Login teknisi → ambil pekerjaan dari antrian di Beranda | Tetap jalan             |       |
-| F3  | Kasir → transaksi POS tunai                             | Tetap jalan             |       |
-| F4  | Kasir → buka Piutang, lihat pengelompokan per pelanggan | Tetap jalan             |       |
-| F5  | Kasir ketik `/finance/ledger`                           | Tetap **ditolak**       |       |
+| F1  | Terima unit lengkap seperti biasa (pelanggan baru)      | Tetap jalan             |   OK    |
+| F2  | Login teknisi → ambil pekerjaan dari antrian di Beranda | Tetap jalan             |     OK  |
+| F3  | Kasir → transaksi POS tunai                             | Tetap jalan             |    OK   |
+| F4  | Kasir → buka Piutang, lihat pengelompokan per pelanggan | Tetap jalan             |    OK   |
+| F5  | Kasir ketik `/finance/ledger`                           | Tetap **ditolak**       |     OK  |
 
 ---
 
@@ -149,10 +149,10 @@ Pilih salah satu, lalu tulis alasannya:
 
 - [ ] **Lanjut ke R2** (form servis per tahap — yang sudah tiga kali Anda sebut, dan
       aturannya sudah Anda tetapkan 2026-08-04)
-- [ ] **Masih ada yang harus diperbaiki dulu** →
+- [X] **Masih ada yang harus diperbaiki dulu** →
 
 ```
-(tulis di sini)
+masih ada perbaikan sedikit lagi
 ```
 
 ---

@@ -20,8 +20,33 @@
 > antaranya**. Rencana aktifnya
 > **[`plan/tahap-b-peran-dan-qc.md`](plan/tahap-b-peran-dan-qc.md)** (Fase R1–R6), indeksnya
 > [`plan/README.md`](plan/README.md). Fase yang sedang dikerjakan:
-> **[`plan/R1.10-perbaikan-hasil-uji-R1.9.md`](plan/R1.10-perbaikan-hasil-uji-R1.9.md)** —
-> putaran perbaikan **kecil** (5 tugas) dari uji R1.9 pemilik, lalu **R2**.
+> **[`plan/R1.11-perbaikan-hasil-uji-R1.10.md`](plan/R1.11-perbaikan-hasil-uji-R1.10.md)** —
+> dibuka 2026-08-05 dari catatan uji R1.10 pemilik. **Putaran paling bersih sejauh ini: 20
+> dari 21 poin `OK`**, dan seluruh sisanya ada di **satu kotak** (poin **A7**) plus satu
+> koreksi istilah (**A8**). Gerbang R2 sekarang `plan/uji-R1.11-perbaikan.md`, ditulis
+> setelah kode R1.11 selesai.
+>
+> **🔴 Bug yang ditemukan saat MERENCANAKAN R1.11, dan pemilik belum pernah menabraknya.**
+> `PATCH /v1/tickets/:id/intake-details` menampung **empat kolom milik dua peran** tapi
+> digerbangi **satu** izin di tingkat route (`ticket.create`). Terbukti lewat curl ke API
+> sungguhan: **teknisi tidak bisa menyimpan hasil diagnosanya sama sekali (403)**, sementara
+> **kasir bisa menulis hasil diagnosa (200)** — persis terbalik, dan menabrak komentar di
+> `db/seed/01-core.ts:136` yang sudah menyatakan maksudnya sejak awal (*"Kasir menerima
+> unit; ia tidak mendiagnosis"*). Rusak sejak **R1.5B (2026-08-01)** mencabut `ticket.create`
+> dari teknisi dengan alasan yang benar — satu route yang kebetulan menumpang izin itu ikut
+> mati tanpa disadari siapa pun.
+>
+> **Empat hari, lima fase, nol tes yang gagal**, dan sebabnya bisa ditunjuk persis: **nol**
+> tes e2e backend menyentuh endpoint itu, dan setiap tes diagnosa berjalan sebagai **Super
+> Admin, yang melewati seluruh RBAC** — jadi tesnya menguji jalur yang tidak pernah dilewati
+> teknisi. **Ini juga yang memblokir R2:** aturan pemilik *"Diagnosa = hasil diagnosa +
+> perkiraan biaya wajib sebelum lanjut"* tak mungkin ditegakkan selama teknisi tak bisa
+> menyimpan diagnosa.
+>
+> **Dua aturan baru yang mengikat mulai R1.11**, keduanya lahir dari cara bug ini bertahan:
+> (1) **tes yang menekan tombol wajib menekannya SEBAGAI PERAN YANG AKAN MENEKANNYA** —
+> tes yang berjalan sebagai admin tidak membuktikan apa pun tentang izin; (2) **mencabut
+> izin dari sebuah peran = memeriksa SETIAP route yang menggerbangi izin itu.**
 >
 > **Aturan yang mengikat agent:** jangan pernah mengerjakan dua fase sekaligus, dan
 > **jangan mulai fase berikutnya sebelum membaca berkas `plan/uji-R*.md` yang sudah diisi
@@ -50,7 +75,39 @@
 > diganti supaya 8 tautan di berkas ini tidak putus). **Tautan `plan/uji-R1.*.md` di bawah
 > yang mengarah ke berkas tak ada lagi itu wajar — penanda sejarah, bukan tautan rusak.**
 >
-> - [/] **R1.10 — Perbaikan hasil uji manual R1.9** (kode selesai 2026-08-05) —
+> - [/] **R1.11 — Perbaikan hasil uji manual R1.10** (rencana ditulis 2026-08-05) —
+>       [`plan/R1.11-perbaikan-hasil-uji-R1.10.md`](plan/R1.11-perbaikan-hasil-uji-R1.10.md).
+>       Uji R1.10 adalah **putaran paling bersih sejauh ini — 20 dari 21 poin `OK`**, dan
+>       seluruh sisanya ada di **satu kotak**. Kesimpulan pemilik: *"masih ada perbaikan
+>       sedikit lagi"*.
+>       - [ ] **R1.11-T1 🔴 — izin per-KOLOM di `/intake-details`.** Satu endpoint, empat
+>             kolom, **dua pemilik**, satu gerbang. Terbukti terbalik ke dua arah lewat curl:
+>             teknisi **403** menyimpan diagnosanya sendiri, kasir **200** menulis diagnosa.
+>             Gerbang route dilepas; penegakan pindah ke `enforcePermission` per kolom,
+>             **kondisional terhadap nilai yang benar-benar berubah** (pelajaran R1.10-T4),
+>             lewat fungsi murni `intakePermissionsNeeded()` + tes unit. Kunci tahap
+>             `INTAKE_ESTIMATE_LOCKED` **tidak** disentuh — itu aturan bukti, bukan wewenang.
+>       - [ ] **R1.11-T2 — tombol yang pasti gagal disembunyikan.** Yang pemilik sebenarnya
+>             lihat di A7. Teknisi **tetap melihat** sandi/pola & keluhan (ia butuh sandinya
+>             untuk menguji unit) — yang hilang cuma tombol Ubah. Dibangun di atas
+>             `lib/auth/capabilities.ts` yang sudah ada, supaya R2.2 **menumpanginya**, bukan
+>             menggantinya.
+>       - [ ] **R1.11-T3 — halaman menyusul keadaan terbaru.** Keluhan kedua di A7: layar
+>             kasir memuat tiket **sekali** dan tak pernah tahu teknisi sudah bekerja.
+>             Keputusan pemilik: menyegarkan saat tab kembali dipakai + berkala ±20 detik,
+>             **bukan** WebSocket (PLT-013 tetap belum dibangun). **Jebakan yang wajib
+>             ditangani:** menyegarkan saat pemakai sedang mengetik akan menghapus tulisannya
+>             — penyegaran ditunda selagi ada form Ubah terbuka, dan itu wajib punya tesnya.
+>       - [ ] **R1.11-T4 — kalimat kunci perkiraan konter (A8).** Pemilik mengoreksi
+>             premisnya: *"unit masih ada di konter cuman statusnya berubah"*. Betul —
+>             kalimat *"setelah unit lepas dari konter"* menggambarkan perpindahan fisik yang
+>             tidak terjadi. **Kuncinya tetap** (keputusan pemilik 2026-08-05): alasan asli
+>             R1.9-T4 tidak bergantung pada premis yang salah itu — angka konter sudah
+>             terlanjur didengar pelanggan, jadi ia bukti. Kata-katanya saja yang diganti.
+>       - [ ] **R1.11-T5 — tes + checklist uji manual pemilik** ← **gerbang R2**
+>
+> - [x] **R1.10 — Perbaikan hasil uji manual R1.9** (kode selesai 2026-08-05; **diuji
+>       pemilik 2026-08-05, 20/21 `OK`**) —
 >       [`plan/R1.10-perbaikan-hasil-uji-R1.9.md`](plan/R1.10-perbaikan-hasil-uji-R1.9.md).
 >       Putaran **kecil**: 5 tugas, dua di antaranya bug nyata dan empat sisanya keputusan
 >       pemilik yang tinggal diterapkan. **Dua catatan berubah artinya setelah diperiksa ke
@@ -91,8 +148,17 @@
 >             menggagalkannya. Fungsi murni + tes unit di infrastruktur vitest frontend yang
 >             baru ada sejak R1.9 — ini kelas bug yang **tak memunculkan error apa pun**,
 >             cuma hasil yang keliru.
->       - [ ] **T6 — uji manual pemilik**
->             ([`plan/uji-R1.10-perbaikan.md`](plan/uji-R1.10-perbaikan.md)) ← **gerbang R2**
+>       - [x] **T6 — uji manual pemilik** (2026-08-05,
+>             [`plan/uji-R1.10-perbaikan.md`](plan/uji-R1.10-perbaikan.md)). **20 dari 21
+>             poin `OK`** — B1–B4, C1–C5, D1–D3, E1–E4, F1–F5 semuanya bersih, termasuk
+>             **B4** (kasir tetap bisa menerima unit dengan autocomplete hidup, poin paling
+>             berisiko rusak saat mengunci katalog) dan **E4** (`samsung iphone` → kosong).
+>             **A5 tidak ditolak:** R1.10 mengubah keputusan yang pemilik sudah uji lulus di
+>             R1.8 dan sengaja menyediakan jalan menolaknya — pemilik menjawab `OK`, jadi
+>             perubahan itu **disetujui**, bukan lolos karena tidak diperhatikan.
+>             **A7 satu-satunya yang bercatatan**, dan isinya dua hal: tombol Ubah
+>             keluhan/sandi yang masih tampil untuk teknisi, dan halaman kasir yang tidak
+>             ikut berubah saat teknisi bekerja. Keduanya → **R1.11** di atas.
 >
 >       **Dua izin BARU, keduanya Super Admin/Manager saja dan keduanya dibuat justru agar
 >       aturan frontend punya padanan backend yang nyata** (aturan mengikat
