@@ -147,7 +147,11 @@ test.describe('R1.10-T1 — Perkiraan Konter bisa diubah dari layar', () => {
 
     await expect(page.getByTestId('perkiraan-konter')).toContainText('450.000');
     await expect(page.getByTestId('ubah-perkiraan-konter')).toHaveCount(0);
-    await expect(page.getByText('terkunci setelah unit lepas dari konter')).toBeVisible();
+    // R1.11-T4 — kalimatnya diganti, MAKSUD tesnya tidak. Pemilik mengoreksi
+    // premisnya di uji R1.10 A8: "unit masih ada di konter cuman statusnya
+    // berubah". Yang dijaga tes ini sejak awal adalah "terkuncinya terbaca
+    // pemakai", dan itu tetap dijaga — hanya kata-katanya yang menyusul.
+    await expect(page.getByText('terkunci sejak tiket masuk pemeriksaan')).toBeVisible();
   });
 
   test('(pendamping API) gerbangnya di backend, bukan di layar', async ({ page }) => {

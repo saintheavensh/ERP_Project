@@ -91,6 +91,59 @@ export class TicketDetailState {
   get bolehUbahDiagnosa(): boolean {
     return roleCan(this.data.roleName, 'ticket.diagnose');
   }
+
+  // -------------------------------------------------------------------------
+  // R1.11-T3 — "jangan segarkan sekarang."
+  //
+  // Halaman ini menyegarkan dirinya tiap ~20 detik supaya kasir melihat tiket
+  // yang sudah didiagnosa teknisi (keluhan pemilik di uji-R1.10 A6).
+  //
+  // ⚠️ Alasannya BUKAN "supaya tulisan tidak terhapus" — itu dugaan pertama
+  // yang ternyata SALAH, dan dibuktikan salah dengan mencabut penjaga ini lalu
+  // menjalankan tesnya (lulus). Draf di bawah hidup sebagai `$state` terpisah
+  // dari `data`, jadi `invalidateAll()` memang tak menyentuhnya. Alasan yang
+  // benar ada tiga dan ditulis lengkap di `lib/utils/refresh-policy.ts`:
+  // penyegaran di tengah penyimpanan, pekerjaan sia-sia saat modal terbuka,
+  // dan pagar untuk saat R2 memecah komponen ini.
+  //
+  // Daftarnya tetap LENGKAP — tiap tempat yang menampung pekerjaan belum
+  // tersimpan disebut satu per satu, bukan disimpulkan dari satu bendera umum:
+  // -------------------------------------------------------------------------
+  get sedangSibuk(): boolean {
+    return (
+      // 1. Empat kotak "Ubah" — isinya draf yang belum dikirim.
+      this.passcodeEditing ||
+      this.complaintEditing ||
+      this.diagnosisEditing ||
+      this.perkiraanEditing ||
+      // 2. Modal yang terbuka.
+      this.showEditForm ||
+      this.showEditWarning ||
+      this.showCancelModal ||
+      // 3. Permintaan yang sedang berjalan — menyegarkan di tengahnya membuat
+      //    layar menampilkan keadaan sebelum tindakan yang baru saja selesai.
+      this.loading ||
+      this.assignLoading ||
+      this.passcodeLoading ||
+      this.complaintLoading ||
+      this.diagnosisLoading ||
+      this.perkiraanLoading ||
+      this.checklistLoading ||
+      this.chargeLoading ||
+      this.cancelLoading ||
+      // 4. Centangan QC yang belum disimpan. Tidak terlihat sebagai "form
+      //    terbuka", tapi tetap pekerjaan teknisi yang belum tersimpan.
+      Object.keys(this.checklistDraft).length > 0 ||
+      // 5. Baris biaya yang sedang diisi. Formnya selalu tampak (bukan modal),
+      //    jadi yang menandakan sibuk adalah ADANYA ISI, bukan terbukanya.
+      this.chargeForm.description.trim() !== '' ||
+      this.chargeForm.inventoryItemId !== '' ||
+      this.chargeForm.unitPrice.trim() !== '' ||
+      // 6. Tahap tujuan sudah dipilih / catatan perpindahan sedang diketik.
+      this.selectedTransition !== '' ||
+      this.transitionNotes.trim() !== ''
+    );
+  }
   assignLoading = $state(false);
 
   /**

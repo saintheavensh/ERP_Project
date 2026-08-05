@@ -511,7 +511,12 @@
   <!-- Action Forms (Phase 3 Hardcoded dynamic forms) -->
   <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
     <div class="bg-slate-50 px-6 py-4 border-b border-slate-200">
-      <h2 class="font-semibold text-slate-800">Current Stage: <span class="text-blue-600">{state.currentNode?.name}</span></h2>
+      <!-- R1.11-T3 — testid dipasang di sini karena inilah yang pemilik lihat
+           tidak berubah: "di halaman detail kasir masih intake posisinya".
+           (Label "Current Stage" masih bahasa Inggris — sisa yang lolos dari S1.
+           Sengaja TIDAK diganti di sini: itu perubahan teks yang tak diminta di
+           fase ini, dan R1.11 sudah punya scope sendiri. Dicatat sebagai R4.) -->
+      <h2 class="font-semibold text-slate-800">Current Stage: <span class="text-blue-600" data-testid="tahap-saat-ini">{state.currentNode?.name}</span></h2>
       <p class="text-xs text-slate-500 mt-1">{state.currentNode?.description}</p>
     </div>
     

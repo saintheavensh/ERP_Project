@@ -3,6 +3,7 @@
   import { API_BASE } from '$lib/api/config';
   import StatCard from '$lib/components/dashboard/StatCard.svelte';
   import AntrianDetailDialog from '$lib/components/tickets/AntrianDetailDialog.svelte';
+  import { autoRefresh } from '$lib/utils/auto-refresh';
 
   let { data } = $props();
 
@@ -20,6 +21,12 @@
   // R1.7 — antrian tak bertuan bisa dilihat isinya lewat popup sebelum diambil,
   // tanpa berpindah halaman (uji-R1.6 B1).
   let antrianTerpilih = $state('');
+
+  // R1.11-T3 — Beranda adalah layar yang paling lama dibiarkan terbuka: teknisi
+  // menaruhnya di pojok meja dan menengoknya sesekali. Justru itu yang membuat
+  // kartu antrian & angka penjualan di sini paling mudah basi.
+  // Ditunda selagi popup rincian antrian terbuka.
+  autoRefresh({ busy: () => antrianTerpilih !== '' });
 
   async function antrianDiambil() {
     antrianTerpilih = '';

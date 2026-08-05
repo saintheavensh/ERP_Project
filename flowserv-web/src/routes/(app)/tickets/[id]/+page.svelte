@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import { replaceState } from '$app/navigation';
   import { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
+  import { autoRefresh } from '$lib/utils/auto-refresh';
   import TicketWorkspace from '$lib/components/tickets/TicketWorkspace.svelte';
   import TicketTimeline from '$lib/components/tickets/TicketTimeline.svelte';
   import TicketCustomerModals from '$lib/components/tickets/TicketCustomerModals.svelte';
@@ -20,6 +21,12 @@
   $effect(() => {
     state.data = data;
   });
+
+  // R1.11-T3 — halaman ini dibaca kasir DAN teknisi pada saat yang sama, jadi
+  // ia yang paling sering basi (keluhan pemilik di uji-R1.10 A6). Penyegaran
+  // ditunda selama ada pekerjaan pemakai yang belum tersimpan — daftarnya di
+  // `sedangSibuk`, dan itu yang menjaga tulisan tidak terhapus diam-diam.
+  autoRefresh({ busy: () => state.sedangSibuk });
 
   // Tahap B — intake baru tersimpan: cetak Label + Tanda Terima otomatis.
   // Dipicu lewat query param dari form intake (bukan "tiket ini masih baru"),

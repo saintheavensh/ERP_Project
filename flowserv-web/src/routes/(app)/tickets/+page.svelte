@@ -2,6 +2,7 @@
   import { invalidateAll } from '$app/navigation';
   import { claimTicket } from '$lib/api/tickets';
   import AntrianDetailDialog from '$lib/components/tickets/AntrianDetailDialog.svelte';
+  import { autoRefresh } from '$lib/utils/auto-refresh';
 
   let { data } = $props();
   let tickets = $derived(data.tickets);
@@ -19,6 +20,13 @@
   // beranda teknisi. Satu komponen supaya isinya tak pernah berbeda di dua
   // tempat yang menjanjikan hal yang sama.
   let antrianTerpilih = $state('');
+
+  // R1.11-T3 — antrian berubah karena ORANG LAIN: teknisi mengambil pekerjaan,
+  // kasir menerima unit baru. Daftar yang basi di sini berarti dua teknisi
+  // berebut tiket yang sudah diambil.
+  // Ditunda selagi popup rincian terbuka atau sebuah klaim sedang berjalan —
+  // menyegarkan saat itu akan menutup popup di depan mata pemakainya.
+  autoRefresh({ busy: () => antrianTerpilih !== '' || claimingId !== '' });
 
   async function ambil(ticketId: string) {
     claimingId = ticketId;
