@@ -16,13 +16,24 @@
 /**
  * Jeda antar penyegaran, dalam milidetik.
  *
- * 20 detik: cukup cepat supaya kasir yang menoleh ke layar melihat tiket yang
- * sudah didiagnosa, cukup lambat supaya satu toko dengan beberapa layar tidak
- * membebani API. Angka ini tidak kritis karena pemicu utamanya bukan interval
- * melainkan "tab kembali dipakai" — interval hanya menangani layar yang
- * dipandangi terus-menerus tanpa disentuh.
+ * **5 detik — diturunkan dari 20 detik pada 2026-08-06**, atas jawaban pemilik
+ * di uji R1.11 poin D7: *"terlalu lambat"*. Ia ditawari 5 detik, 2–3 detik, atau
+ * realtime (WebSocket) dan memilih 5.
+ *
+ * Angka aslinya dipilih dengan alasan "cukup lambat supaya satu toko dengan
+ * beberapa layar tidak membebani API", dan alasan itu **tidak salah — hanya
+ * salah timbangannya**: pemakaian nyata satu toko adalah 3–4 layar, jadi 20
+ * detik membeli beban API yang tak pernah jadi masalah dengan harga kasir
+ * memandangi tiket yang sudah basi.
+ *
+ * Ini tetap **bukan** angka kritis: pemicu utamanya bukan interval melainkan
+ * "tab kembali dipakai" (yang seketika). Interval hanya menangani layar yang
+ * dipandangi terus-menerus tanpa disentuh — persis kasir di konter.
+ *
+ * Kalau suatu hari cabang bertambah dan API terasa berat, ini kenop pertama
+ * yang diputar, dan menaikkannya kembali tidak merusak apa pun.
  */
-export const DEFAULT_REFRESH_INTERVAL_MS = 20_000;
+export const DEFAULT_REFRESH_INTERVAL_MS = 5_000;
 
 export interface RefreshDecision {
   /** `document.visibilityState === 'visible'` */

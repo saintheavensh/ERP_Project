@@ -46,7 +46,13 @@ describe('shouldRefresh', () => {
   it('jeda bawaannya masuk akal untuk dipandangi terus-menerus', () => {
     // Bukan angka keramat, tapi ia harus tetap di kisaran detik: terlalu cepat
     // membebani API satu toko, terlalu lambat mengembalikan keluhan aslinya.
-    expect(DEFAULT_REFRESH_INTERVAL_MS).toBeGreaterThanOrEqual(5_000);
-    expect(DEFAULT_REFRESH_INTERVAL_MS).toBeLessThanOrEqual(60_000);
+    //
+    // Batas atas diperketat 60 detik → 10 detik pada 2026-08-06. Nilai 20 detik
+    // yang semula dipakai LULUS batas lama, dan pemilik menyebutnya "terlalu
+    // lambat" di uji R1.11 poin D7 — jadi batas lama itu membiarkan persis
+    // angka yang ditolak pemakainya. Sekarang kembali ke 20 detik menggagalkan
+    // tes ini, bukan diam-diam lolos.
+    expect(DEFAULT_REFRESH_INTERVAL_MS).toBeGreaterThanOrEqual(3_000);
+    expect(DEFAULT_REFRESH_INTERVAL_MS).toBeLessThanOrEqual(10_000);
   });
 });

@@ -388,9 +388,24 @@ export class TicketIntakeState {
    * satunya akan kehilangan sesuatu (dulu `Idempotency-Key`; di sini pemilihan
    * template per cabang).
    *
-   * Cetak otomatis TIDAK dicabut — pemilik memang meminta label otomatis
-   * (uji R1.5 A7), jadi mematikannya diam-diam justru membatalkan permintaan
-   * sebelumnya. Pertanyaan "masih perlu otomatis?" ada di checklist uji R1.9.
+   * **Pertanyaannya akhirnya terjawab — 2026-08-06, dan jawabannya "keduanya".**
+   * "Masih perlu cetak otomatis, atau jadi tombol saja?" ditanyakan di checklist
+   * uji R1.9, R1.10, lalu R1.11 poin G1. Pemilik menjawab *"jadi tombol saja
+   * dulu"*, lalu **mengoreksi sendiri** begitu perubahannya mulai dikerjakan:
+   * *"print otomatisnya jangan di matikan tetap ada tetapi trigger manual juga
+   * ada"*.
+   *
+   * Jadi bentuk finalnya = bentuk yang sudah berjalan sejak R1.9-T5: kertas
+   * tetap keluar sendiri saat Simpan (mengikuti `flow_nodes.autoPrintDocuments`),
+   * DAN kasir punya tombol untuk mencetak ulang. Nol pekerjaan kode; yang perlu
+   * ditulis cuma keputusannya, di sini, supaya tidak ditanyakan lagi.
+   *
+   * **Jangan mencabut cetak otomatis dengan mengosongkan
+   * `flow_nodes.autoPrintDocuments`** kalau suatu hari diminta lagi: kolom itu
+   * juga yang menentukan tombol cetak mana yang muncul di halaman tiket
+   * (`printableTicketDocuments` di `ticket.detail.svelte.ts`), jadi
+   * mengosongkannya menghapus tombolnya sekalian — kebalikan dari yang diminta.
+   * Yang benar: cabut pemicunya di `submit()`.
    */
   cetakSedangJalan = $state<string | null>(null);
 
