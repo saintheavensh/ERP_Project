@@ -2050,9 +2050,23 @@ missing.
       tidak menghasilkan server yang bisa dijalankan. Build produksi terbukti berhasil
 - [x] **Node 24 (LTS aktif)** di kedua Dockerfile + `.nvmrc`. Ditulis sebagai mayor tanpa
       patch supaya ikut menerima perbaikan keamanan tapi tak pernah melompat mayor diam-diam.
-      **Catatan untuk pemilik:** Node di komputer ini **v25.1.0**, dan nomor ganjil (23, 25)
-      adalah rilis "Current" yang tak pernah jadi LTS — itu kandidat kuat penyebab
-      `npm run dev` di root bermasalah
+      **Catatan lama yang TERNYATA SALAH, dikoreksi 2026-08-06:** berkas ini sempat menuduh
+      Node **v25.1.0** sebagai "kandidat kuat penyebab `npm run dev` di root bermasalah".
+      Pemilik memasang Node 24 (`v24.19.0`, cocok `.nvmrc`) dan **backend tetap tidak
+      menyala** — jadi tebakan itu bukan cuma meleset, ia mengirim pemilik memasang ulang
+      Node tanpa hasil
+- [x] **`npm run dev` di root diperbaiki (2026-08-06).** Sebabnya `concurrently`, bukan Node.
+      Di bawah mode bawaannya (stdout di-pipe supaya bisa diberi awalan `[0]`/`[1]`),
+      `tsx watch` **tidak pernah menyala sama sekali** di Windows — bukan output yang
+      tertelan: port 3001 menjawab `connection refused`, sementara perintah yang **sama
+      persis** (`npm run dev --workspace=flowserv-api`) dijalankan sendiri langsung
+      `listening on 0.0.0.0:3001`. Akibatnya web hidup di 5173 dan setiap halaman gagal
+      memuat data, gejala yang mudah dikira "aplikasinya rusak". Diperbaiki dengan
+      **`concurrently --raw`** (anak proses mewarisi stdio, tidak lewat pipa). **`-i`
+      (`--handle-input`) diuji lebih dulu dan TIDAK cukup** — jadi yang menyembuhkan
+      memang penanganan stdout-nya, bukan stdin. Harganya: penanda `[0]`/`[1]` di log
+      hilang. Terverifikasi: `/v1/health` → **200 `database: connected`** dan web `/` →
+      **200**, keduanya hidup bersamaan
 - [ ] **Jalur kata sandi SHA-256 tanpa salt** (`routes/auth.ts`) — belum dicabut
 
 > **⚠️ Belum diuji end-to-end.** Docker Desktop tidak bisa menyala saat berkas-berkas ini

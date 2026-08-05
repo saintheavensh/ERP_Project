@@ -10,17 +10,18 @@
 
 **Node 24 (LTS aktif).** Dipakai di kedua Dockerfile dan dicatat di `.nvmrc`.
 
-⚠️ **Node yang terpasang di komputer ini v25.1.0, dan itu BUKAN LTS.** Node
-bernomor **ganjil** (23, 25, …) adalah rilis "Current" — umurnya pendek dan tidak
-pernah naik jadi LTS. Kalau `npm run dev` di root berperilaku aneh, memasang
-**Node 24 LTS** hampir pasti jawabannya:
-
-```
-nvm install 24 && nvm use 24     # atau unduh dari nodejs.org, pilih "LTS"
-```
+Node bernomor **ganjil** (23, 25, …) adalah rilis "Current" — umurnya pendek dan
+tidak pernah naik jadi LTS. Pakai yang genap.
 
 Di dalam Docker ini tidak jadi soal — kontainer selalu memakai Node 24, apa pun
 yang terpasang di komputer Anda.
+
+> **Koreksi 2026-08-06.** Berkas ini sebelumnya menyatakan Node di komputer
+> pemilik v25.1.0 dan bahwa memasang Node 24 LTS "hampir pasti jawabannya" kalau
+> `npm run dev` di root bermasalah. **Tebakan itu salah, dan biayanya nyata:**
+> pemilik memasang Node 24 (terverifikasi `v24.19.0`, cocok dengan `.nvmrc`) dan
+> backend tetap tidak menyala. Sebab sesungguhnya `concurrently`, bukan Node —
+> lihat catatan `--raw` di `package.json` root dan di PHASES.md Phase 11.
 
 ---
 

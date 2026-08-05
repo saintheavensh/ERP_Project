@@ -30,7 +30,9 @@ specification/   → Documentation (source of truth)
 - ORM: Drizzle — schema in `flowserv-api/src/db/schema.ts`
 - Database: PostgreSQL (local install, use `npx drizzle-kit push` for schema changes)
   - **Standard schema-change workflow during develop (added 2026-07-21, H0):** run
-    `npm run db:reset` (in `flowserv-api/`) after changing `db/schema/*.ts`. It drops
+    `npm run db:reset` after changing `db/schema/*.ts` — **from the repo root or from
+    `flowserv-api/`, both work** (the root script delegates to the workspace; added
+    2026-08-06). It drops
     and recreates the `public` schema, runs `db:push`, then runs `db:seed` — a
     complete, deterministic dataset in seconds, no manual backfill. It refuses to run
     unless `DATABASE_URL` contains `localhost`. This replaces "be careful with

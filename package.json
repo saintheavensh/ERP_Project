@@ -9,7 +9,8 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=flowserv-api",
     "dev:web": "npm run dev --workspace=flowserv-web",
-    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\""
+    "dev": "concurrently --raw \"npm run dev:api\" \"npm run dev:web\"",
+    "db:reset": "npm run db:reset --workspace=flowserv-api"
   },
   "devDependencies": {
     "concurrently": "^10.0.3"
