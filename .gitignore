@@ -39,6 +39,17 @@ npm-debug.log*
 # Testing
 coverage/
 
+# Playwright — artefak run (screenshot, trace, error-context) tidak pernah
+# di-commit; semuanya dibuat ulang tiap run.
+#
+# `flowserv-web/.gitignore` sudah menutup `/test-results`, TAPI hanya relatif ke
+# foldernya. Menjalankan Playwright dari ROOT (mis.
+# `npx playwright test --config flowserv-web/playwright.config.ts`) menaruh
+# artefaknya di `test-results/` root, yang tidak tertutup pola mana pun — dan
+# 8 berkas sampah sempat ikut ter-commit karena itu (2026-08-06, R2.1).
+/test-results/
+/playwright-report/
+
 # Runtime uploads — user/device images added on-demand, never committed as seed
 # (device-catalog bulk photos were dropped 2026-07-25; images are added later per model)
 flowserv-api/public/uploads/*
