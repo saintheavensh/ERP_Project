@@ -81,6 +81,32 @@ export const requirePermission = (code: string): MiddlewareHandler => async (c, 
  * (and same [RBAC] would-deny logging + break-glass behaviour) as
  * requirePermission.
  */
+/**
+ * Pemeriksaan izin yang mengembalikan BOOLEAN, untuk keputusan "tampilkan atau
+ * sembunyikan sebuah field", bukan "tolak permintaannya" (R2.2).
+ *
+ * Kenapa bukan `enforcePermission`: menolak seluruh `GET /tickets/:id/charges`
+ * hanya karena pemanggilnya tak boleh melihat MODAL akan mematikan halaman
+ * tiket untuk teknisi — padahal ia justru orang yang paling butuh daftar
+ * sparepart di sana. Yang benar adalah membalas 200 dengan lebih sedikit isi.
+ *
+ * Keputusannya SAMA dengan `enforcePermission`, termasuk break-glass: di
+ * `RBAC_MODE=report` tidak ada yang ditahan, jadi fungsi ini juga mengembalikan
+ * true. Itu disengaja — mode report berarti "tidak ada yang ditegakkan", dan
+ * satu jalur yang diam-diam tetap menegakkan justru membuat break-glass tidak
+ * bisa dipercaya saat benar-benar dibutuhkan.
+ *
+ * Yang TIDAK dilakukan di sini: mencatat `[RBAC] would deny`. Log itu adalah
+ * mekanisme penemuan grant yang hilang (H12 Stage 2), dan sebuah field yang
+ * memang sengaja disembunyikan bukan grant yang hilang — mencatatnya akan
+ * memenuhi log dengan kejadian normal.
+ */
+export async function isPermitted(c: Context, code: string): Promise<boolean> {
+  const { roleId, roleName } = getAuthContext(c);
+  const hasGrant = roleName === 'Super Admin' ? true : await hasPermission(roleId, code);
+  return !evaluateRbac({ roleName, hasGrant, mode: RBAC_MODE }).block;
+}
+
 export async function enforcePermission(c: Context, code: string): Promise<Response | null> {
   const { userId, roleId, roleName } = getAuthContext(c);
 

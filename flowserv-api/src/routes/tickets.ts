@@ -8,7 +8,7 @@ import { customers, customerAssets, serviceTickets, flowTemplates, flowNodes, fl
 import { ticketStatusEnum } from '../db/schema/enums';
 import { eq, and, desc, inArray, isNull, sql } from 'drizzle-orm';
 import { requireAuth, getAuthContext } from '../middleware/auth';
-import { requirePermission, enforcePermission } from '../middleware/rbac';
+import { requirePermission, enforcePermission, isPermitted } from '../middleware/rbac';
 import { auditMiddleware } from '../middleware/audit';
 import { successResponse, errorResponse, getRequestId } from '../lib/response';
 import { cursorCondition, decodeCursor, parseLimit, buildPage, orderByCursor } from '../lib/pagination';
@@ -681,7 +681,30 @@ ticketsRouter.get('/:id/charges', async (c) => {
   const ticketId = c.req.param('id');
   try {
     const result = await listCharges(tenantId, ticketId);
-    return successResponse(c, result);
+
+    // R2.2 — MODAL & MARGIN ditahan dari peran tanpa `finance.view_reports`.
+    //
+    // Aturan pemilik sejak R1.5A: "teknisi hanya bisa melihat harga jual".
+    // Sampai hari ini aturan itu hanya ditegakkan di `/v1/finance/*`, sementara
+    // endpoint INI mengirim `cost` dan `margin` ke siapa pun yang login — jadi
+    // modal setiap sparepart terbuka lewat halaman tiket, pintu belakang untuk
+    // gerbang yang R1.5A tutup di pintu depan.
+    //
+    // `revenue` sengaja TETAP dikirim: itu harga jual, yang memang boleh dilihat
+    // teknisi dan dibutuhkan kasir untuk menjelaskan tagihan (keputusan pemilik
+    // 2026-08-06: "kasir lihat rincian tanpa harga modal").
+    //
+    // Bentuk objeknya dijaga tetap sama dengan `cost`/`margin` bernilai `null`,
+    // bukan kuncinya dihapus: klien lama yang membaca `.cost` akan mendapat
+    // `null` (tampil kosong) alih-alih `undefined` yang diam-diam jadi `NaN`
+    // begitu ikut dihitung.
+    const bolehLihatModal = await isPermitted(c, 'finance.view_reports');
+    return successResponse(
+      c,
+      bolehLihatModal
+        ? result
+        : { ...result, margin: { revenue: result.margin.revenue, cost: null, margin: null } }
+    );
   } catch (err) {
     if (err instanceof BusinessError) {
       return errorResponse(c, err.code, err.message, err.details, err.statusCode);

@@ -3,7 +3,7 @@ import { invalidateAll } from '$app/navigation';
 import { API_BASE } from '$lib/api/config';
 import { autoPrint, summarizeAutoPrint, DOCUMENT_LABELS } from '$lib/api/auto-print';
 import { claimTicket } from '$lib/api/tickets';
-import { roleCan } from '$lib/auth/capabilities';
+import { ticketSectionsFor, type TicketSectionsView } from './ticket-view';
 
 export class TicketDetailState {
   // $state so every getter that reads `this.data` (ticket, currentNode, charges…)
@@ -59,7 +59,26 @@ export class TicketDetailState {
    * teknisi lainnya soalnya itu membingungkan" (uji-R1.6 B3).
    */
   get canAssignOthers() {
-    return this.data.roleName === 'Super Admin' || this.data.roleName === 'Manager';
+    return this.view.canAssignOthers;
+  }
+
+  // -------------------------------------------------------------------------
+  // R2.2 — SATU tempat memutuskan "peran ini melihat bagian apa".
+  //
+  // Sebelum ini keputusannya tersebar: `canAssignOthers` membandingkan nama
+  // peran langsung (menyalin isi katalog izin), `bolehUbah*` memakai `roleCan`,
+  // dan `canCancel` tidak memeriksa peran SAMA SEKALI. Tiga gaya berbeda untuk
+  // satu jenis keputusan — dan yang ketiga memang salah, lihat `canCancel`.
+  //
+  // Getter di bawah tetap ada dan namanya tidak diubah: 7 komponen-bagian dan
+  // beberapa spec memakainya, dan mengganti nama sekaligus memindahkan logika
+  // membuat kegagalan sulit dilacak (aturan yang sama dengan "jangan pecah
+  // state di R2.1"). Sekarang semuanya meneruskan ke `view`.
+  // -------------------------------------------------------------------------
+
+  /** Keputusan per-peran untuk halaman ini. Murni & diuji di ticket-view.ts. */
+  get view(): TicketSectionsView {
+    return ticketSectionsFor(this.data.roleName, { status: this.ticket?.status });
   }
 
   // -------------------------------------------------------------------------
@@ -84,12 +103,26 @@ export class TicketDetailState {
 
   /** Kolom yang dicatat KONTER: sandi/pola, keluhan, perkiraan konter. */
   get bolehUbahDataKonter(): boolean {
-    return roleCan(this.data.roleName, 'ticket.create');
+    return this.view.canEditCounterFields;
   }
 
   /** Kolom yang dicatat TEKNISI: hasil diagnosa + lama pengerjaan. */
   get bolehUbahDiagnosa(): boolean {
-    return roleCan(this.data.roleName, 'ticket.diagnose');
+    return this.view.canEditDiagnosis;
+  }
+
+  // R2.2 — tiga baris baru, ketiganya jawaban pemilik 2026-08-06.
+  /** Menambah/mengubah baris sparepart & jasa. Kasir: tidak. */
+  get bolehUbahBiaya(): boolean {
+    return this.view.canEditCharges;
+  }
+  /** Kartu Modal & Margin. Backend juga menahan angkanya (`cost: null`). */
+  get bolehLihatModal(): boolean {
+    return this.view.canSeeCostAndMargin;
+  }
+  /** Mencentang daftar periksa. Kasir MELIHAT hasilnya, tidak mengisinya. */
+  get bolehIsiChecklist(): boolean {
+    return this.view.canFillChecklist;
   }
 
   // -------------------------------------------------------------------------
@@ -869,7 +902,14 @@ export class TicketDetailState {
 
   // F3 — SVC-013: cancel the ticket. Mirrors canCancelTicket() in the backend
   // service (open-only) purely for UI gating; the API is the real guard.
-  get canCancel() { return this.ticket?.status === 'open'; }
+  // R2.2 — cek PERAN ditambahkan. Sampai hari ini baris ini hanya memeriksa
+  // status, jadi kasir dan teknisi melihat tombol "Batalkan Tiket" yang backend
+  // pasti tolak (`requirePermission('ticket.cancel')`, hanya Manager & Super
+  // Admin). Tombol-403 yang lolos dari Track F, R1.7-T3, DAN R1.11-T2 —
+  // ketiganya membasmi bentuk cacat ini di tempat lain dan tak ada yang melihat
+  // yang satu ini, karena komentarnya sudah berbunyi "purely for UI gating"
+  // sehingga terbaca seperti sudah dipertimbangkan.
+  get canCancel() { return this.view.canCancelTicket; }
   showCancelModal = $state(false);
   cancelReason = $state('');
   cancelLoading = $state(false);

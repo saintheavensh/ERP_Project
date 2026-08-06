@@ -36,6 +36,41 @@ const ROLES_WITH: Record<string, readonly string[]> = {
   // TEMUKAN.
   'ticket.create': ['Super Admin', 'Manager', 'Cashier'],
   'ticket.diagnose': ['Super Admin', 'Manager', 'Technician'],
+
+  // ---------------------------------------------------------------------------
+  // R2.2 (2026-08-06) — lima baris di bawah ini disalin dari
+  // `db/seed/01-core.ts` baris 95–141, DIBACA saat itu juga, bukan dari ingatan.
+  // Semuanya sudah lama ditegakkan backend; yang belum ada cuma padanannya di
+  // layar, dan itulah kenapa halaman tiket masih memampangkan tombol yang pasti
+  // ditolak (lihat `ticket-view.ts`).
+  // ---------------------------------------------------------------------------
+
+  // Menugaskan teknisi LAIN. Mengambil pekerjaan untuk DIRI SENDIRI bukan ini —
+  // itu `ticket.diagnose` lewat POST /claim, dan teknisi memang punya.
+  'ticket.assign_technician': ['Super Admin', 'Manager'],
+  // Membatalkan tiket + melepas sparepart yang sudah dipesan.
+  'ticket.cancel': ['Super Admin', 'Manager'],
+  // Menambah/mengubah baris sparepart & jasa. Kasir sengaja TIDAK punya —
+  // seed baris 136: "Kasir menerima unit; ia tidak mendiagnosis dan tidak
+  // memberi harga".
+  'ticket.manage_charges': ['Super Admin', 'Manager', 'Technician'],
+  // Mengisi daftar periksa (QC).
+  'ticket.qc': ['Super Admin', 'Manager', 'Technician'],
+  // Membuat kuotasi/minta persetujuan pelanggan (`POST /:id/quotation`).
+  //
+  // ⚠️ Tabel per-peran di `plan/tahap-b-peran-dan-qc.md` menulis baris ini
+  // "Kasir ✓, Teknisi ✕" — dan seed membantah KEDUANYA: kasir juga tidak
+  // punya. Yang dipakai di sini kenyataan backend (seed baris 94), bukan
+  // tabelnya. Inilah gunanya aturan "tiap baris harus bisa ditunjuk ke izin
+  // backend": tanpa memeriksa, tabel itu akan menghasilkan tombol yang pasti
+  // gagal untuk kasir DAN menyembunyikannya dari teknisi tanpa alasan.
+  'ticket.approve_quote': ['Super Admin', 'Manager'],
+  // Melihat angka MODAL dan MARGIN — bukan harga jual. Aturan pemilik sejak
+  // R1.5A: "teknisi hanya bisa melihat harga jual". Sejak R2.2 backend
+  // benar-benar menahan `cost`/`margin` di GET /v1/tickets/:id/charges untuk
+  // peran tanpa izin ini, jadi baris ini menyembunyikan tepat apa yang memang
+  // tidak dikirim — bukan menutupi data yang tetap sampai ke browser.
+  'finance.view_reports': ['Super Admin', 'Manager'],
 };
 
 /**

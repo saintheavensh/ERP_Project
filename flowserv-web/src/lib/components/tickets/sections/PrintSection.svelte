@@ -4,13 +4,24 @@
   import PrintButton from '$lib/components/print/PrintButton.svelte';
 
   let { state } = $props<{ state: TicketDetailState }>();
+
+  // R2.2 — pemilik (2026-08-06): "teknisi boleh cetak label saja". Label
+  // menempel di unit yang ada di mejanya dan memuat sandi/pola untuk QC, jadi
+  // ia harus bisa mencetaknya ulang tanpa memanggil kasir. Nota & tanda terima
+  // adalah dokumen konter.
+  //
+  // ⚠️ Ini kerapian, BUKAN keamanan: `GET /v1/print/documents/...` hanya
+  // `requireAuth` sejak 6A.4 ("mencetak penjualanmu sendiri bukan tindakan
+  // admin-printer"), jadi teknisi yang memanggil API-nya langsung tetap bisa.
+  // Ditulis terbuka di `ticket-view.ts`, tidak disamarkan sebagai gerbang.
+  const semuaDokumen = $derived(state.view.printableDocuments === 'semua');
 </script>
 
 <!-- Tahap A — go-live gap Tier-1 #3 (print triggers). Each button appears
      once its document is actually meaningful to print — never forced/auto-
      printed, matching how every other "Cetak" action in this app already
      works (a manual click, not a side effect of a transition). -->
-{#if state.canPrintLabel || state.canPrintTandaTerima || state.invoice}
+{#if state.canPrintLabel || (semuaDokumen && (state.canPrintTandaTerima || state.invoice))}
   <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
       <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Dokumen Cetak</h3>
@@ -26,10 +37,10 @@
       {#if state.canPrintLabel}
         <PrintButton token={state.token} documentType="label" id={state.ticket.id} label="Cetak Label" />
       {/if}
-      {#if state.canPrintTandaTerima}
+      {#if state.canPrintTandaTerima && semuaDokumen}
         <PrintButton token={state.token} documentType="tanda_terima" id={state.ticket.id} label="Cetak Tanda Terima" />
       {/if}
-      {#if state.invoice}
+      {#if state.invoice && semuaDokumen}
         <PrintButton token={state.token} documentType="receipt" id={state.invoice.id} label="Cetak Struk" />
         <PrintButton token={state.token} documentType="invoice_a4" id={state.invoice.id} label="Cetak Nota (A4)" />
       {/if}

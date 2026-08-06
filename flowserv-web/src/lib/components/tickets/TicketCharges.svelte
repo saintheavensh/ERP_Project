@@ -36,6 +36,23 @@
   // estimasi baru = temuan tambahan saat pembongkaran. Re-quote hanya menagih
   // selisihnya (chargeTotals.estimated); approvedTotal menumpuk kumulatif.
   const isChangeOrder = $derived(state.isQuoted && hasEstimated);
+
+  // R2.2 — dua keputusan pemilik (2026-08-06), sengaja TERPISAH karena jenisnya
+  // berbeda dan menggabungkannya akan salah untuk teknisi:
+  //
+  //   bolehUbahBiaya  — wewenang: siapa yang mencatat sparepart & jasa.
+  //                     Kasir tidak (`ticket.manage_charges`, seed baris 136:
+  //                     "Kasir menerima unit; ia tidak memberi harga").
+  //   bolehLihatModal — kerahasiaan: siapa yang melihat MODAL & MARGIN.
+  //                     Teknisi tidak, meski ia yang MENCATAT biayanya —
+  //                     aturan pemilik sejak R1.5A, "teknisi hanya bisa melihat
+  //                     harga jual".
+  //
+  // Jadi teknisi = boleh ubah, tidak boleh lihat modal. Satu bendera gabungan
+  // akan memaksa memilih salah satu, dan keduanya salah untuk peran itu.
+  const bolehUbah = $derived(state.bolehUbahBiaya);
+  const bolehLihatModal = $derived(state.bolehLihatModal);
+  const bolehMintaPersetujuan = $derived(state.view.canRequestQuotation);
 </script>
 
 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -109,20 +126,30 @@
            tile (first reuse outside the dashboard it was built for in P3). -->
       <div class="border-t border-slate-100 pt-4">
         <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rincian Biaya</h3>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- R2.2 — tanpa izin `finance.view_reports`, backend mengirim
+             `cost: null` dan `margin: null` (routes/tickets.ts). Jadi dua kartu
+             di bawah bukan sekadar tak digambar: angkanya memang tidak pernah
+             sampai ke browser. Yang tersisa harga JUAL, dan itu memang boleh
+             dilihat semua peran. -->
+        <div class="grid grid-cols-1 {bolehLihatModal ? 'sm:grid-cols-3' : ''} gap-3">
           <StatCard title="Pendapatan" value={idr(state.chargeMargin.revenue)} />
-          <StatCard title="Modal" value={idr(state.chargeMargin.cost)} />
-          <StatCard
-            title="Margin"
-            value={idr(state.chargeMargin.margin)}
-            tone={state.chargeMargin.margin >= 0 ? 'success' : 'danger'}
-          />
+          {#if bolehLihatModal}
+            <StatCard title="Modal" value={idr(state.chargeMargin.cost)} />
+            <StatCard
+              title="Margin"
+              value={idr(state.chargeMargin.margin)}
+              tone={state.chargeMargin.margin >= 0 ? 'success' : 'danger'}
+            />
+          {/if}
         </div>
       </div>
     {/if}
 
     <!-- Add charge form -->
-    {#if state.ticket?.status !== 'closed' && state.ticket?.status !== 'cancelled'}
+    <!-- R2.2 — kasir melihat rincian, tidak menambah barisnya. Backend menolak
+         (`ticket.manage_charges`), jadi form ini untuknya adalah form yang
+         pasti gagal saat ditekan. -->
+    {#if bolehUbah && state.ticket?.status !== 'closed' && state.ticket?.status !== 'cancelled'}
       <div class="bg-slate-50 rounded-lg p-4 space-y-3">
         <div class="flex gap-2">
           {#each ['part', 'labor', 'fee'] as t}
@@ -161,7 +188,17 @@
       </div>
 
       <!-- Request approval / change order -->
-      {#if isChangeOrder}
+      <!-- R2.2 — bendera TERPISAH dari `bolehUbah`, karena backend memisahkannya:
+           `POST /:id/quotation` digerbangi `ticket.approve_quote`, yang teknisi
+           TIDAK punya meski ia yang mencatat biayanya. Sampai R2.2 tombol ini
+           digambar bersama form biaya, jadi teknisi melihat "Minta Persetujuan"
+           yang pasti 403 — bug yang sudah ada sebelum fase ini dan baru
+           ketahuan saat memeriksa tabel per-peran ke seed. -->
+      {#if !bolehMintaPersetujuan}
+        <p class="text-xs text-slate-500 pt-1" data-testid="quotation-not-allowed">
+          Estimasi sudah dicatat. Yang mengajukannya ke pelanggan adalah manajer.
+        </p>
+      {:else if isChangeOrder}
         <!-- B1 (Tahap A #5) — temuan baru setelah quote pertama. Diberi framing
              eksplisit supaya teknisi paham ini "konfirmasi ulang harga", bukan
              quote biasa: pelanggan hanya diminta menyetujui BIAYA TAMBAHAN. -->

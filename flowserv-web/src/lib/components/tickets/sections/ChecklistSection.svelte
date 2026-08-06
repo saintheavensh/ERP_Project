@@ -8,6 +8,13 @@
   import type { TicketDetailState } from '$lib/states/tickets/ticket.detail.svelte';
 
   let { state } = $props<{ state: TicketDetailState }>();
+
+  // R2.2 — pemilik (2026-08-06) menolak usul rencana induk yang menyembunyikan
+  // QC dari kasir sepenuhnya: kasir yang MENYERAHKAN unit, dan hasil QC justru
+  // bukti yang ditunjukkan ke pelanggan — alasan beliau meminta QC dibangun.
+  // Jadi kasir membaca, tidak mengisi. Padanan backendnya nyata:
+  // `PUT /:id/checklist` digerbangi `ticket.qc`, yang kasir tidak punya.
+  const bolehIsi = $derived(state.bolehIsiChecklist);
 </script>
 
 <!-- Daftar periksa tahap (QC). Itemnya berasal dari template alur, jadi
@@ -40,7 +47,7 @@
               type="checkbox"
               class="mt-1 w-5 h-5 shrink-0"
               checked={value.checked}
-              disabled={line.removedFromTemplate}
+              disabled={line.removedFromTemplate || !bolehIsi}
               onchange={(e) => state.setChecklistValue(line.itemId, { checked: e.currentTarget.checked })}
             />
             <span class="flex-1 min-w-0">
@@ -57,7 +64,7 @@
               {/if}
             </span>
           </label>
-          {#if !line.removedFromTemplate}
+          {#if !line.removedFromTemplate && bolehIsi}
             <input
               value={value.note}
               oninput={(e) => state.setChecklistValue(line.itemId, { note: e.currentTarget.value })}
@@ -72,13 +79,21 @@
       {/each}
     </ul>
 
-    <button
-      onclick={() => state.saveChecklist()}
-      disabled={state.checklistLoading}
-      class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
-      data-testid="save-checklist">
-      {state.checklistLoading ? 'Menyimpan...' : 'Simpan Hasil Pemeriksaan'}
-    </button>
+    {#if bolehIsi}
+      <button
+        onclick={() => state.saveChecklist()}
+        disabled={state.checklistLoading}
+        class="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"
+        data-testid="save-checklist">
+        {state.checklistLoading ? 'Menyimpan...' : 'Simpan Hasil Pemeriksaan'}
+      </button>
+    {:else}
+      <!-- Dikatakan, bukan cuma tombolnya dihilangkan: kasir yang tidak
+           menemukan tombol Simpan akan mengira halamannya rusak. -->
+      <p class="mt-4 text-xs text-slate-500" data-testid="checklist-readonly">
+        Hasil pemeriksaan diisi teknisi. Anda melihatnya sebagai bukti untuk ditunjukkan ke pelanggan.
+      </p>
+    {/if}
   </div>
 {/if}
 
